@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, DollarSign } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
-const STEP_LABELS = ["Serviço", "Data", "Horário", "Seus dados"];
+const AMBER_DEEP = "hsl(38 80% 45%)";
+const STEP_LABELS = ["Serviço", "Data e hora", "Seus dados", "Pagamento"];
 
 function StepIndicator({ current }: { current: number }) {
   return (
@@ -54,7 +55,7 @@ export default function Booking() {
   const [formData, setFormData] = useState({
     serviceId: "",
     date: new Date(),
-    time: "09:00",
+    time: "",
     name: "",
     phone: "",
     notes: ""
@@ -201,159 +202,196 @@ export default function Booking() {
         <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: step === 1 ? "none" : "block" }}>
 
           {step === 2 && (
-            <>
-              <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>2. Escolha a Data</CardTitle>
-                <CardDescription>{selectedService?.name}</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-bold">Quais data?</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Escolha a data para {selectedService?.name}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {Array.from({ length: 5 }).map((_, i) => {
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      const d = new Date(today);
-                      d.setDate(today.getDate() + i);
-                      const isSelected =
-                        formData.date.toDateString() === d.toDateString();
-                      const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
-                      const label = i === 0 ? "HOJE" : weekdays[d.getDay()];
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, date: d })}
-                          data-testid={`button-date-${i}`}
-                          className="flex flex-col items-center justify-center rounded-xl py-4 transition-all"
-                          style={
-                            isSelected
-                              ? {
-                                  backgroundColor: "hsl(var(--sidebar-primary))",
-                                  color: "hsl(var(--sidebar-primary-foreground))",
-                                  border: "1px solid hsl(var(--sidebar-primary))",
-                                  cursor: "pointer",
-                                }
-                              : {
-                                  backgroundColor: "hsl(0 0% 9%)",
-                                  color: "hsl(var(--foreground))",
-                                  border: "1px solid hsl(0 0% 14%)",
-                                  cursor: "pointer",
-                                }
-                          }
-                        >
-                          <span
-                            style={{
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              letterSpacing: "0.05em",
-                              opacity: isSelected ? 0.9 : 0.55,
-                            }}
-                          >
-                            {label}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "1.5rem",
-                              fontWeight: 700,
-                              marginTop: "0.25rem",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {d.getDate()}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+            <CardContent className="p-6 space-y-6">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                data-testid="button-back-step2"
+                className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+                style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar
+              </button>
 
-                <div className="flex gap-3 pt-4">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Voltar</Button>
-                  <Button className="flex-1" onClick={() => setStep(3)}>Continuar</Button>
+              {selectedService && (
+                <div
+                  className="rounded-xl p-3 flex items-center gap-3"
+                  style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
+                >
+                  <div
+                    className="rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ width: 40, height: 40, backgroundColor: AMBER_SOFT, color: AMBER }}
+                  >
+                    <Scissors className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">{selectedService.name}</p>
+                    <div className="flex items-center gap-3 text-xs mt-0.5">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {selectedService.durationMinutes} min
+                      </span>
+                      <span style={{ color: AMBER, fontWeight: 600 }}>
+                        R$ {selectedService.price.toFixed(2).replace(".", ",")}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </>
+              )}
+
+              <div className="space-y-3">
+                <p
+                  className="text-xs font-semibold"
+                  style={{ color: "hsl(0 0% 60%)", letterSpacing: "0.05em" }}
+                >
+                  SELECIONE O DIA E HORÁRIO:
+                </p>
+
+                <div
+                  className="flex gap-2 overflow-x-auto pb-2"
+                  style={{ scrollbarWidth: "thin" }}
+                  data-testid="date-scroller"
+                >
+                  {Array.from({ length: 14 }).map((_, i) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const d = new Date(today);
+                    d.setDate(today.getDate() + i);
+                    const isSelected = formData.date.toDateString() === d.toDateString();
+                    const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+                    const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, date: d, time: "" })}
+                        data-testid={`button-date-${i}`}
+                        className="flex flex-col items-center justify-center rounded-xl flex-shrink-0"
+                        style={{
+                          width: 68,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          backgroundColor: "hsl(0 0% 9%)",
+                          border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: "0.7rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.05em",
+                            color: "hsl(0 0% 75%)",
+                          }}
+                        >
+                          {weekdays[d.getDay()]}
+                        </span>
+                        {i === 0 && (
+                          <span
+                            style={{
+                              fontSize: "0.6rem",
+                              fontWeight: 700,
+                              letterSpacing: "0.05em",
+                              color: AMBER,
+                              marginTop: 2,
+                            }}
+                          >
+                            HOJE
+                          </span>
+                        )}
+                        <span
+                          style={{
+                            fontSize: "1.4rem",
+                            fontWeight: 700,
+                            marginTop: i === 0 ? 2 : 6,
+                            lineHeight: 1,
+                          }}
+                        >
+                          {d.getDate()}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.6rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.05em",
+                            color: "hsl(0 0% 55%)",
+                            marginTop: 4,
+                          }}
+                        >
+                          {months[d.getMonth()]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p
+                  className="text-center text-xs"
+                  style={{ color: "hsl(0 0% 45%)", letterSpacing: "0.05em" }}
+                >
+                  ARRASTE PARA VER MAIS
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {Array.from({ length: 18 }).map((_, i) => {
+                    const totalMinutes = 9 * 60 + i * 30;
+                    const h = Math.floor(totalMinutes / 60);
+                    const m = totalMinutes % 60;
+                    const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+                    const isSelected = formData.time === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, time: value })}
+                        data-testid={`button-time-${value}`}
+                        className="rounded-xl py-3 text-center"
+                        style={{
+                          backgroundColor: "hsl(0 0% 9%)",
+                          border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                          color: "hsl(var(--foreground))",
+                          cursor: "pointer",
+                          fontFamily: "monospace",
+                          fontSize: "0.95rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                data-testid="button-confirm-datetime"
+                disabled={!formData.time}
+                onClick={() => setStep(3)}
+                className="w-full rounded-xl text-center font-semibold transition-opacity"
+                style={{
+                  height: 52,
+                  backgroundColor: AMBER_DEEP,
+                  color: "hsl(0 0% 100%)",
+                  border: "none",
+                  cursor: formData.time ? "pointer" : "not-allowed",
+                  opacity: formData.time ? 1 : 0.55,
+                }}
+              >
+                {formData.time
+                  ? `Continuar — ${formData.date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} às ${formData.time}`
+                  : "Selecione data e horário"}
+              </button>
+            </CardContent>
           )}
 
           {step === 3 && (
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>3. Escolha o Horário</CardTitle>
-                <CardDescription>
-                  {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-bold">Que horas?</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Horários disponíveis em {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {Array.from({ length: 18 }).map((_, i) => {
-                      const totalMinutes = 9 * 60 + i * 30;
-                      const h = Math.floor(totalMinutes / 60);
-                      const m = totalMinutes % 60;
-                      const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-                      const isSelected = formData.time === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setFormData({ ...formData, time: value })}
-                          data-testid={`button-time-${value}`}
-                          className="rounded-xl py-3 text-center transition-all"
-                          style={
-                            isSelected
-                              ? {
-                                  backgroundColor: "hsl(var(--sidebar-primary))",
-                                  color: "hsl(var(--sidebar-primary-foreground))",
-                                  border: "1px solid hsl(var(--sidebar-primary))",
-                                  cursor: "pointer",
-                                  fontFamily: "monospace",
-                                  fontSize: "1rem",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.05em",
-                                }
-                              : {
-                                  backgroundColor: "hsl(0 0% 9%)",
-                                  color: "hsl(var(--foreground))",
-                                  border: "1px solid hsl(0 0% 14%)",
-                                  cursor: "pointer",
-                                  fontFamily: "monospace",
-                                  fontSize: "1rem",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.05em",
-                                }
-                          }
-                        >
-                          {value}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>Voltar</Button>
-                  <Button className="flex-1" onClick={() => setStep(4)}>Continuar</Button>
-                </div>
-              </CardContent>
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>4. Seus Dados</CardTitle>
+                <CardTitle>3. Seus Dados</CardTitle>
                 <CardDescription>
                   {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
                 </CardDescription>
@@ -426,8 +464,8 @@ export default function Booking() {
 
                 <button
                   type="button"
-                  onClick={() => setStep(3)}
-                  data-testid="button-back-step4"
+                  onClick={() => setStep(2)}
+                  data-testid="button-back-step3"
                   className="w-full text-sm transition-opacity hover:opacity-70"
                   style={{
                     background: "none",
