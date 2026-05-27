@@ -127,7 +127,7 @@ export default function Booking() {
           {step === 2 && (
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>2. Escolha o Horário</CardTitle>
+                <CardTitle>2. Escolha a Data</CardTitle>
                 <CardDescription>{selectedService?.name}</CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
