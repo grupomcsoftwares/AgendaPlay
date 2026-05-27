@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { AppointmentPaymentMethod } from './appointmentPaymentMethod';
 
 export interface Appointment {
   id: number;
@@ -18,6 +19,7 @@ export interface Appointment {
   serviceDuration: number;
   scheduledAt: string;
   status: string;
+  paymentMethod?: AppointmentPaymentMethod;
   /** @nullable */
   notes?: string | null;
   createdAt?: string;

@@ -65,6 +65,14 @@ export interface ServiceUpdate {
   imageUrl?: string | null;
 }
 
+export type AppointmentPaymentMethod = typeof AppointmentPaymentMethod[keyof typeof AppointmentPaymentMethod];
+
+
+export const AppointmentPaymentMethod = {
+  now: 'now',
+  on_site: 'on_site',
+} as const;
+
 export interface Appointment {
   id: number;
   /** @nullable */
@@ -77,10 +85,19 @@ export interface Appointment {
   serviceDuration: number;
   scheduledAt: string;
   status: string;
+  paymentMethod?: AppointmentPaymentMethod;
   /** @nullable */
   notes?: string | null;
   createdAt?: string;
 }
+
+export type AppointmentInputPaymentMethod = typeof AppointmentInputPaymentMethod[keyof typeof AppointmentInputPaymentMethod];
+
+
+export const AppointmentInputPaymentMethod = {
+  now: 'now',
+  on_site: 'on_site',
+} as const;
 
 export interface AppointmentInput {
   clientId?: number;
@@ -90,6 +107,7 @@ export interface AppointmentInput {
   servicePrice: number;
   serviceDuration: number;
   scheduledAt: string;
+  paymentMethod?: AppointmentInputPaymentMethod;
   notes?: string;
 }
 

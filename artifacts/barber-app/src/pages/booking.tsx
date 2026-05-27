@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -52,13 +52,22 @@ export default function Booking() {
   const createAppointment = useCreateAppointment();
 
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    serviceId: string;
+    date: Date;
+    time: string;
+    name: string;
+    phone: string;
+    notes: string;
+    paymentMethod: "now" | "on_site";
+  }>({
     serviceId: "",
     date: new Date(),
     time: "",
     name: "",
     phone: "",
-    notes: ""
+    notes: "",
+    paymentMethod: "on_site",
   });
 
   const [isSuccess, setIsSuccess] = useState(false);
@@ -78,6 +87,7 @@ export default function Booking() {
         servicePrice: service.price,
         serviceDuration: service.durationMinutes,
         scheduledAt,
+        paymentMethod: formData.paymentMethod,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes
       }},
       {
@@ -483,14 +493,23 @@ export default function Booking() {
                   style={{ borderColor: "hsl(0 0% 12%)" }}
                 />
 
-                <Button
-                  data-testid="button-confirm-booking"
-                  className="w-full h-12 text-base font-semibold"
-                  disabled={!formData.name || !formData.phone || createAppointment.isPending}
-                  onClick={handleBook}
+                <button
+                  type="button"
+                  data-testid="button-continue-to-payment"
+                  disabled={!formData.name || !formData.phone}
+                  onClick={() => setStep(4)}
+                  className="w-full rounded-xl text-center font-semibold transition-opacity"
+                  style={{
+                    height: 52,
+                    backgroundColor: AMBER_DEEP,
+                    color: "hsl(0 0% 100%)",
+                    border: "none",
+                    cursor: formData.name && formData.phone ? "pointer" : "not-allowed",
+                    opacity: formData.name && formData.phone ? 1 : 0.55,
+                  }}
                 >
-                  {createAppointment.isPending ? "Agendando..." : "Continuar para Pagamento"}
-                </Button>
+                  Continuar para Pagamento
+                </button>
 
                 <button
                   type="button"
@@ -508,6 +527,144 @@ export default function Booking() {
                 </button>
               </CardContent>
             </>
+          )}
+
+          {step === 4 && (
+            <CardContent className="p-6 space-y-6">
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                data-testid="button-back-step4"
+                className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "hsl(0 0% 60%)",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar
+              </button>
+
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold">Pagamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  Como você prefere pagar?
+                </p>
+              </div>
+
+              {selectedService && (
+                <div
+                  className="rounded-xl p-4 space-y-2"
+                  style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Serviço</span>
+                    <span className="font-semibold">{selectedService.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Data e hora</span>
+                    <span className="font-semibold">
+                      {formData.date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} · {formData.time}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center justify-between pt-2 mt-2 border-t"
+                    style={{ borderColor: "hsl(0 0% 14%)" }}
+                  >
+                    <span className="font-semibold">Total</span>
+                    <span className="text-xl font-bold" style={{ color: AMBER }}>
+                      R$ {selectedService.price.toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {([
+                  {
+                    value: "now" as const,
+                    title: "Pagar agora",
+                    desc: "Pague online e garanta seu horário",
+                    Icon: CreditCard,
+                  },
+                  {
+                    value: "on_site" as const,
+                    title: "Pagar no final do serviço",
+                    desc: "Pague diretamente na barbearia",
+                    Icon: Banknote,
+                  },
+                ]).map(({ value, title, desc, Icon }) => {
+                  const isSelected = formData.paymentMethod === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      data-testid={`button-payment-${value}`}
+                      onClick={() => setFormData({ ...formData, paymentMethod: value })}
+                      className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
+                      style={{
+                        backgroundColor: isSelected ? AMBER_SOFT : "hsl(0 0% 7%)",
+                        border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <div
+                        className="rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          width: 44,
+                          height: 44,
+                          backgroundColor: isSelected ? AMBER : "hsl(0 0% 12%)",
+                          color: isSelected ? "hsl(0 0% 10%)" : AMBER,
+                        }}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-base">{title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                      </div>
+                      <div
+                        className="rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{
+                          width: 22,
+                          height: 22,
+                          border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 25%)"}`,
+                          backgroundColor: isSelected ? AMBER : "transparent",
+                          color: "hsl(0 0% 10%)",
+                        }}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                data-testid="button-confirm-booking"
+                disabled={createAppointment.isPending}
+                onClick={handleBook}
+                className="w-full rounded-xl text-center font-semibold transition-opacity"
+                style={{
+                  height: 52,
+                  backgroundColor: AMBER_DEEP,
+                  color: "hsl(0 0% 100%)",
+                  border: "none",
+                  cursor: createAppointment.isPending ? "not-allowed" : "pointer",
+                  opacity: createAppointment.isPending ? 0.55 : 1,
+                }}
+              >
+                {createAppointment.isPending
+                  ? "Confirmando..."
+                  : formData.paymentMethod === "now"
+                    ? "Pagar e confirmar agendamento"
+                    : "Confirmar agendamento"}
+              </button>
+            </CardContent>
           )}
         </Card>
       </div>

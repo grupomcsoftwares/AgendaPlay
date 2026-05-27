@@ -623,6 +623,9 @@ components:
           type: string
         status:
           type: string
+        paymentMethod:
+          type: string
+          enum: [now, on_site]
         notes:
           type: ["string", "null"]
         createdAt:
@@ -646,6 +649,9 @@ components:
           type: integer
         scheduledAt:
           type: string
+        paymentMethod:
+          type: string
+          enum: [now, on_site]
         notes:
           type: string
 

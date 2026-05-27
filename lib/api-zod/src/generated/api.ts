@@ -188,6 +188,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -205,6 +206,7 @@ export const CreateAppointmentBody = zod.object({
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().optional()
 })
 
@@ -226,6 +228,7 @@ export const GetAppointmentResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -258,6 +261,7 @@ export const UpdateAppointmentResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -288,6 +292,7 @@ export const StartAppointmentResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -310,6 +315,7 @@ export const CompleteAppointmentResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -332,6 +338,7 @@ export const CancelAppointmentResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
@@ -414,6 +421,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 }).nullable(),
@@ -427,6 +435,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string().optional()
 }).nullable()
