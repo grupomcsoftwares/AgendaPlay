@@ -763,6 +763,40 @@ components:
         count:
           type: integer
 
+    DaySchedule:
+      type: object
+      required: [closed, open, close, lunchStart, lunchEnd]
+      properties:
+        closed:
+          type: boolean
+        open:
+          type: string
+        close:
+          type: string
+        lunchStart:
+          type: string
+        lunchEnd:
+          type: string
+
+    WeeklySchedule:
+      type: object
+      required: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+      properties:
+        monday:
+          $ref: "#/components/schemas/DaySchedule"
+        tuesday:
+          $ref: "#/components/schemas/DaySchedule"
+        wednesday:
+          $ref: "#/components/schemas/DaySchedule"
+        thursday:
+          $ref: "#/components/schemas/DaySchedule"
+        friday:
+          $ref: "#/components/schemas/DaySchedule"
+        saturday:
+          $ref: "#/components/schemas/DaySchedule"
+        sunday:
+          $ref: "#/components/schemas/DaySchedule"
+
     Settings:
       type: object
       required: [id, barbershopName, ownerName]
@@ -781,6 +815,10 @@ components:
           type: ["string", "null"]
         closeTime:
           type: ["string", "null"]
+        weeklySchedule:
+          oneOf:
+            - $ref: "#/components/schemas/WeeklySchedule"
+            - type: "null"
         bookingPageMessage:
           type: ["string", "null"]
 
@@ -799,5 +837,9 @@ components:
           type: ["string", "null"]
         closeTime:
           type: ["string", "null"]
+        weeklySchedule:
+          oneOf:
+            - $ref: "#/components/schemas/WeeklySchedule"
+            - type: "null"
         bookingPageMessage:
           type: ["string", "null"]

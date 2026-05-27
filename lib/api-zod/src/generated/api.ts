@@ -464,6 +464,57 @@ export const GetSettingsResponse = zod.object({
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),
   "closeTime": zod.string().nullish(),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish()
 })
 
@@ -478,6 +529,57 @@ export const UpdateSettingsBody = zod.object({
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),
   "closeTime": zod.string().nullish(),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish()
 })
 
@@ -489,6 +591,57 @@ export const UpdateSettingsResponse = zod.object({
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),
   "closeTime": zod.string().nullish(),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish()
 })
 

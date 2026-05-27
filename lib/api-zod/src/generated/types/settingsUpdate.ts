@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { WeeklySchedule } from './weeklySchedule';
 
 export interface SettingsUpdate {
   barbershopName?: string;
@@ -17,6 +18,7 @@ export interface SettingsUpdate {
   openTime?: string | null;
   /** @nullable */
   closeTime?: string | null;
+  weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
 }

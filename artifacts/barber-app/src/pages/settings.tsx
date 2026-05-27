@@ -1,14 +1,55 @@
 import React, { useEffect, useState } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Settings as SettingsIcon } from "lucide-react";
+import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+type DaySchedule = {
+  closed: boolean;
+  open: string;
+  close: string;
+  lunchStart: string;
+  lunchEnd: string;
+};
+
+type WeeklySchedule = Record<DayKey, DaySchedule>;
+
+const DAYS: { key: DayKey; label: string }[] = [
+  { key: "monday", label: "Segunda-feira" },
+  { key: "tuesday", label: "Terça-feira" },
+  { key: "wednesday", label: "Quarta-feira" },
+  { key: "thursday", label: "Quinta-feira" },
+  { key: "friday", label: "Sexta-feira" },
+  { key: "saturday", label: "Sábado" },
+  { key: "sunday", label: "Domingo" },
+];
+
+const defaultDay = (closed = false): DaySchedule => ({
+  closed,
+  open: "09:00",
+  close: "18:00",
+  lunchStart: "12:00",
+  lunchEnd: "13:00",
+});
+
+const defaultWeeklySchedule = (): WeeklySchedule => ({
+  monday: defaultDay(),
+  tuesday: defaultDay(),
+  wednesday: defaultDay(),
+  thursday: defaultDay(),
+  friday: defaultDay(),
+  saturday: defaultDay(),
+  sunday: defaultDay(true),
+});
 
 export default function Settings() {
   const { data: settings, isLoading } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
@@ -21,24 +62,39 @@ export default function Settings() {
     ownerName: "",
     phone: "",
     address: "",
-    openTime: "",
-    closeTime: "",
-    bookingPageMessage: ""
+    bookingPageMessage: "",
+    weeklySchedule: defaultWeeklySchedule(),
   });
 
   useEffect(() => {
     if (settings) {
+      const incoming = (settings.weeklySchedule as WeeklySchedule | null | undefined) ?? null;
+      const merged = defaultWeeklySchedule();
+      if (incoming) {
+        for (const { key } of DAYS) {
+          if (incoming[key]) merged[key] = { ...merged[key], ...incoming[key] };
+        }
+      }
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
         phone: settings.phone || "",
         address: settings.address || "",
-        openTime: settings.openTime || "",
-        closeTime: settings.closeTime || "",
-        bookingPageMessage: settings.bookingPageMessage || ""
+        bookingPageMessage: settings.bookingPageMessage || "",
+        weeklySchedule: merged,
       });
     }
   }, [settings]);
+
+  const updateDay = (key: DayKey, patch: Partial<DaySchedule>) => {
+    setFormData((prev) => ({
+      ...prev,
+      weeklySchedule: {
+        ...prev.weeklySchedule,
+        [key]: { ...prev.weeklySchedule[key], ...patch },
+      },
+    }));
+  };
 
   const handleSave = () => {
     updateSettings.mutate(
@@ -110,26 +166,79 @@ export default function Settings() {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle>Horário de Funcionamento</CardTitle>
+              <CardDescription>Defina os horários e o intervalo de almoço para cada dia da semana</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Abertura</Label>
-                  <Input 
-                    type="time"
-                    value={formData.openTime} 
-                    onChange={e => setFormData({...formData, openTime: e.target.value})} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fechamento</Label>
-                  <Input 
-                    type="time"
-                    value={formData.closeTime} 
-                    onChange={e => setFormData({...formData, closeTime: e.target.value})} 
-                  />
-                </div>
-              </div>
+            <CardContent className="space-y-3">
+              {DAYS.map(({ key, label }) => {
+                const day = formData.weeklySchedule[key];
+                return (
+                  <div
+                    key={key}
+                    className="border border-border rounded-lg p-4 space-y-3"
+                    data-testid={`schedule-day-${key}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`closed-${key}`} className="text-xs text-muted-foreground">
+                          {day.closed ? "Fechado" : "Aberto"}
+                        </Label>
+                        <Switch
+                          id={`closed-${key}`}
+                          data-testid={`switch-open-${key}`}
+                          checked={!day.closed}
+                          onCheckedChange={(v) => updateDay(key, { closed: !v })}
+                        />
+                      </div>
+                    </div>
+
+                    {!day.closed && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Abertura</Label>
+                            <Input
+                              type="time"
+                              data-testid={`input-open-${key}`}
+                              value={day.open}
+                              onChange={(e) => updateDay(key, { open: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Fechamento</Label>
+                            <Input
+                              type="time"
+                              data-testid={`input-close-${key}`}
+                              value={day.close}
+                              onChange={(e) => updateDay(key, { close: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Início do almoço</Label>
+                            <Input
+                              type="time"
+                              data-testid={`input-lunch-start-${key}`}
+                              value={day.lunchStart}
+                              onChange={(e) => updateDay(key, { lunchStart: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Fim do almoço</Label>
+                            <Input
+                              type="time"
+                              data-testid={`input-lunch-end-${key}`}
+                              value={day.lunchEnd}
+                              onChange={(e) => updateDay(key, { lunchEnd: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 
