@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea";
 import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2 } from "lucide-react";
 
 export default function Booking() {
@@ -260,40 +261,90 @@ export default function Booking() {
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
                 <CardTitle>3. Seus Dados</CardTitle>
+                <CardDescription>
+                  {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
+                </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="bg-muted/50 p-4 rounded-lg mb-6 flex justify-between items-center text-sm border border-border">
-                  <div>
-                    <p className="font-semibold">{selectedService?.name}</p>
-                    <p className="text-muted-foreground">{formData.date.toLocaleDateString('pt-BR')} às {formData.time}</p>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-1">
+                  <h3 className="text-2xl font-bold">Seus Dados</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Só precisamos de algumas informações para confirmar.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-sm font-semibold">Nome Completo</Label>
+                    <div className="relative">
+                      <User
+                        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                        style={{ color: "hsl(0 0% 45%)" }}
+                      />
+                      <Input
+                        id="name"
+                        data-testid="input-booking-name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        placeholder="João Silva"
+                        className="pl-9 h-11"
+                      />
+                    </div>
                   </div>
-                  <Button variant="link" size="sm" onClick={() => setStep(1)}>Alterar</Button>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-semibold">Telefone</Label>
+                    <Input
+                      id="phone"
+                      data-testid="input-booking-phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="(11) 99999-9999"
+                      className="h-11"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-semibold">Observações (Opcional)</Label>
+                    <Textarea
+                      id="notes"
+                      data-testid="input-booking-notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Alguma preferência especial?"
+                      rows={3}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Seu Nome</Label>
-                  <Input 
-                    value={formData.name} 
-                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                    placeholder="Como devemos te chamar?"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>WhatsApp (Opcional)</Label>
-                  <Input 
-                    value={formData.phone} 
-                    onChange={e => setFormData({...formData, phone: e.target.value})} 
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
+                <div
+                  className="pt-2 border-t"
+                  style={{ borderColor: "hsl(0 0% 12%)" }}
+                />
 
-                <div className="flex gap-3 pt-6">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>Voltar</Button>
-                  <Button className="flex-1" disabled={!formData.name || createAppointment.isPending} onClick={handleBook}>
-                    {createAppointment.isPending ? "Agendando..." : "Confirmar Agendamento"}
-                  </Button>
-                </div>
+                <Button
+                  data-testid="button-confirm-booking"
+                  className="w-full h-12 text-base font-semibold"
+                  disabled={!formData.name || !formData.phone || createAppointment.isPending}
+                  onClick={handleBook}
+                >
+                  {createAppointment.isPending ? "Agendando..." : "Continuar para Pagamento"}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  data-testid="button-back-step3"
+                  className="w-full text-sm transition-opacity hover:opacity-70"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "hsl(0 0% 50%)",
+                    cursor: "pointer",
+                  }}
+                >
+                  ← Voltar
+                </button>
               </CardContent>
             </>
           )}
