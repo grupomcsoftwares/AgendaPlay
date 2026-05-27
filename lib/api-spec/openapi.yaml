@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: BarberApp API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: clients
+    description: Client operations
+  - name: services
+    description: Service operations
+  - name: appointments
+    description: Appointment operations
+  - name: queue
+    description: Queue operations
+  - name: dashboard
+    description: Dashboard operations
+  - name: financial
+    description: Financial operations
+  - name: settings
+    description: Settings operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +37,472 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List all clients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      summary: Delete a client
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /services:
+    get:
+      operationId: listServices
+      tags: [services]
+      summary: List all services
+      responses:
+        "200":
+          description: List of services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Service"
+    post:
+      operationId: createService
+      tags: [services]
+      summary: Create a service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+
+  /services/{id}:
+    get:
+      operationId: getService
+      tags: [services]
+      summary: Get a service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+    patch:
+      operationId: updateService
+      tags: [services]
+      summary: Update a service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Service"
+    delete:
+      operationId: deleteService
+      tags: [services]
+      summary: Delete a service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /appointments:
+    get:
+      operationId: listAppointments
+      tags: [appointments]
+      summary: List appointments
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+    post:
+      operationId: createAppointment
+      tags: [appointments]
+      summary: Create an appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}:
+    get:
+      operationId: getAppointment
+      tags: [appointments]
+      summary: Get an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+    patch:
+      operationId: updateAppointment
+      tags: [appointments]
+      summary: Update an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+    delete:
+      operationId: deleteAppointment
+      tags: [appointments]
+      summary: Delete an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /appointments/{id}/start:
+    post:
+      operationId: startAppointment
+      tags: [appointments]
+      summary: Start an appointment (set status to in_progress)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}/complete:
+    post:
+      operationId: completeAppointment
+      tags: [appointments]
+      summary: Complete an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/{id}/cancel:
+    post:
+      operationId: cancelAppointment
+      tags: [appointments]
+      summary: Cancel an appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /queue:
+    get:
+      operationId: listQueue
+      tags: [queue]
+      summary: List queue entries
+      responses:
+        "200":
+          description: Queue list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QueueEntry"
+    post:
+      operationId: addToQueue
+      tags: [queue]
+      summary: Add client to queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QueueInput"
+      responses:
+        "201":
+          description: Added to queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+
+  /queue/{id}:
+    delete:
+      operationId: removeFromQueue
+      tags: [queue]
+      summary: Remove from queue
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /queue/{id}/start:
+    post:
+      operationId: startQueueEntry
+      tags: [queue]
+      summary: Start serving a queue entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /financial/summary:
+    get:
+      operationId: getFinancialSummary
+      tags: [financial]
+      summary: Get financial summary
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialSummary"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get barbershop settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update barbershop settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +513,291 @@ components:
       required:
         - status
 
+    Client:
+      type: object
+      required: [id, name, phone, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ClientInput:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        notes:
+          type: string
+
+    ClientUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    Service:
+      type: object
+      required: [id, name, durationMinutes, price]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        durationMinutes:
+          type: integer
+        price:
+          type: number
+
+    ServiceInput:
+      type: object
+      required: [name, durationMinutes, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+        price:
+          type: number
+
+    ServiceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        durationMinutes:
+          type: integer
+        price:
+          type: number
+
+    Appointment:
+      type: object
+      required: [id, clientName, serviceName, scheduledAt, status, servicePrice, serviceDuration]
+      properties:
+        id:
+          type: integer
+        clientId:
+          type: ["integer", "null"]
+        clientName:
+          type: string
+        serviceId:
+          type: ["integer", "null"]
+        serviceName:
+          type: string
+        servicePrice:
+          type: number
+        serviceDuration:
+          type: integer
+        scheduledAt:
+          type: string
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AppointmentInput:
+      type: object
+      required: [clientName, serviceName, scheduledAt, servicePrice, serviceDuration]
+      properties:
+        clientId:
+          type: integer
+        clientName:
+          type: string
+        serviceId:
+          type: integer
+        serviceName:
+          type: string
+        servicePrice:
+          type: number
+        serviceDuration:
+          type: integer
+        scheduledAt:
+          type: string
+        notes:
+          type: string
+
+    AppointmentUpdate:
+      type: object
+      properties:
+        clientName:
+          type: string
+        serviceName:
+          type: string
+        servicePrice:
+          type: number
+        serviceDuration:
+          type: integer
+        scheduledAt:
+          type: string
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+
+    QueueEntry:
+      type: object
+      required: [id, clientName, serviceName, servicePrice, serviceDuration, position, status, createdAt]
+      properties:
+        id:
+          type: integer
+        clientName:
+          type: string
+        serviceName:
+          type: string
+        servicePrice:
+          type: number
+        serviceDuration:
+          type: integer
+        position:
+          type: integer
+        status:
+          type: string
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    QueueInput:
+      type: object
+      required: [clientName, serviceName, servicePrice, serviceDuration]
+      properties:
+        clientName:
+          type: string
+        serviceName:
+          type: string
+        servicePrice:
+          type: number
+        serviceDuration:
+          type: integer
+        notes:
+          type: string
+
+    DashboardSummary:
+      type: object
+      required: [appointmentsToday, appointmentsCompleted, appointmentsPending, monthlyRevenue, totalClients, queueCount, currentAppointment, nextAppointment]
+      properties:
+        appointmentsToday:
+          type: integer
+        appointmentsCompleted:
+          type: integer
+        appointmentsPending:
+          type: integer
+        monthlyRevenue:
+          type: number
+        totalClients:
+          type: integer
+        queueCount:
+          type: integer
+        currentAppointment:
+          $ref: "#/components/schemas/Appointment"
+          nullable: true
+        nextAppointment:
+          $ref: "#/components/schemas/Appointment"
+          nullable: true
+
+    FinancialSummary:
+      type: object
+      required: [totalRevenue, totalAppointments, averageTicket, revenueByService, revenueByDay]
+      properties:
+        totalRevenue:
+          type: number
+        totalAppointments:
+          type: integer
+        averageTicket:
+          type: number
+        revenueByService:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueByService"
+        revenueByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevenueByDay"
+
+    RevenueByService:
+      type: object
+      required: [serviceName, revenue, count]
+      properties:
+        serviceName:
+          type: string
+        revenue:
+          type: number
+        count:
+          type: integer
+
+    RevenueByDay:
+      type: object
+      required: [date, revenue, count]
+      properties:
+        date:
+          type: string
+        revenue:
+          type: number
+        count:
+          type: integer
+
+    Settings:
+      type: object
+      required: [id, barbershopName, ownerName]
+      properties:
+        id:
+          type: integer
+        barbershopName:
+          type: string
+        ownerName:
+          type: string
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        openTime:
+          type: ["string", "null"]
+        closeTime:
+          type: ["string", "null"]
+        bookingPageMessage:
+          type: ["string", "null"]
+
+    SettingsUpdate:
+      type: object
+      properties:
+        barbershopName:
+          type: string
+        ownerName:
+          type: string
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        openTime:
+          type: ["string", "null"]
+        closeTime:
+          type: ["string", "null"]
+        bookingPageMessage:
+          type: ["string", "null"]

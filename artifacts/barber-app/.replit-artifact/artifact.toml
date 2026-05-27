@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BarberApp"
+version = "1.0.0"
+id = "artifacts/barber-app"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26158
+
+[services.development]
+run = "pnpm --filter @workspace/barber-app run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/barber-app", "run", "build" ]
+publicDir = "artifacts/barber-app/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26158"
+BASE_PATH = "/"
