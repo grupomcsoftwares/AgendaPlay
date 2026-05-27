@@ -7,7 +7,43 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2 } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, DollarSign } from "lucide-react";
+
+const AMBER = "hsl(38 88% 55%)";
+const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
+const STEP_LABELS = ["Serviço", "Data", "Horário", "Seus dados"];
+
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <div className="grid grid-cols-4 gap-3 w-full">
+      {STEP_LABELS.map((label, i) => {
+        const idx = i + 1;
+        const isActive = idx <= current;
+        return (
+          <div key={label} className="flex flex-col items-stretch gap-2">
+            <div
+              style={{
+                height: 2,
+                borderRadius: 2,
+                backgroundColor: isActive ? AMBER : "hsl(0 0% 22%)",
+                transition: "background-color 0.2s",
+              }}
+            />
+            <span
+              className="text-center text-xs"
+              style={{
+                color: isActive ? "hsl(var(--foreground))" : "hsl(0 0% 45%)",
+                fontWeight: idx === current ? 600 : 400,
+              }}
+            >
+              {label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Booking() {
   const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
@@ -81,48 +117,88 @@ export default function Booking() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground py-12 px-4 flex flex-col items-center">
+    <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">
       <div className="max-w-md w-full space-y-8">
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-card border border-border rounded-full flex items-center justify-center text-primary mb-4 shadow-lg">
-            <Scissors className="w-8 h-8" />
+        <div className="text-center space-y-4">
+          <div
+            className="mx-auto rounded-full flex items-center justify-center"
+            style={{
+              width: 88,
+              height: 88,
+              backgroundColor: AMBER_SOFT,
+              border: `2px solid ${AMBER}`,
+              color: AMBER,
+            }}
+          >
+            <Scissors className="w-9 h-9" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
-          <p className="text-muted-foreground">{settings?.bookingPageMessage || "Agende seu horário online."}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
 
-        <Card className="border-border bg-card shadow-2xl overflow-hidden">
-          {step === 1 && (
-            <>
-              <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>1. Escolha o Serviço</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {services?.map(service => (
-                    <div 
-                      key={service.id} 
-                      className={`p-4 cursor-pointer transition-colors flex justify-between items-center ${formData.serviceId === service.id.toString() ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-muted/50'}`}
-                      onClick={() => setFormData({...formData, serviceId: service.id.toString()})}
-                    >
-                      <div>
-                        <p className="font-semibold">{service.name}</p>
-                        <p className="text-sm text-muted-foreground">{service.durationMinutes} min</p>
+        <StepIndicator current={step} />
+
+        {step === 1 && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Escolha um serviço</h2>
+              <p className="text-sm text-muted-foreground">Selecione o serviço que deseja</p>
+            </div>
+            <div className="space-y-3">
+              {services?.map((service) => {
+                const isSelected = formData.serviceId === service.id.toString();
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    data-testid={`button-service-${service.id}`}
+                    onClick={() => {
+                      setFormData({ ...formData, serviceId: service.id.toString() });
+                      setStep(2);
+                    }}
+                    className="w-full text-left rounded-2xl p-4 transition-all"
+                    style={{
+                      backgroundColor: "hsl(0 0% 7%)",
+                      border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div>
+                          <p className="font-semibold text-base">{service.name}</p>
+                          {service.description && (
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {service.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="w-3.5 h-3.5" />
+                            {service.durationMinutes} min
+                          </span>
+                          <span
+                            className="flex items-center gap-1 font-semibold"
+                            style={{ color: AMBER }}
+                          >
+                            <DollarSign className="w-3.5 h-3.5" />
+                            R$ {service.price.toFixed(2).replace(".", ",")}
+                          </span>
+                        </div>
                       </div>
-                      <div className="font-bold text-primary">
-                        R$ {service.price.toFixed(2)}
-                      </div>
+                      <ChevronRight
+                        className="w-5 h-5 flex-shrink-0 mt-1"
+                        style={{ color: "hsl(0 0% 40%)" }}
+                      />
                     </div>
-                  ))}
-                </div>
-                <div className="p-4 border-t border-border">
-                  <Button className="w-full" disabled={!formData.serviceId} onClick={() => setStep(2)}>
-                    Continuar
-                  </Button>
-                </div>
-              </CardContent>
-            </>
-          )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: step === 1 ? "none" : "block" }}>
 
           {step === 2 && (
             <>
