@@ -196,24 +196,56 @@ export default function Booking() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Horário Disponível</Label>
-                  <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                    <SelectTrigger data-testid="select-booking-time">
-                      <SelectValue placeholder="Selecione um horário" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({length: 10}).map((_, i) => {
-                        const h = i + 9;
-                        return (
-                          <React.Fragment key={h}>
-                            <SelectItem value={`${h.toString().padStart(2, '0')}:00`}>{h.toString().padStart(2, '0')}:00</SelectItem>
-                            <SelectItem value={`${h.toString().padStart(2, '0')}:30`}>{h.toString().padStart(2, '0')}:30</SelectItem>
-                          </React.Fragment>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold">Que horas?</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Horários disponíveis em {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Array.from({ length: 18 }).map((_, i) => {
+                      const totalMinutes = 9 * 60 + i * 30;
+                      const h = Math.floor(totalMinutes / 60);
+                      const m = totalMinutes % 60;
+                      const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+                      const isSelected = formData.time === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, time: value })}
+                          data-testid={`button-time-${value}`}
+                          className="rounded-xl py-3 text-center transition-all"
+                          style={
+                            isSelected
+                              ? {
+                                  backgroundColor: "hsl(var(--sidebar-primary))",
+                                  color: "hsl(var(--sidebar-primary-foreground))",
+                                  border: "1px solid hsl(var(--sidebar-primary))",
+                                  cursor: "pointer",
+                                  fontFamily: "monospace",
+                                  fontSize: "1rem",
+                                  fontWeight: 700,
+                                  letterSpacing: "0.05em",
+                                }
+                              : {
+                                  backgroundColor: "hsl(0 0% 9%)",
+                                  color: "hsl(var(--foreground))",
+                                  border: "1px solid hsl(0 0% 14%)",
+                                  cursor: "pointer",
+                                  fontFamily: "monospace",
+                                  fontSize: "1rem",
+                                  fontWeight: 700,
+                                  letterSpacing: "0.05em",
+                                }
+                          }
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">
