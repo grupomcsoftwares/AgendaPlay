@@ -16,7 +16,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
 
   const navItems = [
-    { href: "/", label: "Visão Geral", icon: LayoutDashboard },
+    { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
     { href: "/appointments", label: "Agendamentos", icon: CalendarCheck },
     { href: "/services", label: "Serviços", icon: Scissors },
     { href: "/financial", label: "Financeiro", icon: CreditCard },

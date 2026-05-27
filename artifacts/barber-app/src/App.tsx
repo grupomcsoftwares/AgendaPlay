@@ -12,6 +12,8 @@ import Queue from "./pages/queue";
 import Appointments from "./pages/appointments";
 import Financial from "./pages/financial";
 import Booking from "./pages/booking";
+import Landing from "./pages/landing";
+import Login from "./pages/login";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -33,7 +35,9 @@ function ThemeWrapper({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      <Route path="/">
+      <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
+      <Route path="/dashboard">
         <Sidebar>
           <Dashboard />
         </Sidebar>

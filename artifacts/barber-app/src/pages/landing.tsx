@@ -1,0 +1,76 @@
+import { Link } from "wouter";
+import { Scissors } from "lucide-react";
+
+export default function Landing() {
+  return (
+    <div
+      className="min-h-screen w-full flex items-center justify-center px-4 py-12 relative"
+      style={{
+        backgroundColor: "hsl(0 0% 4%)",
+        backgroundImage:
+          "radial-gradient(ellipse at center, hsl(0 0% 8%) 0%, hsl(0 0% 3%) 70%)",
+      }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(hsl(0 0% 0% / 0.55), hsl(0 0% 0% / 0.85)), repeating-linear-gradient(0deg, hsl(0 0% 8%) 0 38px, hsl(0 0% 6%) 38px 40px), repeating-linear-gradient(90deg, hsl(0 0% 9%) 0 78px, hsl(0 0% 5%) 78px 80px)",
+          backgroundBlendMode: "multiply",
+          opacity: 0.5,
+        }}
+      />
+
+      <div className="relative max-w-2xl w-full text-center space-y-8">
+        <div className="flex items-center justify-center gap-3">
+          <Scissors
+            className="w-10 h-10 sm:w-12 sm:h-12"
+            style={{ color: "hsl(var(--sidebar-primary))" }}
+          />
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">BarberApp</h1>
+        </div>
+
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
+          Gerencie sua barbearia como um profissional.
+        </h2>
+
+        <p
+          className="text-base sm:text-lg leading-relaxed max-w-xl mx-auto"
+          style={{ color: "hsl(0 0% 65%)" }}
+        >
+          Agendamentos, controle de receita e um link de reserva moderno para seus
+          clientes. A ferramenta premium para barbeiros modernos.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <Link
+            href="/dashboard"
+            data-testid="link-create-shop"
+            className="rounded-xl px-8 py-3 font-semibold transition-opacity hover:opacity-90 inline-flex items-center justify-center"
+            style={{
+              backgroundColor: "hsl(var(--sidebar-primary))",
+              color: "hsl(var(--sidebar-primary-foreground))",
+              minWidth: 220,
+              boxShadow: "0 10px 30px hsl(var(--sidebar-primary) / 0.35)",
+            }}
+          >
+            Criar Minha Barbearia
+          </Link>
+          <Link
+            href="/login"
+            data-testid="link-login"
+            className="rounded-xl px-8 py-3 font-semibold transition-colors inline-flex items-center justify-center"
+            style={{
+              backgroundColor: "hsl(0 0% 9%)",
+              color: "hsl(0 0% 95%)",
+              border: "1px solid hsl(0 0% 18%)",
+              minWidth: 160,
+            }}
+          >
+            Entrar
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
