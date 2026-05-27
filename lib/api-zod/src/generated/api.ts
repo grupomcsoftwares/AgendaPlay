@@ -349,6 +349,7 @@ export const CancelAppointmentResponse = zod.object({
  */
 export const ListQueueResponseItem = zod.object({
   "id": zod.number(),
+  "appointmentId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),
@@ -390,6 +391,7 @@ export const StartQueueEntryParams = zod.object({
 
 export const StartQueueEntryResponse = zod.object({
   "id": zod.number(),
+  "appointmentId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),

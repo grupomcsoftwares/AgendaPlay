@@ -8,6 +8,8 @@
 
 export interface QueueEntry {
   id: number;
+  /** @nullable */
+  appointmentId?: number | null;
   clientName: string;
   serviceName: string;
   servicePrice: number;

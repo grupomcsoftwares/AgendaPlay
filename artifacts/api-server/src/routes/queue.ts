@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, sql } from "drizzle-orm";
-import { db, queueTable } from "@workspace/db";
+import { db, queueTable, appointmentsTable } from "@workspace/db";
 import {
   AddToQueueBody,
   RemoveFromQueueParams,
@@ -32,19 +32,21 @@ router.post("/queue", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  // Get next position
-  const [maxResult] = await db
-    .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
-    .from(queueTable)
-    .where(sql`${queueTable.status} != 'completed'`);
-  const nextPosition = (maxResult?.maxPos ?? 0) + 1;
-
-  const [entry] = await db.insert(queueTable).values({
-    ...parsed.data,
-    servicePrice: String(parsed.data.servicePrice),
-    position: nextPosition,
-    status: "waiting",
-  }).returning();
+  const entry = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
+    const [maxResult] = await tx
+      .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
+      .from(queueTable)
+      .where(sql`${queueTable.status} != 'completed'`);
+    const nextPosition = (maxResult?.maxPos ?? 0) + 1;
+    const [created] = await tx.insert(queueTable).values({
+      ...parsed.data,
+      servicePrice: String(parsed.data.servicePrice),
+      position: nextPosition,
+      status: "waiting",
+    }).returning();
+    return created;
+  });
   res.status(201).json(formatEntry(entry));
 });
 
@@ -54,7 +56,17 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [entry] = await db.delete(queueTable).where(eq(queueTable.id, params.data.id)).returning();
+  const entry = await db.transaction(async (tx) => {
+    const [removed] = await tx.delete(queueTable).where(eq(queueTable.id, params.data.id)).returning();
+    if (!removed) return null;
+    if (removed.appointmentId) {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "completed" })
+        .where(eq(appointmentsTable.id, removed.appointmentId));
+    }
+    return removed;
+  });
   if (!entry) {
     res.status(404).json({ error: "Queue entry not found" });
     return;
@@ -68,17 +80,37 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  // Mark all other in_progress entries as completed first
-  await db
-    .update(queueTable)
-    .set({ status: "completed" })
-    .where(sql`${queueTable.status} = 'in_progress'`);
+  const entry = await db.transaction(async (tx) => {
+    // Complete all currently in-progress queue entries (and their linked appointments).
+    const previouslyActive = await tx
+      .update(queueTable)
+      .set({ status: "completed" })
+      .where(sql`${queueTable.status} = 'in_progress'`)
+      .returning({ appointmentId: queueTable.appointmentId });
+    const linkedIds = previouslyActive
+      .map((r) => r.appointmentId)
+      .filter((v): v is number => v != null);
+    if (linkedIds.length > 0) {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "completed" })
+        .where(sql`${appointmentsTable.id} IN (${sql.join(linkedIds, sql`, `)})`);
+    }
 
-  const [entry] = await db
-    .update(queueTable)
-    .set({ status: "in_progress" })
-    .where(eq(queueTable.id, params.data.id))
-    .returning();
+    const [started] = await tx
+      .update(queueTable)
+      .set({ status: "in_progress" })
+      .where(eq(queueTable.id, params.data.id))
+      .returning();
+    if (!started) return null;
+    if (started.appointmentId) {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "in_progress" })
+        .where(eq(appointmentsTable.id, started.appointmentId));
+    }
+    return started;
+  });
   if (!entry) {
     res.status(404).json({ error: "Queue entry not found" });
     return;

@@ -679,6 +679,8 @@ components:
       properties:
         id:
           type: integer
+        appointmentId:
+          type: ["integer", "null"]
         clientName:
           type: string
         serviceName:

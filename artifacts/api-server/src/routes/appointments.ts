@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
-import { db, appointmentsTable } from "@workspace/db";
+import { db, appointmentsTable, queueTable } from "@workspace/db";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -57,12 +57,35 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [appointment] = await db.insert(appointmentsTable).values({
-    ...parsed.data,
-    servicePrice: String(parsed.data.servicePrice),
-    scheduledAt: new Date(parsed.data.scheduledAt),
-    status: "pending",
-  }).returning();
+  const appointment = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(appointmentsTable).values({
+      ...parsed.data,
+      servicePrice: String(parsed.data.servicePrice),
+      scheduledAt: new Date(parsed.data.scheduledAt),
+      status: "pending",
+    }).returning();
+
+    // Serialize concurrent queue-position assignments with a transaction-scoped advisory lock.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
+    const [maxResult] = await tx
+      .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
+      .from(queueTable)
+      .where(sql`${queueTable.status} != 'completed'`);
+    const nextPosition = (maxResult?.maxPos ?? 0) + 1;
+
+    await tx.insert(queueTable).values({
+      appointmentId: created.id,
+      clientName: created.clientName,
+      serviceName: created.serviceName,
+      servicePrice: created.servicePrice,
+      serviceDuration: created.serviceDuration,
+      notes: created.notes,
+      position: nextPosition,
+      status: "waiting",
+    });
+    return created;
+  });
+
   res.status(201).json(formatAppointment(appointment));
 });
 
@@ -119,10 +142,14 @@ router.delete("/appointments/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [appointment] = await db
-    .delete(appointmentsTable)
-    .where(eq(appointmentsTable.id, params.data.id))
-    .returning();
+  const appointment = await db.transaction(async (tx) => {
+    await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+    const [a] = await tx
+      .delete(appointmentsTable)
+      .where(eq(appointmentsTable.id, params.data.id))
+      .returning();
+    return a;
+  });
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
     return;
@@ -154,11 +181,16 @@ router.post("/appointments/:id/complete", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [appointment] = await db
-    .update(appointmentsTable)
-    .set({ status: "completed" })
-    .where(eq(appointmentsTable.id, params.data.id))
-    .returning();
+  const appointment = await db.transaction(async (tx) => {
+    const [a] = await tx
+      .update(appointmentsTable)
+      .set({ status: "completed" })
+      .where(eq(appointmentsTable.id, params.data.id))
+      .returning();
+    if (!a) return null;
+    await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+    return a;
+  });
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
     return;
@@ -172,11 +204,16 @@ router.post("/appointments/:id/cancel", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [appointment] = await db
-    .update(appointmentsTable)
-    .set({ status: "cancelled" })
-    .where(eq(appointmentsTable.id, params.data.id))
-    .returning();
+  const appointment = await db.transaction(async (tx) => {
+    const [a] = await tx
+      .update(appointmentsTable)
+      .set({ status: "cancelled" })
+      .where(eq(appointmentsTable.id, params.data.id))
+      .returning();
+    if (!a) return null;
+    await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+    return a;
+  });
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
     return;
