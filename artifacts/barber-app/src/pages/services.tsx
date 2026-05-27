@@ -1,14 +1,110 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useListServices, useCreateService, useUpdateService, useDeleteService, getListServicesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Scissors } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Upload, Clock, X, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+
+function ServiceImageUpload({
+  imageUrl,
+  onPick,
+  onRemove,
+}: {
+  imageUrl: string;
+  onPick: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const openPicker = () => inputRef.current?.click();
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Foto do serviço
+      </Label>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        data-testid="input-service-image-file"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onPick(file);
+          e.target.value = "";
+        }}
+      />
+
+      {imageUrl ? (
+        <div
+          className="relative rounded-xl overflow-hidden border border-border/60 group"
+          style={{ aspectRatio: "16/9", backgroundColor: "hsl(var(--muted))" }}
+        >
+          <img src={imageUrl} alt="Foto do serviço" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+            <Button type="button" size="sm" variant="secondary" onClick={openPicker} className="gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
+              Trocar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={onRemove}
+              data-testid="button-remove-service-image"
+              className="gap-1.5"
+            >
+              <X className="h-3.5 w-3.5" />
+              Remover
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={openPicker}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) onPick(file);
+          }}
+          data-testid="button-upload-service-image"
+          className="w-full rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-2 py-8 px-4"
+          style={{
+            borderColor: isDragging ? "hsl(var(--primary))" : "hsl(var(--border))",
+            backgroundColor: isDragging ? "hsl(var(--primary) / 0.06)" : "hsl(var(--muted) / 0.3)",
+            cursor: "pointer",
+          }}
+        >
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <ImageIcon className="h-5 w-5" />
+          </div>
+          <div className="text-center space-y-0.5">
+            <p className="text-sm font-medium">
+              <span className="text-primary">Clique para enviar</span>{" "}
+              <span className="text-muted-foreground">ou arraste uma imagem</span>
+            </p>
+            <p className="text-xs text-muted-foreground">PNG, JPG ou WEBP até 2MB</p>
+          </div>
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Services() {
   const { data: services, isLoading } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
@@ -118,91 +214,117 @@ export default function Services() {
               <Plus className="h-4 w-4" /> Novo Serviço
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? "Editar Serviço" : "Novo Serviço"}</DialogTitle>
+          <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden border-border/60">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+              <DialogTitle className="text-xl font-semibold tracking-tight">
+                {editingId ? "Editar serviço" : "Novo serviço"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {editingId
+                  ? "Atualize as informações exibidas para seus clientes."
+                  : "Cadastre um serviço que ficará disponível para agendamento."}
+              </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Foto do serviço</Label>
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center bg-muted shrink-0"
-                    style={{ border: "1px dashed hsl(var(--border))" }}
-                  >
-                    {formData.imageUrl ? (
-                      <img src={formData.imageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <Scissors className="w-6 h-6 text-muted-foreground/40" />
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-2">
+
+            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto">
+              <ServiceImageUpload
+                imageUrl={formData.imageUrl}
+                onPick={handleImageFile}
+                onRemove={() => setFormData({ ...formData, imageUrl: "" })}
+              />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Nome do serviço
+                </Label>
+                <Input
+                  id="name"
+                  data-testid="input-service-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: Corte de cabelo"
+                  className="h-11 bg-muted/40 border-border/60 focus-visible:bg-background"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Descrição
+                </Label>
+                <Textarea
+                  id="description"
+                  data-testid="input-service-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descreva o que está incluso (opcional)"
+                  rows={2}
+                  className="resize-none bg-muted/40 border-border/60 focus-visible:bg-background"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="duration" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Duração
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                     <Input
-                      type="file"
-                      accept="image/*"
-                      data-testid="input-service-image-file"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageFile(file);
-                      }}
+                      id="duration"
+                      data-testid="input-service-duration"
+                      type="number"
+                      min={1}
+                      value={formData.durationMinutes}
+                      onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
+                      className="h-11 pl-9 pr-12 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
-                    {formData.imageUrl && (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => setFormData({ ...formData, imageUrl: "" })}
-                        data-testid="button-remove-service-image"
-                      >
-                        Remover foto
-                      </button>
-                    )}
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
+                      min
+                    </span>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do Serviço</Label>
-                <Input 
-                  id="name" 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  placeholder="Ex: Corte de Cabelo"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Input 
-                  id="description" 
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
-                  placeholder="Opcional"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duração (min)</Label>
-                  <Input 
-                    id="duration" 
-                    type="number" 
-                    value={formData.durationMinutes} 
-                    onChange={e => setFormData({...formData, durationMinutes: e.target.value})} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Preço (R$)</Label>
-                  <Input 
-                    id="price" 
-                    type="number" 
-                    step="0.01"
-                    value={formData.price} 
-                    onChange={e => setFormData({...formData, price: e.target.value})} 
-                  />
+                <div className="space-y-1.5">
+                  <Label htmlFor="price" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Preço
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                      R$
+                    </span>
+                    <Input
+                      id="price"
+                      data-testid="input-service-price"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="h-11 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={!formData.name || createService.isPending || updateService.isPending}>
-                Salvar
+
+            <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/20 sm:justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setIsCreateOpen(false)}
+                data-testid="button-cancel-service"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!formData.name || createService.isPending || updateService.isPending}
+                data-testid="button-save-service"
+                className="min-w-[120px]"
+              >
+                {createService.isPending || updateService.isPending
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Criar serviço"}
               </Button>
             </DialogFooter>
           </DialogContent>
