@@ -54,7 +54,7 @@ function Router() {
         <Sidebar><Settings /></Sidebar>
       </Route>
       <Route path="/queue">
-        <Sidebar><Queue /></Sidebar>
+        <Queue />
       </Route>
       <Route path="/booking">
         <Booking />
