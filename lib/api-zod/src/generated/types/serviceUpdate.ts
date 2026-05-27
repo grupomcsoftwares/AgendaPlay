@@ -12,4 +12,6 @@ export interface ServiceUpdate {
   description?: string | null;
   durationMinutes?: number;
   price?: number;
+  /** @nullable */
+  imageUrl?: string | null;
 }

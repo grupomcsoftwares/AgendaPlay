@@ -11,4 +11,5 @@ export interface ServiceInput {
   description?: string;
   durationMinutes: number;
   price: number;
+  imageUrl?: string;
 }

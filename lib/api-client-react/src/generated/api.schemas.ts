@@ -43,6 +43,8 @@ export interface Service {
   description?: string | null;
   durationMinutes: number;
   price: number;
+  /** @nullable */
+  imageUrl?: string | null;
 }
 
 export interface ServiceInput {
@@ -50,6 +52,7 @@ export interface ServiceInput {
   description?: string;
   durationMinutes: number;
   price: number;
+  imageUrl?: string;
 }
 
 export interface ServiceUpdate {
@@ -58,6 +61,8 @@ export interface ServiceUpdate {
   description?: string | null;
   durationMinutes?: number;
   price?: number;
+  /** @nullable */
+  imageUrl?: string | null;
 }
 
 export interface Appointment {

@@ -164,6 +164,23 @@ export default function Booking() {
                     }}
                   >
                     <div className="flex items-start justify-between gap-3">
+                      <div
+                        className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+                        style={{
+                          backgroundColor: "hsl(0 0% 10%)",
+                          border: "1px solid hsl(0 0% 16%)",
+                        }}
+                      >
+                        {service.imageUrl ? (
+                          <img
+                            src={service.imageUrl}
+                            alt={service.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Scissors className="w-6 h-6" style={{ color: AMBER }} />
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0 space-y-2">
                         <div>
                           <p className="font-semibold text-base">{service.name}</p>
@@ -220,10 +237,23 @@ export default function Booking() {
                   style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                 >
                   <div
-                    className="rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ width: 40, height: 40, backgroundColor: AMBER_SOFT, color: AMBER }}
+                    className="rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      backgroundColor: selectedService.imageUrl ? "hsl(0 0% 10%)" : AMBER_SOFT,
+                      color: AMBER,
+                    }}
                   >
-                    <Scissors className="w-5 h-5" />
+                    {selectedService.imageUrl ? (
+                      <img
+                        src={selectedService.imageUrl}
+                        alt={selectedService.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Scissors className="w-5 h-5" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">{selectedService.name}</p>

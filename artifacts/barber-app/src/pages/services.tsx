@@ -25,12 +25,27 @@ export default function Services() {
     name: "",
     description: "",
     durationMinutes: "30",
-    price: "0.00"
+    price: "0.00",
+    imageUrl: "",
   });
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", durationMinutes: "30", price: "0.00" });
+    setFormData({ name: "", description: "", durationMinutes: "30", price: "0.00", imageUrl: "" });
     setEditingId(null);
+  };
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "Imagem muito grande (máx. 2MB)", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setFormData((f) => ({ ...f, imageUrl: String(reader.result) }));
+    reader.readAsDataURL(file);
   };
 
   const handleSave = () => {
@@ -38,7 +53,8 @@ export default function Services() {
       name: formData.name,
       description: formData.description,
       durationMinutes: parseInt(formData.durationMinutes),
-      price: parseFloat(formData.price)
+      price: parseFloat(formData.price),
+      imageUrl: formData.imageUrl || undefined,
     };
 
     if (editingId) {
@@ -108,6 +124,42 @@ export default function Services() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
+                <Label>Foto do serviço</Label>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center bg-muted shrink-0"
+                    style={{ border: "1px dashed hsl(var(--border))" }}
+                  >
+                    {formData.imageUrl ? (
+                      <img src={formData.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Scissors className="w-6 h-6 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      data-testid="input-service-image-file"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageFile(file);
+                      }}
+                    />
+                    {formData.imageUrl && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => setFormData({ ...formData, imageUrl: "" })}
+                        data-testid="button-remove-service-image"
+                      >
+                        Remover foto
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="name">Nome do Serviço</Label>
                 <Input 
                   id="name" 
@@ -174,6 +226,7 @@ export default function Services() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[72px]">Foto</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Duração</TableHead>
                 <TableHead>Preço</TableHead>
@@ -183,6 +236,15 @@ export default function Services() {
             <TableBody>
               {services.map((service) => (
                 <TableRow key={service.id}>
+                  <TableCell>
+                    <div className="w-12 h-12 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                      {service.imageUrl ? (
+                        <img src={service.imageUrl} alt={service.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Scissors className="w-4 h-4 text-muted-foreground/40" />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     {service.name}
                     {service.description && <p className="text-xs text-muted-foreground">{service.description}</p>}
@@ -199,7 +261,8 @@ export default function Services() {
                           name: service.name,
                           description: service.description || "",
                           durationMinutes: service.durationMinutes.toString(),
-                          price: service.price.toString()
+                          price: service.price.toString(),
+                          imageUrl: service.imageUrl || "",
                         });
                         setIsCreateOpen(true);
                       }}

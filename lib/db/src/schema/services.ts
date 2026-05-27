@@ -8,6 +8,7 @@ export const servicesTable = pgTable("services", {
   description: text("description"),
   durationMinutes: integer("duration_minutes").notNull(),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
+  imageUrl: text("image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

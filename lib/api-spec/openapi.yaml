@@ -569,6 +569,8 @@ components:
           type: integer
         price:
           type: number
+        imageUrl:
+          type: ["string", "null"]
 
     ServiceInput:
       type: object
@@ -582,6 +584,8 @@ components:
           type: integer
         price:
           type: number
+        imageUrl:
+          type: string
 
     ServiceUpdate:
       type: object
@@ -594,6 +598,8 @@ components:
           type: integer
         price:
           type: number
+        imageUrl:
+          type: ["string", "null"]
 
     Appointment:
       type: object
