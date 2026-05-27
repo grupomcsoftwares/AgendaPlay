@@ -197,6 +197,23 @@ export default function Booking() {
                   </div>
                 </div>
 
+                <div className="flex gap-3 pt-4">
+                  <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Voltar</Button>
+                  <Button className="flex-1" onClick={() => setStep(3)}>Continuar</Button>
+                </div>
+              </CardContent>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              <CardHeader className="bg-muted/50 border-b border-border">
+                <CardTitle>3. Escolha o Horário</CardTitle>
+                <CardDescription>
+                  {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-bold">Que horas?</h3>
@@ -250,17 +267,17 @@ export default function Booking() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Voltar</Button>
-                  <Button className="flex-1" onClick={() => setStep(3)}>Continuar</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>Voltar</Button>
+                  <Button className="flex-1" onClick={() => setStep(4)}>Continuar</Button>
                 </div>
               </CardContent>
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>3. Seus Dados</CardTitle>
+                <CardTitle>4. Seus Dados</CardTitle>
                 <CardDescription>
                   {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
                 </CardDescription>
@@ -333,8 +350,8 @@ export default function Booking() {
 
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
-                  data-testid="button-back-step3"
+                  onClick={() => setStep(3)}
+                  data-testid="button-back-step4"
                   className="w-full text-sm transition-opacity hover:opacity-70"
                   style={{
                     background: "none",
