@@ -130,23 +130,79 @@ export default function Booking() {
                 <CardDescription>{selectedService?.name}</CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
-                <div className="flex justify-center border border-border rounded-lg p-2 bg-background">
-                  <Calendar 
-                    mode="single" 
-                    selected={formData.date} 
-                    onSelect={(d) => d && setFormData({...formData, date: d})} 
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold">Quais data?</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Escolha a data para {selectedService?.name}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const d = new Date(today);
+                      d.setDate(today.getDate() + i);
+                      const isSelected =
+                        formData.date.toDateString() === d.toDateString();
+                      const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+                      const label = i === 0 ? "HOJE" : weekdays[d.getDay()];
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, date: d })}
+                          data-testid={`button-date-${i}`}
+                          className="flex flex-col items-center justify-center rounded-xl py-4 transition-all"
+                          style={
+                            isSelected
+                              ? {
+                                  backgroundColor: "hsl(var(--sidebar-primary))",
+                                  color: "hsl(var(--sidebar-primary-foreground))",
+                                  border: "1px solid hsl(var(--sidebar-primary))",
+                                  cursor: "pointer",
+                                }
+                              : {
+                                  backgroundColor: "hsl(0 0% 9%)",
+                                  color: "hsl(var(--foreground))",
+                                  border: "1px solid hsl(0 0% 14%)",
+                                  cursor: "pointer",
+                                }
+                          }
+                        >
+                          <span
+                            style={{
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              letterSpacing: "0.05em",
+                              opacity: isSelected ? 0.9 : 0.55,
+                            }}
+                          >
+                            {label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: "1.5rem",
+                              fontWeight: 700,
+                              marginTop: "0.25rem",
+                              lineHeight: 1,
+                            }}
+                          >
+                            {d.getDate()}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <Label>Horário Disponível</Label>
                   <Select value={formData.time} onValueChange={v => setFormData({...formData, time: v})}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-booking-time">
                       <SelectValue placeholder="Selecione um horário" />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Generates hours from 9 to 18 */}
                       {Array.from({length: 10}).map((_, i) => {
                         const h = i + 9;
                         return (
@@ -159,7 +215,7 @@ export default function Booking() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="flex gap-3 pt-4">
                   <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>Voltar</Button>
                   <Button className="flex-1" onClick={() => setStep(3)}>Continuar</Button>
