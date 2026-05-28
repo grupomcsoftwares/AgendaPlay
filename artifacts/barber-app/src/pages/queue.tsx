@@ -373,23 +373,24 @@ export default function Queue() {
                     maxWidth: 720,
                   }}
                 >
-                  O próximo atendimento começa às{" "}
-                  <strong
-                    style={{
-                      color: "hsl(var(--sidebar-primary))",
-                      fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
-                      fontWeight: 900,
-                      letterSpacing: "0.02em",
-                      display: "inline-block",
-                      verticalAlign: "middle",
-                      marginLeft: "0.5rem",
-                    }}
-                  >
-                    {new Date(upcomingBooked.scheduledAt).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </strong>
+                  O próximo atendimento começa às
+                </span>
+                <span
+                  data-testid="text-waiting-next-time"
+                  style={{
+                    color: "hsl(var(--sidebar-primary))",
+                    fontSize: "clamp(5rem, 14vw, 11rem)",
+                    fontWeight: 900,
+                    letterSpacing: "0.04em",
+                    fontFamily: "monospace",
+                    lineHeight: 1,
+                    marginTop: "0.25rem",
+                  }}
+                >
+                  {new Date(upcomingBooked.scheduledAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               </div>
             ) : (
