@@ -145,7 +145,10 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  const step = 30;
+  // Step by the service's own duration so back-to-back slots fit perfectly:
+  // a 30-min cut yields 2 slots/hour, a 20-min trim yields 3, etc.
+  // Floor of 5 min keeps things sane if a service has duration 0.
+  const step = Math.max(5, duration);
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
