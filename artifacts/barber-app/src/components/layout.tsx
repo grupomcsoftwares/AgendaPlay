@@ -8,21 +8,36 @@ import {
   Settings as SettingsIcon,
   Activity,
   LayoutGrid,
+  List,
 } from "lucide-react";
 import { useGetSettings } from "@workspace/api-client-react";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children?: NavItem[];
+};
 
 export function Sidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
-    { href: "/appointments", label: "Agendamentos", icon: CalendarCheck },
+    {
+      href: "/appointments",
+      label: "Agendamentos",
+      icon: CalendarCheck,
+      children: [
+        { href: "/appointments", label: "Lista de Agendamentos", icon: List },
+        { href: "/queue", label: "Painel de Fila", icon: Activity },
+        { href: "/booking", label: "Página de Agendamento", icon: LayoutGrid },
+      ],
+    },
     { href: "/services", label: "Serviços", icon: Scissors },
     { href: "/financial", label: "Financeiro", icon: CreditCard },
     { href: "/settings", label: "Configurações", icon: SettingsIcon },
-    { href: "/queue", label: "Painel de Fila", icon: Activity },
-    { href: "/booking", label: "Página de Agendamento", icon: LayoutGrid },
   ];
 
   const ownerName = settings?.ownerName || "Barbeiro";
@@ -47,39 +62,93 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
           {navItems.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+            const groupActive =
+              location === item.href ||
+              (item.href !== "/" && location.startsWith(item.href)) ||
+              (item.children?.some(
+                (c) => location === c.href || (c.href !== "/" && location.startsWith(c.href)),
+              ) ?? false);
+            const isActive = !item.children && groupActive;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors w-full"
-                style={
-                  isActive
-                    ? {
-                        backgroundColor: "hsl(var(--sidebar-primary))",
-                        color: "hsl(var(--sidebar-primary-foreground))",
-                        fontWeight: 500,
-                      }
-                    : {
-                        color: "hsl(var(--sidebar-foreground) / 0.65)",
-                      }
-                }
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
-                    (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+              <div key={item.href}>
+                <Link
+                  href={item.href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors w-full"
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: "hsl(var(--sidebar-primary))",
+                          color: "hsl(var(--sidebar-primary-foreground))",
+                          fontWeight: 500,
+                        }
+                      : {
+                          color: groupActive
+                            ? "hsl(var(--sidebar-foreground))"
+                            : "hsl(var(--sidebar-foreground) / 0.65)",
+                          fontWeight: groupActive ? 500 : 400,
+                        }
                   }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "";
-                    (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.65)";
-                  }
-                }}
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0" />
-                <span>{item.label}</span>
-              </Link>
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+                      (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.backgroundColor = "";
+                      (e.currentTarget as HTMLElement).style.color = groupActive
+                        ? "hsl(var(--sidebar-foreground))"
+                        : "hsl(var(--sidebar-foreground) / 0.65)";
+                    }
+                  }}
+                >
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
+
+                {item.children && (
+                  <div
+                    className="mt-0.5 mb-1 ml-3 pl-3 space-y-0.5"
+                    style={{ borderLeft: "1px solid hsl(var(--sidebar-border))" }}
+                  >
+                    {item.children.map((sub) => {
+                      const subActive = location === sub.href;
+                      return (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors w-full"
+                          style={
+                            subActive
+                              ? {
+                                  backgroundColor: "hsl(var(--sidebar-primary))",
+                                  color: "hsl(var(--sidebar-primary-foreground))",
+                                  fontWeight: 500,
+                                }
+                              : { color: "hsl(var(--sidebar-foreground) / 0.6)" }
+                          }
+                          onMouseEnter={(e) => {
+                            if (!subActive) {
+                              (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+                              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!subActive) {
+                              (e.currentTarget as HTMLElement).style.backgroundColor = "";
+                              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.6)";
+                            }
+                          }}
+                        >
+                          <sub.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span>{sub.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
