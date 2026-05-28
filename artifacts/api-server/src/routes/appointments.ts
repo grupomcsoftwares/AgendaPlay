@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
-import { db, appointmentsTable, queueTable } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -11,7 +11,31 @@ import {
   StartAppointmentParams,
   CompleteAppointmentParams,
   CancelAppointmentParams,
+  GetAvailabilityQueryParams,
 } from "@workspace/api-zod";
+
+const TZ = "America/Sao_Paulo";
+const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
+
+function localHHMM(d: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour12: false, hour: "2-digit", minute: "2-digit" }).format(d);
+}
+function localYMD(d: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d);
+  const y = parts.find(p => p.type === "year")!.value;
+  const m = parts.find(p => p.type === "month")!.value;
+  const day = parts.find(p => p.type === "day")!.value;
+  return `${y}-${m}-${day}`;
+}
+function localDayKey(d: Date): typeof DAY_KEYS[number] {
+  const wd = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(d);
+  const map: Record<string, typeof DAY_KEYS[number]> = { Sun: "sunday", Mon: "monday", Tue: "tuesday", Wed: "wednesday", Thu: "thursday", Fri: "friday", Sat: "saturday" };
+  return map[wd] ?? "monday";
+}
+function parseHHMM(s: string): number {
+  const [h, m] = s.split(":").map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+}
 
 const router: IRouter = Router();
 
@@ -51,17 +75,124 @@ router.get("/appointments", async (req, res): Promise<void> => {
   res.json(appointments.map(formatAppointment));
 });
 
+router.get("/availability", async (req, res): Promise<void> => {
+  const parsed = GetAvailabilityQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { date, serviceId } = parsed.data;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
+    res.status(400).json({ error: "Invalid date format (expected YYYY-MM-DD)" });
+    return;
+  }
+
+  const [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId));
+  if (!service) {
+    res.status(404).json({ error: "Service not found" });
+    return;
+  }
+  const duration = service.durationMinutes;
+
+  const [settings] = await db.select().from(settingsTable).limit(1);
+  const weekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+
+  const target = new Date(`${date}T12:00:00Z`);
+  const dayKey = localDayKey(target);
+  const defaults: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
+  const day: DaySchedule = weekly?.[dayKey] ?? defaults;
+
+  if (day.closed) {
+    res.json({ date, dayClosed: true, slots: [] });
+    return;
+  }
+
+  const openMin = parseHHMM(day.open);
+  const closeMin = parseHHMM(day.close);
+  const lunchStart = parseHHMM(day.lunchStart);
+  const lunchEnd = parseHHMM(day.lunchEnd);
+  const hasLunch = lunchEnd > lunchStart;
+
+  const dStart = new Date(`${date}T00:00:00Z`);
+  const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
+  const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
+  const appts = await db
+    .select()
+    .from(appointmentsTable)
+    .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+
+  const blocked: Array<[number, number]> = [];
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    if (localYMD(a.scheduledAt) !== date) continue;
+    const start = parseHHMM(localHHMM(a.scheduledAt));
+    blocked.push([start, start + a.serviceDuration]);
+  }
+
+  const now = new Date();
+  const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
+
+  const slots: Array<{ time: string; available: boolean }> = [];
+  const step = 30;
+  for (let t = openMin; t + duration <= closeMin; t += step) {
+    const end = t + duration;
+    const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
+    const overlapsAppt = blocked.some(([s, e]) => t < e && end > s);
+    const inPast = t <= nowMin;
+    const available = !overlapsLunch && !overlapsAppt && !inPast;
+    const hh = Math.floor(t / 60).toString().padStart(2, "0");
+    const mm = (t % 60).toString().padStart(2, "0");
+    slots.push({ time: `${hh}:${mm}`, available });
+  }
+
+  res.json({ date, dayClosed: false, slots });
+});
+
 router.post("/appointments", async (req, res): Promise<void> => {
   const parsed = CreateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const scheduledAtDate = new Date(parsed.data.scheduledAt);
+  if (Number.isNaN(scheduledAtDate.getTime())) {
+    res.status(400).json({ error: "Invalid scheduledAt" });
+    return;
+  }
+  const localDate = localYMD(scheduledAtDate);
+  const startMin = parseHHMM(localHHMM(scheduledAtDate));
+  const endMin = startMin + parsed.data.serviceDuration;
+
+  let conflict = false;
   const appointment = await db.transaction(async (tx) => {
+    // Serialize availability checks for this date so two concurrent bookings can't both pass.
+    // Hash YYYY-MM-DD to a stable int for advisory lock key.
+    let hash = 0;
+    for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(742003, ${hash})`);
+
+    const dayStart = new Date(`${localDate}T00:00:00Z`);
+    const before = new Date(dayStart.getTime() - 24 * 3600 * 1000);
+    const after = new Date(dayStart.getTime() + 48 * 3600 * 1000);
+    const sameDay = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+    for (const a of sameDay) {
+      if (a.status === "cancelled") continue;
+      if (localYMD(a.scheduledAt) !== localDate) continue;
+      const aStart = parseHHMM(localHHMM(a.scheduledAt));
+      const aEnd = aStart + a.serviceDuration;
+      if (startMin < aEnd && endMin > aStart) {
+        conflict = true;
+        return null;
+      }
+    }
+
     const [created] = await tx.insert(appointmentsTable).values({
       ...parsed.data,
       servicePrice: String(parsed.data.servicePrice),
-      scheduledAt: new Date(parsed.data.scheduledAt),
+      scheduledAt: scheduledAtDate,
       status: "pending",
     }).returning();
 
@@ -86,6 +217,10 @@ router.post("/appointments", async (req, res): Promise<void> => {
     return created;
   });
 
+  if (conflict || !appointment) {
+    res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
+    return;
+  }
   res.status(201).json(formatAppointment(appointment));
 });
 

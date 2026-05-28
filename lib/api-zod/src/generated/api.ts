@@ -345,6 +345,24 @@ export const CancelAppointmentResponse = zod.object({
 
 
 /**
+ * @summary Get available time slots for a date and service
+ */
+export const GetAvailabilityQueryParams = zod.object({
+  "date": zod.coerce.string(),
+  "serviceId": zod.coerce.number()
+})
+
+export const GetAvailabilityResponse = zod.object({
+  "date": zod.string(),
+  "dayClosed": zod.boolean(),
+  "slots": zod.array(zod.object({
+  "time": zod.string().describe('HH:MM'),
+  "available": zod.boolean()
+}))
+})
+
+
+/**
  * @summary List queue entries
  */
 export const ListQueueResponseItem = zod.object({

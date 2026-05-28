@@ -372,6 +372,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /availability:
+    get:
+      operationId: getAvailability
+      tags: [appointments]
+      summary: Get available time slots for a date and service
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            description: YYYY-MM-DD
+        - name: serviceId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Availability"
+
   /queue:
     get:
       operationId: listQueue
@@ -672,6 +697,26 @@ components:
           type: string
         notes:
           type: ["string", "null"]
+
+    Availability:
+      type: object
+      required: [date, slots, dayClosed]
+      properties:
+        date:
+          type: string
+        dayClosed:
+          type: boolean
+        slots:
+          type: array
+          items:
+            type: object
+            required: [time, available]
+            properties:
+              time:
+                type: string
+                description: "HH:MM"
+              available:
+                type: boolean
 
     QueueEntry:
       type: object

@@ -122,6 +122,18 @@ export interface AppointmentUpdate {
   notes?: string | null;
 }
 
+export type AvailabilitySlotsItem = {
+  /** HH:MM */
+  time: string;
+  available: boolean;
+};
+
+export interface Availability {
+  date: string;
+  dayClosed: boolean;
+  slots: AvailabilitySlotsItem[];
+}
+
 export interface QueueEntry {
   id: number;
   /** @nullable */
@@ -238,6 +250,14 @@ search?: string;
 export type ListAppointmentsParams = {
 date?: string;
 status?: string;
+};
+
+export type GetAvailabilityParams = {
+/**
+ * YYYY-MM-DD
+ */
+date: string;
+serviceId: number;
 };
 
 export type GetFinancialSummaryParams = {

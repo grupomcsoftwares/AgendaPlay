@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import React, { useState, useEffect } from "react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,8 +76,11 @@ export default function Booking() {
     const service = services?.find(s => s.id.toString() === formData.serviceId);
     if (!service) return;
 
-    const dateStr = formData.date.toISOString().split('T')[0];
-    const scheduledAt = new Date(`${dateStr}T${formData.time}:00`).toISOString();
+    const y = formData.date.getFullYear();
+    const m = (formData.date.getMonth() + 1).toString().padStart(2, "0");
+    const d = formData.date.getDate().toString().padStart(2, "0");
+    // Fixed America/Sao_Paulo offset (UTC-3, no DST) — matches server's TZ assumption.
+    const scheduledAt = new Date(`${y}-${m}-${d}T${formData.time}:00-03:00`).toISOString();
 
     createAppointment.mutate(
       { data: {
@@ -99,6 +102,22 @@ export default function Booking() {
   };
 
   const selectedService = services?.find(s => s.id.toString() === formData.serviceId);
+
+  const dateKey = `${formData.date.getFullYear()}-${(formData.date.getMonth()+1).toString().padStart(2,"0")}-${formData.date.getDate().toString().padStart(2,"0")}`;
+  const availabilityServiceId = selectedService?.id ?? 0;
+  const { data: availability, isFetching: loadingSlots } = useGetAvailability(
+    { date: dateKey, serviceId: availabilityServiceId },
+    { query: { queryKey: getGetAvailabilityQueryKey({ date: dateKey, serviceId: availabilityServiceId }), enabled: step === 2 && availabilityServiceId > 0 } }
+  );
+
+  // Clear selected time if it's no longer available after a refresh.
+  useEffect(() => {
+    if (!formData.time || !availability) return;
+    const slot = availability.slots.find(s => s.time === formData.time);
+    if (!slot || !slot.available) {
+      setFormData(prev => ({ ...prev, time: "" }));
+    }
+  }, [availability, formData.time]);
 
   if (isSuccess) {
     return (
@@ -374,36 +393,49 @@ export default function Booking() {
               </div>
 
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  {Array.from({ length: 18 }).map((_, i) => {
-                    const totalMinutes = 9 * 60 + i * 30;
-                    const h = Math.floor(totalMinutes / 60);
-                    const m = totalMinutes % 60;
-                    const value = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
-                    const isSelected = formData.time === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, time: value })}
-                        data-testid={`button-time-${value}`}
-                        className="rounded-xl py-3 text-center"
-                        style={{
-                          backgroundColor: "hsl(0 0% 9%)",
-                          border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
-                          color: "hsl(var(--foreground))",
-                          cursor: "pointer",
-                          fontFamily: "monospace",
-                          fontSize: "0.95rem",
-                          fontWeight: 700,
-                          letterSpacing: "0.05em",
-                        }}
-                      >
-                        {value}
-                      </button>
-                    );
-                  })}
-                </div>
+                {availability?.dayClosed ? (
+                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
+                    Fechado neste dia. Escolha outra data.
+                  </p>
+                ) : loadingSlots && !availability ? (
+                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 45%)" }}>
+                    Carregando horários…
+                  </p>
+                ) : availability && availability.slots.length === 0 ? (
+                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
+                    Nenhum horário disponível neste dia.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(availability?.slots ?? []).map(({ time: value, available }) => {
+                      const isSelected = formData.time === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          disabled={!available}
+                          onClick={() => available && setFormData({ ...formData, time: value })}
+                          data-testid={`button-time-${value}`}
+                          className="rounded-xl py-3 text-center"
+                          style={{
+                            backgroundColor: "hsl(0 0% 9%)",
+                            border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                            color: available ? "hsl(var(--foreground))" : "hsl(0 0% 30%)",
+                            cursor: available ? "pointer" : "not-allowed",
+                            fontFamily: "monospace",
+                            fontSize: "0.95rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.05em",
+                            textDecoration: available ? "none" : "line-through",
+                            opacity: available ? 1 : 0.5,
+                          }}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <button
