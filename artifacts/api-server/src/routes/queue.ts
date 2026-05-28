@@ -31,12 +31,47 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function autoAdvanceInTx(tx: Tx): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742002")})`);
 
-  const inProgress = await tx
+  const now = new Date();
+
+  // Auto-complete any in-progress entry whose scheduled window has ended.
+  // For booked entries we use scheduledAt + serviceDuration (the planned end).
+  // For walk-ins we use startedAt + serviceDuration (so a forgotten chair
+  // doesn't block the queue forever).
+  const inProgressRows = await tx
+    .select({
+      id: queueTable.id,
+      startedAt: queueTable.startedAt,
+      serviceDuration: queueTable.serviceDuration,
+      appointmentId: queueTable.appointmentId,
+      scheduledAt: appointmentsTable.scheduledAt,
+    })
+    .from(queueTable)
+    .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
+    .where(eq(queueTable.status, "in_progress"));
+
+  for (const row of inProgressRows) {
+    const anchor = row.scheduledAt ?? row.startedAt;
+    if (!anchor) continue;
+    const endMs = anchor.getTime() + row.serviceDuration * 60_000;
+    if (endMs > now.getTime()) continue;
+    await tx
+      .update(queueTable)
+      .set({ status: "completed" })
+      .where(eq(queueTable.id, row.id));
+    if (row.appointmentId !== null) {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "completed" })
+        .where(eq(appointmentsTable.id, row.appointmentId));
+    }
+  }
+
+  const stillInProgress = await tx
     .select({ id: queueTable.id })
     .from(queueTable)
     .where(eq(queueTable.status, "in_progress"))
     .limit(1);
-  if (inProgress.length > 0) return;
+  if (stillInProgress.length > 0) return;
 
   // Walk-ins first (any waiting entry with no appointment), else booked entries
   // whose scheduled time has arrived — within each group, lowest position wins.
@@ -52,7 +87,6 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
     .where(sql`${queueTable.status} = 'waiting'`)
     .orderBy(queueTable.position);
 
-  const now = new Date();
   const next = candidates.find(
     (c) => c.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now),
   );

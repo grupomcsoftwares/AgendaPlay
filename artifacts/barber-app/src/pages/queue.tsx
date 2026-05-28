@@ -163,17 +163,22 @@ export default function Queue() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({ clientName: "", serviceId: "" });
 
-  // Refresh queue every 10s for live feel
+  // Poll every 5s so auto-start/auto-complete transitions feel live.
   useEffect(() => {
     const id = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
-    }, 10000);
+    }, 5000);
     return () => clearInterval(id);
   }, [queryClient]);
 
   const currentEntry = queue?.find((q) => q.status === "in_progress") ?? null;
   const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
   const nextEntry = waitingQueue[0] ?? null;
+  // The next booked appointment whose scheduled time is still in the future —
+  // used to show the "please wait" message in the empty chair.
+  const upcomingBooked = waitingQueue.find(
+    (q) => q.scheduledAt !== null && q.scheduledAt !== undefined && new Date(q.scheduledAt) > new Date(),
+  ) ?? null;
 
   const handleAdd = () => {
     const service = services?.find((s) => s.id.toString() === formData.serviceId);
@@ -330,6 +335,25 @@ export default function Queue() {
                 >
                   Finalizar Atendimento
                 </button>
+              </div>
+            ) : upcomingBooked && upcomingBooked.scheduledAt ? (
+              <div className="flex flex-col items-center gap-4 p-8 text-center">
+                <Clock className="h-10 w-10" style={{ color: "hsl(var(--sidebar-primary))" }} />
+                <span
+                  data-testid="text-waiting-next"
+                  style={{ fontSize: "1.5rem", fontWeight: 700, color: "hsl(var(--foreground))" }}
+                >
+                  Aguardem um momento
+                </span>
+                <span style={{ color: "hsl(0 0% 55%)", fontSize: "0.95rem", maxWidth: 360 }}>
+                  O próximo atendimento começa às{" "}
+                  <strong style={{ color: "hsl(var(--sidebar-primary))" }}>
+                    {new Date(upcomingBooked.scheduledAt).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-3" style={{ color: "hsl(0 0% 30%)" }}>
