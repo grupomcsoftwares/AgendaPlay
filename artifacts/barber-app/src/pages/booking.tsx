@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, ExternalLink, CalendarClock, XCircle } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -47,6 +48,7 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 export default function Booking() {
+  const [, setLocation] = useLocation();
   const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
   const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
   const createAppointment = useCreateAppointment();
@@ -69,10 +71,6 @@ export default function Booking() {
     notes: "",
     paymentMethod: "on_site",
   });
-
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [cancelToken, setCancelToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const handleBook = () => {
     const service = services?.find(s => s.id.toString() === formData.serviceId);
@@ -97,8 +95,9 @@ export default function Booking() {
       }},
       {
         onSuccess: (created) => {
-          setCancelToken(created?.cancelToken ?? null);
-          setIsSuccess(true);
+          if (created?.cancelToken) {
+            setLocation(`/agendamento/${created.cancelToken}?novo=1`);
+          }
         }
       }
     );
@@ -135,102 +134,6 @@ export default function Booking() {
       setFormData(prev => ({ ...prev, time: "" }));
     }
   }, [availability, formData.time]);
-
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full text-center space-y-6">
-          <div className="mx-auto w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-8">
-            <CheckCircle2 className="w-12 h-12" />
-          </div>
-          <h1 className="text-3xl font-bold">Agendamento Confirmado!</h1>
-          <p className="text-muted-foreground text-lg">
-            Seu horário para {selectedService?.name} está marcado.
-          </p>
-          <div className="bg-card border border-border p-6 rounded-lg text-left mt-8">
-            <p className="font-semibold text-xl mb-4">{settings?.barbershopName || "Barbearia"}</p>
-            <div className="space-y-3 text-muted-foreground">
-              <p className="flex items-center gap-2"><CalendarIcon className="w-4 h-4" /> {formData.date.toLocaleDateString('pt-BR')}</p>
-              <p className="flex items-center gap-2"><Clock className="w-4 h-4" /> {formData.time}</p>
-              <p className="flex items-center gap-2"><User className="w-4 h-4" /> {formData.name}</p>
-            </div>
-          </div>
-          {cancelToken && (() => {
-            const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-            const cancelUrl = `${window.location.origin}${base}/agendamento/${cancelToken}`;
-            return (
-              <div className="mt-4 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href={cancelUrl}
-                    data-testid="link-reschedule"
-                    className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 no-underline"
-                    style={{
-                      backgroundColor: "hsl(0 0% 9%)",
-                      border: `1px solid ${AMBER}`,
-                      color: AMBER,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <CalendarClock className="w-4 h-4" />
-                    Mudar horário
-                  </a>
-                  <a
-                    href={cancelUrl}
-                    data-testid="link-cancel"
-                    className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 no-underline"
-                    style={{
-                      backgroundColor: "hsl(0 0% 9%)",
-                      border: "1px solid hsl(0 62% 50% / 0.4)",
-                      color: "hsl(0 70% 65%)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Cancelar
-                  </a>
-                </div>
-                <div
-                  className="flex items-center gap-2 rounded-lg p-2"
-                  style={{ backgroundColor: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 14%)" }}
-                >
-                  <input
-                    readOnly
-                    value={cancelUrl}
-                    data-testid="input-cancel-url"
-                    className="flex-1 text-xs px-2 py-1.5 rounded bg-transparent border-none font-mono truncate text-muted-foreground"
-                    onFocus={(e) => e.target.select()}
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(cancelUrl);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      } catch {}
-                    }}
-                    data-testid="button-copy-link"
-                    title="Copiar link"
-                    className="rounded-md p-1.5"
-                    style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(var(--foreground))", cursor: "pointer" }}
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground text-center">
-                  Salve este link para acessar seu agendamento depois.
-                </p>
-              </div>
-            );
-          })()}
-          <Button className="w-full mt-8" onClick={() => { setIsSuccess(false); setCancelToken(null); setStep(1); setFormData({...formData, name: "", phone: ""}); }}>
-            Fazer novo agendamento
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useSearch } from "wouter";
 import {
   useGetAppointmentByToken,
   useCancelAppointmentByToken,
@@ -26,6 +26,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function CancelBooking() {
   const [, params] = useRoute("/agendamento/:token");
+  const search = useSearch();
+  const isNew = new URLSearchParams(search).get("novo") === "1";
   const token = params?.token ?? "";
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
@@ -142,6 +144,24 @@ export default function CancelBooking() {
           <h1 className="text-2xl font-bold">{settings?.barbershopName || "Barbearia"}</h1>
           <p className="text-sm text-muted-foreground">Seu agendamento</p>
         </div>
+
+        {isNew && !cancelled && !locked && (
+          <div
+            className="rounded-xl p-4 flex items-start gap-3"
+            data-testid="banner-new-booking"
+            style={{ backgroundColor: "hsl(142 70% 45% / 0.12)", border: "1px solid hsl(142 70% 45% / 0.4)" }}
+          >
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "hsl(142 70% 55%)" }} />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold" style={{ color: "hsl(142 70% 75%)" }}>
+                Agendamento confirmado!
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Salve esta página nos favoritos para mudar o horário ou cancelar depois.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
