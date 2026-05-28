@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, ExternalLink } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, ExternalLink, CalendarClock, XCircle } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -145,19 +145,46 @@ export default function Booking() {
             const base = import.meta.env.BASE_URL.replace(/\/$/, "");
             const cancelUrl = `${window.location.origin}${base}/agendamento/${cancelToken}`;
             return (
-              <div className="bg-card border border-border p-5 rounded-lg text-left mt-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Link do seu agendamento
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Guarde este link. Você pode acessá-lo para ver detalhes ou cancelar.
-                </p>
-                <div className="flex items-center gap-2">
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={cancelUrl}
+                    data-testid="link-reschedule"
+                    className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 no-underline"
+                    style={{
+                      backgroundColor: "hsl(0 0% 9%)",
+                      border: `1px solid ${AMBER}`,
+                      color: AMBER,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <CalendarClock className="w-4 h-4" />
+                    Mudar horário
+                  </a>
+                  <a
+                    href={cancelUrl}
+                    data-testid="link-cancel"
+                    className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2 no-underline"
+                    style={{
+                      backgroundColor: "hsl(0 0% 9%)",
+                      border: "1px solid hsl(0 62% 50% / 0.4)",
+                      color: "hsl(0 70% 65%)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Cancelar
+                  </a>
+                </div>
+                <div
+                  className="flex items-center gap-2 rounded-lg p-2"
+                  style={{ backgroundColor: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 14%)" }}
+                >
                   <input
                     readOnly
                     value={cancelUrl}
                     data-testid="input-cancel-url"
-                    className="flex-1 text-xs px-3 py-2 rounded-md bg-background border border-border font-mono truncate"
+                    className="flex-1 text-xs px-2 py-1.5 rounded bg-transparent border-none font-mono truncate text-muted-foreground"
                     onFocus={(e) => e.target.select()}
                   />
                   <button
@@ -170,21 +197,16 @@ export default function Booking() {
                       } catch {}
                     }}
                     data-testid="button-copy-link"
-                    title="Copiar"
-                    className="rounded-md p-2"
+                    title="Copiar link"
+                    className="rounded-md p-1.5"
                     style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(var(--foreground))", cursor: "pointer" }}
                   >
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                 </div>
-                <a
-                  href={cancelUrl}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold"
-                  style={{ color: AMBER }}
-                  data-testid="link-open-cancel"
-                >
-                  Abrir agendamento <ExternalLink className="w-3 h-3" />
-                </a>
+                <p className="text-xs text-muted-foreground text-center">
+                  Salve este link para acessar seu agendamento depois.
+                </p>
               </div>
             );
           })()}
