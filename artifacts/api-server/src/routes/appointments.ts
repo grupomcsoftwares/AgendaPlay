@@ -149,10 +149,15 @@ router.get("/availability", async (req, res): Promise<void> => {
   // a 30-min cut yields 2 slots/hour, a 20-min trim yields 3, etc.
   // Floor of 5 min keeps things sane if a service has duration 0.
   const step = Math.max(5, duration);
+  // Required gap (in minutes) between consecutive appointments.
+  const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
-    const overlapsAppt = blocked.some(([s, e]) => t < e && end > s);
+    // Expand each blocked window by the buffer on both sides so the new slot
+    // cannot start within 5 min of an existing appointment's end, nor end
+    // within 5 min of an existing appointment's start.
+    const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
     const inPast = t <= nowMin;
     const available = !overlapsLunch && !overlapsAppt && !inPast;
     const hh = Math.floor(t / 60).toString().padStart(2, "0");
@@ -193,12 +198,15 @@ router.post("/appointments", async (req, res): Promise<void> => {
       .select()
       .from(appointmentsTable)
       .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+    // Enforce the same 5-min gap that GET /availability advertises so the
+    // server can't accept a booking that the slot grid would have blocked.
+    const BUFFER = 5;
     for (const a of sameDay) {
       if (a.status === "cancelled") continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
       const aEnd = aStart + a.serviceDuration;
-      if (startMin < aEnd && endMin > aStart) {
+      if (startMin < aEnd + BUFFER && endMin + BUFFER > aStart) {
         conflict = true;
         return null;
       }
