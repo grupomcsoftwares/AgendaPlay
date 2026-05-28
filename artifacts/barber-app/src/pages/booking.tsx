@@ -14,7 +14,7 @@ const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 const AMBER_DEEP = "hsl(38 80% 45%)";
 const STEP_LABELS_BASE = ["Serviço", "Data e hora", "Seus dados", "Pagamento"] as const;
-const STEP_LABELS_WITH_BARBER = ["Serviço", "Profissional", "Data e hora", "Seus dados", "Pagamento"] as const;
+const STEP_LABELS_WITH_BARBER = ["Profissional", "Serviço", "Data e hora", "Seus dados", "Pagamento"] as const;
 
 function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
   const cols = labels.length === 5 ? "grid-cols-5" : "grid-cols-4";
@@ -58,7 +58,8 @@ export default function Booking() {
 
   const [step, setStep] = useState(1);
   // When true, step 1 shows the barber picker instead of the service list.
-  const [pickingBarber, setPickingBarber] = useState(false);
+  // Default to true until barbers load; switches off if 0/1 active barbers.
+  const [pickingBarber, setPickingBarber] = useState(true);
   const [formData, setFormData] = useState<{
     serviceId: string;
     barberId: string;
@@ -119,32 +120,42 @@ export default function Booking() {
     ? barbers?.find(b => b.id.toString() === formData.barberId)
     : undefined;
 
-  // Active barbers eligible to perform the selected service.
-  // Barbers with NO service links are treated as "all services" (legacy / convenience).
-  const eligibleBarbers = React.useMemo(() => {
-    if (!barbers || !selectedService) return [];
-    return barbers.filter(b => b.serviceIds.length === 0 || b.serviceIds.includes(selectedService.id));
-  }, [barbers, selectedService]);
-  const needsBarberStep = eligibleBarbers.length >= 2;
+  // Backend already filters to active barbers via activeOnly=true.
+  const activeBarbers = barbers ?? [];
+  const needsBarberStep = activeBarbers.length >= 2;
   const stepLabels = needsBarberStep ? STEP_LABELS_WITH_BARBER : STEP_LABELS_BASE;
-  // When the picker is open, we're on the "Profissional" indicator (step 2 of 5).
-  const indicatorStep = pickingBarber ? 2 : step === 1 ? 1 : needsBarberStep ? step + 1 : step;
+  // Indicator mapping:
+  //  - With barber step: picker -> 1, service list (step 1) -> 2, step N -> N+1.
+  //  - Without barber step: indicator = step.
+  const indicatorStep = needsBarberStep
+    ? (pickingBarber ? 1 : step === 1 ? 2 : step + 1)
+    : step;
+
+  // Auto-select the single barber (or none) and skip the picker.
+  useEffect(() => {
+    if (!barbers) return;
+    if (barbers.length >= 2) return;
+    setPickingBarber(false);
+    const onlyId = barbers[0]?.id.toString() ?? "";
+    setFormData(prev => (prev.barberId === onlyId ? prev : { ...prev, barberId: onlyId }));
+  }, [barbers]);
+
+  // Services this barber can perform (empty serviceIds = all services).
+  const eligibleServices = React.useMemo(() => {
+    if (!services) return [];
+    if (!selectedBarber) return services;
+    if (selectedBarber.serviceIds.length === 0) return services;
+    return services.filter(s => selectedBarber.serviceIds.includes(s.id));
+  }, [services, selectedBarber]);
+
+  const handleBarberPick = (barberId: number) => {
+    setFormData(prev => ({ ...prev, barberId: barberId.toString(), serviceId: "", time: "" }));
+    setPickingBarber(false);
+  };
 
   const handleServicePick = (serviceId: number) => {
-    const list = (barbers ?? []).filter(b => b.serviceIds.length === 0 || b.serviceIds.includes(serviceId));
-    if (list.length >= 2) {
-      setFormData(prev => ({ ...prev, serviceId: serviceId.toString(), barberId: "", time: "" }));
-      setPickingBarber(true);
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        serviceId: serviceId.toString(),
-        barberId: list[0]?.id.toString() ?? "",
-        time: "",
-      }));
-      setPickingBarber(false);
-      setStep(2);
-    }
+    setFormData(prev => ({ ...prev, serviceId: serviceId.toString(), time: "" }));
+    setStep(2);
   };
 
   const paymentEnableNow = settings?.paymentEnableNow ?? false;
@@ -204,27 +215,14 @@ export default function Booking() {
 
         {step === 1 && pickingBarber && (
           <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => {
-                setPickingBarber(false);
-                setFormData(prev => ({ ...prev, serviceId: "", barberId: "" }));
-              }}
-              data-testid="button-back-to-services"
-              className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
-              style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Trocar serviço
-            </button>
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Escolha o profissional</h2>
               <p className="text-sm text-muted-foreground">
-                Quem você prefere para o serviço {selectedService?.name}?
+                Quem você prefere para o seu atendimento?
               </p>
             </div>
             <div className="space-y-3">
-              {eligibleBarbers.map((b) => {
+              {activeBarbers.map((b) => {
                 const isSelected = formData.barberId === b.id.toString();
                 const initials = b.name
                   .split(" ")
@@ -236,11 +234,7 @@ export default function Booking() {
                     key={b.id}
                     type="button"
                     data-testid={`button-barber-${b.id}`}
-                    onClick={() => {
-                      setFormData(prev => ({ ...prev, barberId: b.id.toString(), time: "" }));
-                      setPickingBarber(false);
-                      setStep(2);
-                    }}
+                    onClick={() => handleBarberPick(b.id)}
                     className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                     style={{
                       backgroundColor: "hsl(0 0% 7%)",
@@ -278,12 +272,47 @@ export default function Booking() {
 
         {step === 1 && !pickingBarber && (
           <div className="space-y-4">
+            {needsBarberStep && (
+              <button
+                type="button"
+                onClick={() => setPickingBarber(true)}
+                data-testid="button-back-to-barbers"
+                className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+                style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Trocar profissional
+              </button>
+            )}
+            {selectedBarber && needsBarberStep && (
+              <div
+                className="rounded-xl p-3 flex items-center gap-3"
+                style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+                  style={{ backgroundColor: AMBER_SOFT, color: AMBER, border: `1px solid ${AMBER}`, fontWeight: 700 }}
+                >
+                  {selectedBarber.photoUrl ? (
+                    <img src={selectedBarber.photoUrl} alt={selectedBarber.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs">
+                      {selectedBarber.name.split(" ").slice(0, 2).map((n) => n.charAt(0).toUpperCase()).join("")}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Profissional</p>
+                  <p className="font-semibold text-sm truncate">{selectedBarber.name}</p>
+                </div>
+              </div>
+            )}
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Escolha um serviço</h2>
               <p className="text-sm text-muted-foreground">Selecione o serviço que deseja</p>
             </div>
             <div className="space-y-3">
-              {services?.map((service) => {
+              {eligibleServices.map((service) => {
                 const isSelected = formData.serviceId === service.id.toString();
                 return (
                   <button
