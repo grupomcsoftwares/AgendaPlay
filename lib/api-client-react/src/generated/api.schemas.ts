@@ -232,6 +232,8 @@ export interface Settings {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  paymentEnableNow?: boolean;
+  paymentEnableOnSite?: boolean;
 }
 
 export interface SettingsUpdate {
@@ -248,6 +250,8 @@ export interface SettingsUpdate {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  paymentEnableNow?: boolean;
+  paymentEnableOnSite?: boolean;
 }
 
 export type ListClientsParams = {

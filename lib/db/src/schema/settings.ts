@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -30,6 +30,8 @@ export const settingsTable = pgTable("settings", {
   closeTime: text("close_time"),
   weeklySchedule: jsonb("weekly_schedule").$type<WeeklySchedule>(),
   bookingPageMessage: text("booking_page_message"),
+  paymentEnableNow: boolean("payment_enable_now").notNull().default(false),
+  paymentEnableOnSite: boolean("payment_enable_on_site").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

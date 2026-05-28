@@ -21,4 +21,6 @@ export interface SettingsUpdate {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  paymentEnableNow?: boolean;
+  paymentEnableOnSite?: boolean;
 }

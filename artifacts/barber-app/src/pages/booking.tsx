@@ -106,6 +106,20 @@ export default function Booking() {
 
   const selectedService = services?.find(s => s.id.toString() === formData.serviceId);
 
+  const paymentEnableNow = settings?.paymentEnableNow ?? false;
+  const paymentEnableOnSite = settings?.paymentEnableOnSite ?? true;
+  const enabledPayments = ([
+    paymentEnableNow ? ("now" as const) : null,
+    paymentEnableOnSite ? ("on_site" as const) : null,
+  ].filter(Boolean)) as Array<"now" | "on_site">;
+
+  useEffect(() => {
+    if (enabledPayments.length === 0) return;
+    if (!enabledPayments.includes(formData.paymentMethod)) {
+      setFormData(prev => ({ ...prev, paymentMethod: enabledPayments[0] }));
+    }
+  }, [enabledPayments.join(","), formData.paymentMethod]);
+
   const dateKey = `${formData.date.getFullYear()}-${(formData.date.getMonth()+1).toString().padStart(2,"0")}-${formData.date.getDate().toString().padStart(2,"0")}`;
   const availabilityServiceId = selectedService?.id ?? 0;
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
@@ -700,7 +714,7 @@ export default function Booking() {
                     desc: "Pague diretamente na barbearia",
                     Icon: Banknote,
                   },
-                ]).map(({ value, title, desc, Icon }) => {
+                ]).filter(opt => enabledPayments.includes(opt.value)).map(({ value, title, desc, Icon }) => {
                   const isSelected = formData.paymentMethod === value;
                   return (
                     <button

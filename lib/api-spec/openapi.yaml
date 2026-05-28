@@ -957,6 +957,10 @@ components:
             - type: "null"
         bookingPageMessage:
           type: ["string", "null"]
+        paymentEnableNow:
+          type: boolean
+        paymentEnableOnSite:
+          type: boolean
 
     SettingsUpdate:
       type: object
@@ -979,3 +983,7 @@ components:
             - type: "null"
         bookingPageMessage:
           type: ["string", "null"]
+        paymentEnableNow:
+          type: boolean
+        paymentEnableOnSite:
+          type: boolean

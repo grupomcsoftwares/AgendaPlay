@@ -64,6 +64,8 @@ export default function Settings() {
     address: "",
     bookingPageMessage: "",
     weeklySchedule: defaultWeeklySchedule(),
+    paymentEnableNow: false,
+    paymentEnableOnSite: true,
   });
 
   useEffect(() => {
@@ -82,6 +84,8 @@ export default function Settings() {
         address: settings.address || "",
         bookingPageMessage: settings.bookingPageMessage || "",
         weeklySchedule: merged,
+        paymentEnableNow: settings.paymentEnableNow ?? false,
+        paymentEnableOnSite: settings.paymentEnableOnSite ?? true,
       });
     }
   }, [settings]);
@@ -97,6 +101,14 @@ export default function Settings() {
   };
 
   const handleSave = () => {
+    if (!formData.paymentEnableNow && !formData.paymentEnableOnSite) {
+      toast({
+        title: "Selecione ao menos uma forma de pagamento",
+        description: "Pelo menos uma opção precisa estar ativa para os clientes agendarem.",
+        variant: "destructive",
+      });
+      return;
+    }
     updateSettings.mutate(
       { data: formData },
       {
@@ -239,6 +251,48 @@ export default function Settings() {
                   </div>
                 );
               })}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle>Formas de Pagamento</CardTitle>
+              <CardDescription>
+                Escolha quais opções os clientes verão na hora de agendar
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between border border-border rounded-lg p-4">
+                <div className="space-y-1 pr-4">
+                  <p className="font-semibold">Pagar agora (online)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cliente paga online no momento do agendamento
+                  </p>
+                </div>
+                <Switch
+                  data-testid="switch-payment-now"
+                  checked={formData.paymentEnableNow}
+                  onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })}
+                />
+              </div>
+              <div className="flex items-center justify-between border border-border rounded-lg p-4">
+                <div className="space-y-1 pr-4">
+                  <p className="font-semibold">Pagar no final do serviço</p>
+                  <p className="text-xs text-muted-foreground">
+                    Cliente paga direto na barbearia depois do atendimento
+                  </p>
+                </div>
+                <Switch
+                  data-testid="switch-payment-on-site"
+                  checked={formData.paymentEnableOnSite}
+                  onCheckedChange={(v) => setFormData({ ...formData, paymentEnableOnSite: v })}
+                />
+              </div>
+              {!formData.paymentEnableNow && !formData.paymentEnableOnSite && (
+                <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>
+                  Pelo menos uma forma de pagamento precisa estar ativa.
+                </p>
+              )}
             </CardContent>
           </Card>
 

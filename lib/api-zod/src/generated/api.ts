@@ -637,7 +637,9 @@ export const GetSettingsResponse = zod.object({
   "lunchEnd": zod.string()
 })
 }),zod.null()]).optional(),
-  "bookingPageMessage": zod.string().nullish()
+  "bookingPageMessage": zod.string().nullish(),
+  "paymentEnableNow": zod.boolean().optional(),
+  "paymentEnableOnSite": zod.boolean().optional()
 })
 
 
@@ -702,7 +704,9 @@ export const UpdateSettingsBody = zod.object({
   "lunchEnd": zod.string()
 })
 }),zod.null()]).optional(),
-  "bookingPageMessage": zod.string().nullish()
+  "bookingPageMessage": zod.string().nullish(),
+  "paymentEnableNow": zod.boolean().optional(),
+  "paymentEnableOnSite": zod.boolean().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -764,7 +768,9 @@ export const UpdateSettingsResponse = zod.object({
   "lunchEnd": zod.string()
 })
 }),zod.null()]).optional(),
-  "bookingPageMessage": zod.string().nullish()
+  "bookingPageMessage": zod.string().nullish(),
+  "paymentEnableNow": zod.boolean().optional(),
+  "paymentEnableOnSite": zod.boolean().optional()
 })
 
 
