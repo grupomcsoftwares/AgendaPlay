@@ -311,7 +311,7 @@ export default function Queue() {
                   <Scissors className="h-8 w-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
                 </div>
                 <div className="text-center">
-                  <h2 style={{ fontSize: "2.5rem", fontWeight: 800, lineHeight: 1.1 }}>{currentEntry.clientName}</h2>
+                  <h2 style={{ fontSize: "5rem", fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.02em" }}>{currentEntry.clientName}</h2>
                   <p className="mt-2" style={{ color: "hsl(var(--sidebar-primary))", fontSize: "1.125rem", fontWeight: 500 }}>
                     {currentEntry.serviceName}
                   </p>
