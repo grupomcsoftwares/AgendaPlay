@@ -697,6 +697,8 @@ components:
           type: ["string", "null"]
         startedAt:
           type: ["string", "null"]
+        scheduledAt:
+          type: ["string", "null"]
         createdAt:
           type: string
 

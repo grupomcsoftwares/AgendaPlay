@@ -20,5 +20,7 @@ export interface QueueEntry {
   notes?: string | null;
   /** @nullable */
   startedAt?: string | null;
+  /** @nullable */
+  scheduledAt?: string | null;
   createdAt: string;
 }

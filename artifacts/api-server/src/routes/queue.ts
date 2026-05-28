@@ -9,11 +9,15 @@ import {
 
 const router: IRouter = Router();
 
-function formatEntry(e: typeof queueTable.$inferSelect) {
+function formatEntry(
+  e: typeof queueTable.$inferSelect,
+  scheduledAt: Date | null = null,
+) {
   return {
     ...e,
     servicePrice: parseFloat(e.servicePrice),
     startedAt: e.startedAt ? e.startedAt.toISOString() : null,
+    scheduledAt: scheduledAt ? scheduledAt.toISOString() : null,
     createdAt: e.createdAt.toISOString(),
   };
 }
@@ -70,12 +74,13 @@ router.get("/queue", async (_req, res): Promise<void> => {
   await db.transaction(async (tx) => {
     await autoAdvanceInTx(tx);
   });
-  const entries = await db
-    .select()
+  const rows = await db
+    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
     .from(queueTable)
+    .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
     .where(sql`${queueTable.status} != 'completed'`)
     .orderBy(queueTable.position);
-  res.json(entries.map(formatEntry));
+  res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
 
 router.post("/queue", async (req, res): Promise<void> => {

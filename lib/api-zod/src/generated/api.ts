@@ -358,6 +358,7 @@ export const ListQueueResponseItem = zod.object({
   "status": zod.string(),
   "notes": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
+  "scheduledAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListQueueResponse = zod.array(ListQueueResponseItem)
@@ -401,6 +402,7 @@ export const StartQueueEntryResponse = zod.object({
   "status": zod.string(),
   "notes": zod.string().nullish(),
   "startedAt": zod.string().nullish(),
+  "scheduledAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
 

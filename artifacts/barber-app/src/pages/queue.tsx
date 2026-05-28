@@ -326,7 +326,7 @@ export default function Queue() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  {nextEntry.createdAt && <DigitalTime scheduledAt={nextEntry.createdAt} />}
+                  {nextEntry.scheduledAt && <DigitalTime scheduledAt={nextEntry.scheduledAt} />}
                   {!currentEntry && (
                     <button
                       onClick={() => handleStart(nextEntry.id)}
@@ -418,7 +418,28 @@ export default function Queue() {
                         <p style={{ color: "hsl(0 0% 40%)", fontSize: "0.75rem" }}>{entry.serviceName}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2">
+                      {entry.scheduledAt && (
+                        <span
+                          data-testid={`queue-time-${entry.id}`}
+                          style={{
+                            fontFamily: "monospace",
+                            fontSize: "0.85rem",
+                            fontWeight: 700,
+                            color: "hsl(var(--sidebar-primary))",
+                            letterSpacing: "0.05em",
+                            backgroundColor: "hsl(var(--sidebar-primary) / 0.1)",
+                            padding: "0.2rem 0.5rem",
+                            borderRadius: "0.375rem",
+                          }}
+                        >
+                          {new Date(entry.scheduledAt).toLocaleTimeString("pt-BR", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStart(entry.id)}
                         data-testid={`button-start-list-${entry.id}`}
@@ -437,6 +458,7 @@ export default function Queue() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      </div>
                     </div>
                   </div>
                 ))}
