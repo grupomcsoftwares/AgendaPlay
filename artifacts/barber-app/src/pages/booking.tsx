@@ -563,49 +563,58 @@ export default function Booking() {
               </div>
 
               <div className="space-y-2">
-                {availability?.dayClosed ? (
-                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
-                    Fechado neste dia. Escolha outra data.
-                  </p>
-                ) : loadingSlots && !availability ? (
-                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 45%)" }}>
-                    Carregando horários…
-                  </p>
-                ) : availability && availability.slots.length === 0 ? (
-                  <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
-                    Nenhum horário disponível neste dia.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {(availability?.slots ?? []).map(({ time: value, available }) => {
-                      const isSelected = formData.time === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          disabled={!available}
-                          onClick={() => available && setFormData({ ...formData, time: value })}
-                          data-testid={`button-time-${value}`}
-                          className="rounded-xl py-3 text-center"
-                          style={{
-                            backgroundColor: "hsl(0 0% 9%)",
-                            border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
-                            color: available ? "hsl(var(--foreground))" : "hsl(0 0% 30%)",
-                            cursor: available ? "pointer" : "not-allowed",
-                            fontFamily: "monospace",
-                            fontSize: "0.95rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.05em",
-                            textDecoration: available ? "none" : "line-through",
-                            opacity: available ? 1 : 0.5,
-                          }}
-                        >
-                          {value}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                {(() => {
+                  const availableSlots = (availability?.slots ?? []).filter((s) => s.available);
+                  if (availability?.dayClosed) {
+                    return (
+                      <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
+                        Fechado neste dia. Escolha outra data.
+                      </p>
+                    );
+                  }
+                  if (loadingSlots && !availability) {
+                    return (
+                      <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 45%)" }}>
+                        Carregando horários…
+                      </p>
+                    );
+                  }
+                  if (availability && availableSlots.length === 0) {
+                    return (
+                      <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
+                        Nenhum horário disponível neste dia. Escolha outra data.
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="grid grid-cols-3 gap-2">
+                      {availableSlots.map(({ time: value }) => {
+                        const isSelected = formData.time === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, time: value })}
+                            data-testid={`button-time-${value}`}
+                            className="rounded-xl py-3 text-center"
+                            style={{
+                              backgroundColor: "hsl(0 0% 9%)",
+                              border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                              color: "hsl(var(--foreground))",
+                              cursor: "pointer",
+                              fontFamily: "monospace",
+                              fontSize: "0.95rem",
+                              fontWeight: 700,
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            {value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
 
               <button
