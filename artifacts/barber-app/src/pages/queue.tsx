@@ -349,17 +349,42 @@ export default function Queue() {
                 </button>
               </div>
             ) : upcomingBooked && upcomingBooked.scheduledAt ? (
-              <div className="flex flex-col items-center gap-4 p-8 text-center">
-                <Clock className="h-10 w-10" style={{ color: "hsl(var(--sidebar-primary))" }} />
+              <div className="flex flex-col items-center gap-6 p-8 text-center">
+                <Clock style={{ width: "5rem", height: "5rem", color: "hsl(var(--sidebar-primary))" }} />
                 <span
                   data-testid="text-waiting-next"
-                  style={{ fontSize: "1.5rem", fontWeight: 700, color: "hsl(var(--foreground))" }}
+                  style={{
+                    fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    letterSpacing: "-0.02em",
+                    textTransform: "uppercase",
+                    color: "hsl(var(--foreground))",
+                  }}
                 >
                   Aguardem um momento
                 </span>
-                <span style={{ color: "hsl(0 0% 55%)", fontSize: "0.95rem", maxWidth: 360 }}>
+                <span
+                  style={{
+                    color: "hsl(0 0% 65%)",
+                    fontSize: "clamp(1.25rem, 2.4vw, 1.75rem)",
+                    fontWeight: 500,
+                    lineHeight: 1.3,
+                    maxWidth: 720,
+                  }}
+                >
                   O próximo atendimento começa às{" "}
-                  <strong style={{ color: "hsl(var(--sidebar-primary))" }}>
+                  <strong
+                    style={{
+                      color: "hsl(var(--sidebar-primary))",
+                      fontSize: "clamp(2rem, 4.5vw, 3.5rem)",
+                      fontWeight: 900,
+                      letterSpacing: "0.02em",
+                      display: "inline-block",
+                      verticalAlign: "middle",
+                      marginLeft: "0.5rem",
+                    }}
+                  >
                     {new Date(upcomingBooked.scheduledAt).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
