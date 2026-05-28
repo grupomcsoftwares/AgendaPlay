@@ -190,6 +190,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 export const ListAppointmentsResponse = zod.array(ListAppointmentsResponseItem)
@@ -230,6 +231,7 @@ export const GetAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -263,6 +265,7 @@ export const UpdateAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -294,6 +297,7 @@ export const StartAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -317,6 +321,7 @@ export const CompleteAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -340,6 +345,55 @@ export const CancelAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Get an appointment by its public cancel token
+ */
+export const GetAppointmentByTokenParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetAppointmentByTokenResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Cancel an appointment using its public cancel token
+ */
+export const CancelAppointmentByTokenParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const CancelAppointmentByTokenResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 })
 
@@ -447,6 +501,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 }).nullable(),
   "nextAppointment": zod.object({
@@ -461,6 +516,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 }).nullable()
 })

@@ -1457,6 +1457,153 @@ export const useCancelAppointment = <TError = ErrorType<unknown>,
       return useMutation(getCancelAppointmentMutationOptions(options));
     }
 
+export const getGetAppointmentByTokenUrl = (token: string,) => {
+
+
+
+
+  return `/api/appointments/by-token/${token}`
+}
+
+/**
+ * @summary Get an appointment by its public cancel token
+ */
+export const getAppointmentByToken = async (token: string, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getGetAppointmentByTokenUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAppointmentByTokenQueryKey = (token: string,) => {
+    return [
+    `/api/appointments/by-token/${token}`
+    ] as const;
+    }
+
+
+export const getGetAppointmentByTokenQueryOptions = <TData = Awaited<ReturnType<typeof getAppointmentByToken>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppointmentByToken>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAppointmentByTokenQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAppointmentByToken>>> = ({ signal }) => getAppointmentByToken(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAppointmentByToken>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAppointmentByTokenQueryResult = NonNullable<Awaited<ReturnType<typeof getAppointmentByToken>>>
+export type GetAppointmentByTokenQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get an appointment by its public cancel token
+ */
+
+export function useGetAppointmentByToken<TData = Awaited<ReturnType<typeof getAppointmentByToken>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAppointmentByToken>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAppointmentByTokenQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCancelAppointmentByTokenUrl = (token: string,) => {
+
+
+
+
+  return `/api/appointments/by-token/${token}/cancel`
+}
+
+/**
+ * @summary Cancel an appointment using its public cancel token
+ */
+export const cancelAppointmentByToken = async (token: string, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getCancelAppointmentByTokenUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getCancelAppointmentByTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAppointmentByToken>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelAppointmentByToken>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['cancelAppointmentByToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelAppointmentByToken>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  cancelAppointmentByToken(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelAppointmentByTokenMutationResult = NonNullable<Awaited<ReturnType<typeof cancelAppointmentByToken>>>
+
+    export type CancelAppointmentByTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Cancel an appointment using its public cancel token
+ */
+export const useCancelAppointmentByToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelAppointmentByToken>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelAppointmentByToken>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getCancelAppointmentByTokenMutationOptions(options));
+    }
+
 export const getGetAvailabilityUrl = (params: GetAvailabilityParams,) => {
   const normalizedParams = new URLSearchParams();
 

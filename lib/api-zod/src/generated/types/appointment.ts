@@ -22,5 +22,7 @@ export interface Appointment {
   paymentMethod?: AppointmentPaymentMethod;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  cancelToken?: string | null;
   createdAt?: string;
 }

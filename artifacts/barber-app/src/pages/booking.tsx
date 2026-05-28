@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, CheckCircle2, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, ExternalLink } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -71,6 +71,8 @@ export default function Booking() {
   });
 
   const [isSuccess, setIsSuccess] = useState(false);
+  const [cancelToken, setCancelToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleBook = () => {
     const service = services?.find(s => s.id.toString() === formData.serviceId);
@@ -94,7 +96,8 @@ export default function Booking() {
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes
       }},
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
+          setCancelToken(created?.cancelToken ?? null);
           setIsSuccess(true);
         }
       }
@@ -138,7 +141,54 @@ export default function Booking() {
               <p className="flex items-center gap-2"><User className="w-4 h-4" /> {formData.name}</p>
             </div>
           </div>
-          <Button className="w-full mt-8" onClick={() => { setIsSuccess(false); setStep(1); setFormData({...formData, name: "", phone: ""}); }}>
+          {cancelToken && (() => {
+            const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+            const cancelUrl = `${window.location.origin}${base}/agendamento/${cancelToken}`;
+            return (
+              <div className="bg-card border border-border p-5 rounded-lg text-left mt-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Link do seu agendamento
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Guarde este link. Você pode acessá-lo para ver detalhes ou cancelar.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={cancelUrl}
+                    data-testid="input-cancel-url"
+                    className="flex-1 text-xs px-3 py-2 rounded-md bg-background border border-border font-mono truncate"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(cancelUrl);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      } catch {}
+                    }}
+                    data-testid="button-copy-link"
+                    title="Copiar"
+                    className="rounded-md p-2"
+                    style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(var(--foreground))", cursor: "pointer" }}
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+                <a
+                  href={cancelUrl}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold"
+                  style={{ color: AMBER }}
+                  data-testid="link-open-cancel"
+                >
+                  Abrir agendamento <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            );
+          })()}
+          <Button className="w-full mt-8" onClick={() => { setIsSuccess(false); setCancelToken(null); setStep(1); setFormData({...formData, name: "", phone: ""}); }}>
             Fazer novo agendamento
           </Button>
         </div>

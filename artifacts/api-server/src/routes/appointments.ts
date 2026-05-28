@@ -40,6 +40,18 @@ function parseHHMM(s: string): number {
 const router: IRouter = Router();
 
 function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
+  // cancelToken is a public capability secret — never include it in generic responses.
+  const { cancelToken: _omit, ...rest } = a;
+  void _omit;
+  return {
+    ...rest,
+    servicePrice: parseFloat(a.servicePrice),
+    scheduledAt: a.scheduledAt.toISOString(),
+    createdAt: a.createdAt.toISOString(),
+  };
+}
+
+function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
   return {
     ...a,
     servicePrice: parseFloat(a.servicePrice),
@@ -194,6 +206,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
       servicePrice: String(parsed.data.servicePrice),
       scheduledAt: scheduledAtDate,
       status: "pending",
+      cancelToken: crypto.randomUUID(),
     }).returning();
 
     // Serialize concurrent queue-position assignments with a transaction-scoped advisory lock.
@@ -221,7 +234,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
   }
-  res.status(201).json(formatAppointment(appointment));
+  res.status(201).json(formatAppointmentWithToken(appointment));
 });
 
 router.get("/appointments/:id", async (req, res): Promise<void> => {
@@ -331,6 +344,64 @@ router.post("/appointments/:id/complete", async (req, res): Promise<void> => {
     return;
   }
   res.json(formatAppointment(appointment));
+});
+
+router.get("/appointments/by-token/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "");
+  if (!token) {
+    res.status(400).json({ error: "Token required" });
+    return;
+  }
+  const [appointment] = await db
+    .select()
+    .from(appointmentsTable)
+    .where(eq(appointmentsTable.cancelToken, token));
+  if (!appointment) {
+    res.status(404).json({ error: "Agendamento não encontrado" });
+    return;
+  }
+  res.json(formatAppointmentWithToken(appointment));
+});
+
+router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "");
+  if (!token) {
+    res.status(400).json({ error: "Token required" });
+    return;
+  }
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(eq(appointmentsTable.cancelToken, token));
+    if (!existing) return { error: "notfound" as const };
+    if (existing.status === "cancelled") return { appointment: existing };
+    if (existing.status === "completed" || existing.status === "in_progress") {
+      return { error: "locked" as const };
+    }
+    // Conditional update — only flip if still in a cancellable state, preventing
+    // a concurrent admin start/complete from being overwritten under contention.
+    const [updated] = await tx
+      .update(appointmentsTable)
+      .set({ status: "cancelled" })
+      .where(and(
+        eq(appointmentsTable.id, existing.id),
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed')`,
+      ))
+      .returning();
+    if (!updated) return { error: "locked" as const };
+    await tx.delete(queueTable).where(eq(queueTable.appointmentId, existing.id));
+    return { appointment: updated };
+  });
+  if (result.error === "notfound") {
+    res.status(404).json({ error: "Agendamento não encontrado" });
+    return;
+  }
+  if (result.error === "locked") {
+    res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído e não pode ser cancelado." });
+    return;
+  }
+  res.json(formatAppointmentWithToken(result.appointment!));
 });
 
 router.post("/appointments/:id/cancel", async (req, res): Promise<void> => {

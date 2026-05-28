@@ -11,10 +11,13 @@ app.use(
     logger,
     serializers: {
       req(req) {
+        const rawPath = req.url?.split("?")[0] ?? "";
+        // Redact public cancel tokens so they never land in logs.
+        const url = rawPath.replace(/\/appointments\/by-token\/[^/]+/, "/appointments/by-token/[REDACTED]");
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+          url,
         };
       },
       res(res) {

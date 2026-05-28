@@ -14,6 +14,7 @@ export const appointmentsTable = pgTable("appointments", {
   status: text("status").notNull().default("pending"),
   paymentMethod: text("payment_method").notNull().default("on_site"),
   notes: text("notes"),
+  cancelToken: text("cancel_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

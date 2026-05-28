@@ -372,6 +372,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /appointments/by-token/{token}:
+    get:
+      operationId: getAppointmentByToken
+      tags: [appointments]
+      summary: Get an appointment by its public cancel token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Appointment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /appointments/by-token/{token}/cancel:
+    post:
+      operationId: cancelAppointmentByToken
+      tags: [appointments]
+      summary: Cancel an appointment using its public cancel token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
   /availability:
     get:
       operationId: getAvailability
@@ -652,6 +690,8 @@ components:
           type: string
           enum: [now, on_site]
         notes:
+          type: ["string", "null"]
+        cancelToken:
           type: ["string", "null"]
         createdAt:
           type: string

@@ -12,6 +12,7 @@ import Queue from "./pages/queue";
 import Appointments from "./pages/appointments";
 import Financial from "./pages/financial";
 import Booking from "./pages/booking";
+import CancelBooking from "./pages/cancel";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
 import NotFound from "@/pages/not-found";
@@ -62,6 +63,9 @@ function Router() {
       </Route>
       <Route path="/booking">
         <Booking />
+      </Route>
+      <Route path="/agendamento/:token">
+        <CancelBooking />
       </Route>
       <Route component={NotFound} />
     </Switch>

@@ -63,12 +63,16 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       .limit(1),
   ]);
 
-  const formatAppt = (a: typeof appointmentsTable.$inferSelect) => ({
-    ...a,
-    servicePrice: parseFloat(a.servicePrice),
-    scheduledAt: a.scheduledAt.toISOString(),
-    createdAt: a.createdAt.toISOString(),
-  });
+  const formatAppt = (a: typeof appointmentsTable.$inferSelect) => {
+    const { cancelToken: _omit, ...rest } = a;
+    void _omit;
+    return {
+      ...rest,
+      servicePrice: parseFloat(a.servicePrice),
+      scheduledAt: a.scheduledAt.toISOString(),
+      createdAt: a.createdAt.toISOString(),
+    };
+  };
 
   res.json({
     appointmentsToday: Number(todayAppointments[0]?.count ?? 0),
