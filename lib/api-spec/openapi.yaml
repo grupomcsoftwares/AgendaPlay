@@ -840,6 +840,11 @@ components:
           description: IDs of services this barber performs. Empty means "all services".
           items:
             type: integer
+        weeklySchedule:
+          description: Per-barber working hours. Null means "use shop schedule".
+          oneOf:
+            - $ref: "#/components/schemas/WeeklySchedule"
+            - type: "null"
 
     BarberInput:
       type: object
@@ -859,6 +864,10 @@ components:
           type: array
           items:
             type: integer
+        weeklySchedule:
+          oneOf:
+            - $ref: "#/components/schemas/WeeklySchedule"
+            - type: "null"
 
     BarberUpdate:
       type: object
@@ -877,6 +886,10 @@ components:
           type: array
           items:
             type: integer
+        weeklySchedule:
+          oneOf:
+            - $ref: "#/components/schemas/WeeklySchedule"
+            - type: "null"
 
     Appointment:
       type: object

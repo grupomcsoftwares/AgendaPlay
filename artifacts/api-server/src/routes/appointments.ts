@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers";
 import {
   ListAppointmentsQueryParams,
@@ -109,7 +109,15 @@ router.get("/availability", async (req, res): Promise<void> => {
   const barberFilter = typeof barberId === "number" ? barberId : null;
 
   const [settings] = await db.select().from(settingsTable).limit(1);
-  const weekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+  const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+
+  // Per-barber schedule overrides the shop schedule when set.
+  let barberWeekly: WeeklySchedule | null = null;
+  if (barberFilter !== null) {
+    const [b] = await db.select().from(barbersTable).where(eq(barbersTable.id, barberFilter));
+    barberWeekly = (b?.weeklySchedule ?? null) as WeeklySchedule | null;
+  }
+  const weekly = barberWeekly ?? shopWeekly;
 
   const target = new Date(`${date}T12:00:00Z`);
   const dayKey = localDayKey(target);

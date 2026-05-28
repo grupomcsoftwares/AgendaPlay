@@ -1,4 +1,19 @@
 import React, { useRef, useState } from "react";
+
+type DaySchedule = { closed: boolean; open: string; close: string; lunchStart: string; lunchEnd: string };
+const DAY_KEYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"] as const;
+type DayKey = typeof DAY_KEYS[number];
+type WeeklySchedule = Record<DayKey, DaySchedule>;
+const DAY_LABELS: Record<DayKey, string> = {
+  monday: "Segunda", tuesday: "Terça", wednesday: "Quarta", thursday: "Quinta",
+  friday: "Sexta", saturday: "Sábado", sunday: "Domingo",
+};
+const DEFAULT_DAY: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
+const DEFAULT_WEEKLY: WeeklySchedule = {
+  monday: { ...DEFAULT_DAY }, tuesday: { ...DEFAULT_DAY }, wednesday: { ...DEFAULT_DAY },
+  thursday: { ...DEFAULT_DAY }, friday: { ...DEFAULT_DAY },
+  saturday: { ...DEFAULT_DAY }, sunday: { ...DEFAULT_DAY, closed: true },
+};
 import {
   useListBarbers,
   useCreateBarber,
@@ -102,11 +117,19 @@ export default function Barbers() {
     bio: string;
     active: boolean;
     serviceIds: number[];
-  }>({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [] });
+    weeklySchedule: WeeklySchedule | null;
+  }>({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null });
 
   const resetForm = () => {
-    setFormData({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [] });
+    setFormData({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null });
     setEditingId(null);
+  };
+
+  const updateDay = (key: DayKey, patch: Partial<DaySchedule>) => {
+    setFormData((f) => {
+      const base = f.weeklySchedule ?? DEFAULT_WEEKLY;
+      return { ...f, weeklySchedule: { ...base, [key]: { ...base[key], ...patch } } };
+    });
   };
 
   const handlePhoto = (file: File) => {
@@ -136,6 +159,7 @@ export default function Barbers() {
       bio: formData.bio || undefined,
       active: formData.active,
       serviceIds: formData.serviceIds,
+      weeklySchedule: formData.weeklySchedule,
     };
     if (editingId) {
       updateBarber.mutate(
@@ -302,6 +326,103 @@ export default function Barbers() {
                   Se nenhum for marcado, o barbeiro será considerado capaz de fazer <strong>todos</strong> os serviços.
                 </p>
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-lg border border-border/60 p-3 bg-muted/30">
+                  <div>
+                    <p className="text-sm font-medium">Horário próprio</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formData.weeklySchedule
+                        ? "Este barbeiro usa o horário definido abaixo."
+                        : "Usa o horário geral da barbearia (Configurações)."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.weeklySchedule !== null}
+                    onCheckedChange={(c) =>
+                      setFormData((f) => ({ ...f, weeklySchedule: c ? (f.weeklySchedule ?? DEFAULT_WEEKLY) : null }))
+                    }
+                    data-testid="switch-barber-own-schedule"
+                  />
+                </div>
+
+                {formData.weeklySchedule && (
+                  <div className="space-y-2 rounded-lg border border-border/60 p-3 bg-muted/20">
+                    {DAY_KEYS.map((key) => {
+                      const day = (formData.weeklySchedule ?? DEFAULT_WEEKLY)[key];
+                      return (
+                        <div
+                          key={key}
+                          className="rounded-md border border-border/40 p-3 space-y-2 bg-background/40"
+                          data-testid={`barber-schedule-day-${key}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold">{DAY_LABELS[key]}</span>
+                            <div className="flex items-center gap-2">
+                              <Label className="text-xs text-muted-foreground">
+                                {day.closed ? "Fechado" : "Aberto"}
+                              </Label>
+                              <Switch
+                                checked={!day.closed}
+                                onCheckedChange={(v) => updateDay(key, { closed: !v })}
+                                data-testid={`barber-switch-open-${key}`}
+                              />
+                            </div>
+                          </div>
+                          {!day.closed && (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Abertura</Label>
+                                  <Input
+                                    type="time"
+                                    className="h-9"
+                                    value={day.open}
+                                    onChange={(e) => updateDay(key, { open: e.target.value })}
+                                    data-testid={`barber-input-open-${key}`}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fechamento</Label>
+                                  <Input
+                                    type="time"
+                                    className="h-9"
+                                    value={day.close}
+                                    onChange={(e) => updateDay(key, { close: e.target.value })}
+                                    data-testid={`barber-input-close-${key}`}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Início almoço</Label>
+                                  <Input
+                                    type="time"
+                                    className="h-9"
+                                    value={day.lunchStart}
+                                    onChange={(e) => updateDay(key, { lunchStart: e.target.value })}
+                                    data-testid={`barber-input-lunch-start-${key}`}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fim almoço</Label>
+                                  <Input
+                                    type="time"
+                                    className="h-9"
+                                    value={day.lunchEnd}
+                                    onChange={(e) => updateDay(key, { lunchEnd: e.target.value })}
+                                    data-testid={`barber-input-lunch-end-${key}`}
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/20 sm:justify-end gap-2">
@@ -401,6 +522,7 @@ export default function Barbers() {
                             bio: b.bio || "",
                             active: b.active,
                             serviceIds: [...b.serviceIds],
+                            weeklySchedule: (b.weeklySchedule as WeeklySchedule | null | undefined) ?? null,
                           });
                           setIsOpen(true);
                         }}

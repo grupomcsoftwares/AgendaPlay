@@ -76,6 +76,24 @@ export interface ServiceUpdate {
   barberIds?: number[];
 }
 
+export interface DaySchedule {
+  closed: boolean;
+  open: string;
+  close: string;
+  lunchStart: string;
+  lunchEnd: string;
+}
+
+export interface WeeklySchedule {
+  monday: DaySchedule;
+  tuesday: DaySchedule;
+  wednesday: DaySchedule;
+  thursday: DaySchedule;
+  friday: DaySchedule;
+  saturday: DaySchedule;
+  sunday: DaySchedule;
+}
+
 export interface Barber {
   id: number;
   name: string;
@@ -88,6 +106,8 @@ export interface Barber {
   createdAt: string;
   /** IDs of services this barber performs. Empty means "all services". */
   serviceIds: number[];
+  /** Per-barber working hours. Null means "use shop schedule". */
+  weeklySchedule?: WeeklySchedule | null;
 }
 
 export interface BarberInput {
@@ -97,6 +117,7 @@ export interface BarberInput {
   active?: boolean;
   sortOrder?: number;
   serviceIds?: number[];
+  weeklySchedule?: WeeklySchedule | null;
 }
 
 export interface BarberUpdate {
@@ -108,6 +129,7 @@ export interface BarberUpdate {
   active?: boolean;
   sortOrder?: number;
   serviceIds?: number[];
+  weeklySchedule?: WeeklySchedule | null;
 }
 
 export type AppointmentPaymentMethod = typeof AppointmentPaymentMethod[keyof typeof AppointmentPaymentMethod];
@@ -243,24 +265,6 @@ export interface FinancialSummary {
   averageTicket: number;
   revenueByService: RevenueByService[];
   revenueByDay: RevenueByDay[];
-}
-
-export interface DaySchedule {
-  closed: boolean;
-  open: string;
-  close: string;
-  lunchStart: string;
-  lunchEnd: string;
-}
-
-export interface WeeklySchedule {
-  monday: DaySchedule;
-  tuesday: DaySchedule;
-  wednesday: DaySchedule;
-  thursday: DaySchedule;
-  friday: DaySchedule;
-  saturday: DaySchedule;
-  sunday: DaySchedule;
 }
 
 export interface Settings {

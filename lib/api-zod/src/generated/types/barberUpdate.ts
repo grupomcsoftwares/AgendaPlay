@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { WeeklySchedule } from './weeklySchedule';
 
 export interface BarberUpdate {
   name?: string;
@@ -15,4 +16,5 @@ export interface BarberUpdate {
   active?: boolean;
   sortOrder?: number;
   serviceIds?: number[];
+  weeklySchedule?: WeeklySchedule | null;
 }

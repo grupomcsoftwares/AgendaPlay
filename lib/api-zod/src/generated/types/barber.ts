@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { WeeklySchedule } from './weeklySchedule';
 
 export interface Barber {
   id: number;
@@ -18,4 +19,6 @@ export interface Barber {
   createdAt: string;
   /** IDs of services this barber performs. Empty means "all services". */
   serviceIds: number[];
+  /** Per-barber working hours. Null means "use shop schedule". */
+  weeklySchedule?: WeeklySchedule | null;
 }

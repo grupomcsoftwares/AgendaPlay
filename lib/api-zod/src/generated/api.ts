@@ -622,7 +622,58 @@ export const ListBarbersResponseItem = zod.object({
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "createdAt": zod.string(),
-  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional().describe('Per-barber working hours. Null means \"use shop schedule\".')
 })
 export const ListBarbersResponse = zod.array(ListBarbersResponseItem)
 
@@ -636,7 +687,58 @@ export const CreateBarberBody = zod.object({
   "bio": zod.string().optional(),
   "active": zod.boolean().optional(),
   "sortOrder": zod.number().optional(),
-  "serviceIds": zod.array(zod.number()).optional()
+  "serviceIds": zod.array(zod.number()).optional(),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional()
 })
 
 
@@ -655,7 +757,58 @@ export const GetBarberResponse = zod.object({
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "createdAt": zod.string(),
-  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional().describe('Per-barber working hours. Null means \"use shop schedule\".')
 })
 
 
@@ -672,7 +825,58 @@ export const UpdateBarberBody = zod.object({
   "bio": zod.string().nullish(),
   "active": zod.boolean().optional(),
   "sortOrder": zod.number().optional(),
-  "serviceIds": zod.array(zod.number()).optional()
+  "serviceIds": zod.array(zod.number()).optional(),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional()
 })
 
 export const UpdateBarberResponse = zod.object({
@@ -683,7 +887,58 @@ export const UpdateBarberResponse = zod.object({
   "active": zod.boolean(),
   "sortOrder": zod.number(),
   "createdAt": zod.string(),
-  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
+  "weeklySchedule": zod.union([zod.object({
+  "monday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "tuesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "wednesday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "thursday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "friday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "saturday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+}),
+  "sunday": zod.object({
+  "closed": zod.boolean(),
+  "open": zod.string(),
+  "close": zod.string(),
+  "lunchStart": zod.string(),
+  "lunchEnd": zod.string()
+})
+}),zod.null()]).optional().describe('Per-barber working hours. Null means \"use shop schedule\".')
 })
 
 
