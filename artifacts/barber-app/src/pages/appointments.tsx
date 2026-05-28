@@ -1,17 +1,20 @@
-import React, { useState } from "react";
-import { 
-  useListAppointments, 
-  useCreateAppointment, 
-  useUpdateAppointment, 
-  useDeleteAppointment, 
-  useStartAppointment, 
-  useCompleteAppointment, 
-  useCancelAppointment, 
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  useListAppointments,
+  useCreateAppointment,
+  useDeleteAppointment,
+  useStartAppointment,
+  useCompleteAppointment,
+  useCancelAppointment,
   getListAppointmentsQueryKey,
   useListServices,
   getListServicesQueryKey,
   useListClients,
-  getListClientsQueryKey
+  getListClientsQueryKey,
+  useGetAvailability,
+  getGetAvailabilityQueryKey,
+  getGetDashboardSummaryQueryKey,
+  ApiError,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2 } from "lucide-react";
@@ -29,63 +32,141 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const INITIAL_FORM = { clientId: "new", clientName: "", serviceId: "", time: "" };
+
 export default function Appointments() {
   const [date, setDate] = useState<Date>(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
-  
+
   const { data: appointments, isLoading } = useListAppointments({ date: dateStr }, { query: { queryKey: getListAppointmentsQueryKey({ date: dateStr }) } });
   const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
 
   const createAppointment = useCreateAppointment();
-  const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
   const startAppointment = useStartAppointment();
   const completeAppointment = useCompleteAppointment();
   const cancelAppointment = useCancelAppointment();
-  
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    clientId: "new",
-    clientName: "",
-    serviceId: "",
-    time: "10:00",
-  });
+  const [formData, setFormData] = useState(INITIAL_FORM);
+  const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: dateStr }) });
+  // Refresh every surface that depends on appointment data so the public booking
+  // page, the dashboard widgets, and the day list all stay in sync.
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: dateStr }) });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
+  };
+
+  const selectedService = useMemo(
+    () => services?.find((s) => s.id.toString() === formData.serviceId),
+    [services, formData.serviceId],
+  );
+
+  const availabilityServiceId = selectedService?.id ?? 0;
+  const { data: availability, isFetching: loadingSlots } = useGetAvailability(
+    { date: dateStr, serviceId: availabilityServiceId },
+    {
+      query: {
+        queryKey: getGetAvailabilityQueryKey({ date: dateStr, serviceId: availabilityServiceId }),
+        enabled: isCreateOpen && availabilityServiceId > 0,
+      },
+    },
+  );
+
+  // Clear the selected time if it becomes unavailable (e.g. after a refresh
+  // shows a concurrent booking on the same slot).
+  useEffect(() => {
+    if (!formData.time || !availability) return;
+    const slot = availability.slots.find((s) => s.time === formData.time);
+    if (!slot || !slot.available) {
+      setFormData((prev) => ({ ...prev, time: "" }));
+    }
+  }, [availability, formData.time]);
+
+  // Reset form whenever the dialog closes.
+  useEffect(() => {
+    if (!isCreateOpen) setFormData(INITIAL_FORM);
+  }, [isCreateOpen]);
 
   const handleCreate = () => {
-    const service = services?.find(s => s.id.toString() === formData.serviceId);
-    if (!service) return;
+    if (!selectedService || !formData.time) return;
 
     let cName = formData.clientName;
     if (formData.clientId !== "new") {
-      const client = clients?.find(c => c.id.toString() === formData.clientId);
+      const client = clients?.find((c) => c.id.toString() === formData.clientId);
       if (client) cName = client.name;
     }
 
-    const scheduledAt = new Date(`${dateStr}T${formData.time}:00`).toISOString();
+    // Fixed America/Sao_Paulo offset (UTC-3) — matches the server's TZ assumption
+    // and mirrors the public booking page so admin and public bookings line up.
+    const scheduledAt = new Date(`${dateStr}T${formData.time}:00-03:00`).toISOString();
 
     createAppointment.mutate(
       { data: {
         clientId: formData.clientId !== "new" ? parseInt(formData.clientId) : undefined,
         clientName: cName,
-        serviceId: parseInt(formData.serviceId),
-        serviceName: service.name,
-        servicePrice: service.price,
-        serviceDuration: service.durationMinutes,
-        scheduledAt
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        servicePrice: selectedService.price,
+        serviceDuration: selectedService.durationMinutes,
+        scheduledAt,
       }},
       {
         onSuccess: () => {
           invalidate();
           setIsCreateOpen(false);
           toast({ title: "Agendamento criado" });
-        }
+        },
+        onError: (err) => {
+          const apiErr = err as ApiError<{ error?: string }>;
+          if (apiErr?.status === 409) {
+            // Refresh slots — a concurrent booking probably grabbed this time.
+            queryClient.invalidateQueries({
+              queryKey: getGetAvailabilityQueryKey({ date: dateStr, serviceId: availabilityServiceId }),
+            });
+            toast({
+              variant: "destructive",
+              title: "Horário indisponível",
+              description: apiErr.data?.error ?? "Esse horário acabou de ser reservado. Escolha outro.",
+            });
+            setFormData((prev) => ({ ...prev, time: "" }));
+            return;
+          }
+          toast({
+            variant: "destructive",
+            title: "Não foi possível agendar",
+            description: apiErr?.data?.error ?? "Tente novamente.",
+          });
+        },
       }
+    );
+  };
+
+  const confirmCancel = () => {
+    if (!cancelTarget) return;
+    cancelAppointment.mutate(
+      { id: cancelTarget.id },
+      {
+        onSuccess: () => {
+          invalidate();
+          setCancelTarget(null);
+          toast({ title: "Agendamento cancelado" });
+        },
+        onError: (err) => {
+          const apiErr = err as ApiError<{ error?: string }>;
+          toast({
+            variant: "destructive",
+            title: "Não foi possível cancelar",
+            description: apiErr?.data?.error ?? "Tente novamente.",
+          });
+        },
+      },
     );
   };
 
@@ -106,11 +187,11 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
           <p className="text-muted-foreground mt-1">Gerencie a agenda do dia.</p>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 border-border">
+              <Button variant="outline" className="gap-2 border-border" data-testid="button-pick-date">
                 <CalendarIcon className="h-4 w-4" />
                 {format(date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
               </Button>
@@ -122,19 +203,21 @@ export default function Appointments() {
 
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2" data-testid="button-new-appointment">
                 <Plus className="h-4 w-4" /> Novo Agendamento
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Agendar Horário</DialogTitle>
+                <DialogTitle>
+                  Agendar Horário · {format(date, "dd/MM/yyyy", { locale: ptBR })}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Cliente</Label>
                   <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v, clientName: v === "new" ? formData.clientName : ""})}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-client">
                       <SelectValue placeholder="Selecione um cliente" />
                     </SelectTrigger>
                     <SelectContent>
@@ -145,45 +228,92 @@ export default function Appointments() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {formData.clientId === "new" && (
                   <div className="space-y-2">
                     <Label>Nome do Cliente</Label>
-                    <Input 
-                      value={formData.clientName} 
-                      onChange={e => setFormData({...formData, clientName: e.target.value})} 
+                    <Input
+                      value={formData.clientName}
+                      onChange={e => setFormData({...formData, clientName: e.target.value})}
+                      data-testid="input-client-name"
                     />
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Serviço</Label>
-                    <Select value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Serviço" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {services?.map(s => (
-                          <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Horário</Label>
-                    <Input 
-                      type="time"
-                      value={formData.time} 
-                      onChange={e => setFormData({...formData, time: e.target.value})} 
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Serviço</Label>
+                  <Select value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, time: ""})}>
+                    <SelectTrigger data-testid="select-service">
+                      <SelectValue placeholder="Selecione um serviço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services?.map(s => (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {s.name} · {s.durationMinutes} min
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Horário disponível</Label>
+                  {!selectedService ? (
+                    <p className="text-sm text-muted-foreground py-3">
+                      Escolha um serviço para ver os horários livres.
+                    </p>
+                  ) : availability?.dayClosed ? (
+                    <p className="text-sm text-muted-foreground py-3">
+                      Fechado neste dia. Escolha outra data.
+                    </p>
+                  ) : loadingSlots && !availability ? (
+                    <p className="text-sm text-muted-foreground py-3">Carregando horários…</p>
+                  ) : availability && availability.slots.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-3">
+                      Nenhum horário disponível neste dia.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
+                      {(availability?.slots ?? []).map(({ time: value, available }) => {
+                        const isSelected = formData.time === value;
+                        return (
+                          <button
+                            key={value}
+                            type="button"
+                            disabled={!available}
+                            onClick={() => available && setFormData({ ...formData, time: value })}
+                            data-testid={`button-slot-${value}`}
+                            className="rounded-md py-2 text-sm font-mono font-semibold border transition-colors"
+                            style={{
+                              borderColor: isSelected ? "hsl(var(--primary))" : "hsl(var(--border))",
+                              backgroundColor: isSelected ? "hsl(var(--primary) / 0.15)" : "transparent",
+                              color: available ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+                              cursor: available ? "pointer" : "not-allowed",
+                              textDecoration: available ? "none" : "line-through",
+                              opacity: available ? 1 : 0.45,
+                            }}
+                          >
+                            {value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreate} disabled={(!formData.clientName && formData.clientId === "new") || !formData.serviceId || createAppointment.isPending}>
-                  Confirmar Agendamento
+                <Button
+                  onClick={handleCreate}
+                  data-testid="button-confirm-create"
+                  disabled={
+                    (!formData.clientName && formData.clientId === "new") ||
+                    !formData.serviceId ||
+                    !formData.time ||
+                    createAppointment.isPending
+                  }
+                >
+                  {createAppointment.isPending ? "Salvando…" : "Confirmar Agendamento"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -217,7 +347,7 @@ export default function Appointments() {
             </TableHeader>
             <TableBody>
               {appointments.sort((a,b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()).map((apt) => (
-                <TableRow key={apt.id}>
+                <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
                   <TableCell className="font-bold text-lg">
                     {format(new Date(apt.scheduledAt), "HH:mm")}
                   </TableCell>
@@ -228,22 +358,22 @@ export default function Appointments() {
                     <div className="flex justify-end gap-1">
                       {apt.status === 'pending' && (
                         <>
-                          <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })}>
+                          <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}>
                             <Play className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => cancelAppointment.mutate({id: apt.id}, { onSuccess: invalidate })}>
+                          <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}>
                             <X className="h-4 w-4" />
                           </Button>
                         </>
                       )}
                       {apt.status === 'in_progress' && (
-                        <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })}>
+                        <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}>
                           <Check className="h-4 w-4" />
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => {
                         if (confirm("Deletar este registro?")) deleteAppointment.mutate({id: apt.id}, { onSuccess: invalidate });
-                      }}>
+                      }} data-testid={`button-delete-${apt.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -254,6 +384,28 @@ export default function Appointments() {
           </Table>
         )}
       </div>
+
+      <Dialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar agendamento?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Tem certeza que deseja cancelar o agendamento de <strong className="text-foreground">{cancelTarget?.clientName}</strong>? O horário voltará a ficar disponível na página pública.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTarget(null)}>Manter</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmCancel}
+              disabled={cancelAppointment.isPending}
+              data-testid="button-confirm-cancel"
+            >
+              {cancelAppointment.isPending ? "Cancelando…" : "Sim, cancelar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
