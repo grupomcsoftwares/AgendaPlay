@@ -17,7 +17,58 @@ function formatEntry(e: typeof queueTable.$inferSelect) {
   };
 }
 
+// Auto-advance: if the chair is empty, promote the next eligible waiting entry.
+// Walk-ins (no appointmentId) are always eligible. Booked entries become eligible
+// once their scheduledAt has arrived. Runs inside a tx with an advisory lock so
+// concurrent polls cannot promote two entries.
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function autoAdvanceInTx(tx: Tx): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742002")})`);
+
+  const inProgress = await tx
+    .select({ id: queueTable.id })
+    .from(queueTable)
+    .where(eq(queueTable.status, "in_progress"))
+    .limit(1);
+  if (inProgress.length > 0) return;
+
+  // Walk-ins first (any waiting entry with no appointment), else booked entries
+  // whose scheduled time has arrived — within each group, lowest position wins.
+  const candidates = await tx
+    .select({
+      id: queueTable.id,
+      position: queueTable.position,
+      appointmentId: queueTable.appointmentId,
+      scheduledAt: appointmentsTable.scheduledAt,
+    })
+    .from(queueTable)
+    .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
+    .where(sql`${queueTable.status} = 'waiting'`)
+    .orderBy(queueTable.position);
+
+  const now = new Date();
+  const next = candidates.find(
+    (c) => c.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now),
+  );
+  if (!next) return;
+
+  await tx
+    .update(queueTable)
+    .set({ status: "in_progress" })
+    .where(eq(queueTable.id, next.id));
+  if (next.appointmentId !== null) {
+    await tx
+      .update(appointmentsTable)
+      .set({ status: "in_progress" })
+      .where(eq(appointmentsTable.id, next.appointmentId));
+  }
+}
+
 router.get("/queue", async (_req, res): Promise<void> => {
+  await db.transaction(async (tx) => {
+    await autoAdvanceInTx(tx);
+  });
   const entries = await db
     .select()
     .from(queueTable)
@@ -65,6 +116,8 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
         .set({ status: "completed" })
         .where(eq(appointmentsTable.id, removed.appointmentId));
     }
+    // Promote next eligible entry into the empty chair right away.
+    await autoAdvanceInTx(tx);
     return removed;
   });
   if (!entry) {
