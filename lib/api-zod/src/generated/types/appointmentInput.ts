@@ -12,6 +12,8 @@ export interface AppointmentInput {
   clientName: string;
   serviceId?: number;
   serviceName: string;
+  barberId?: number;
+  barberName?: string;
   servicePrice: number;
   serviceDuration: number;
   scheduledAt: string;

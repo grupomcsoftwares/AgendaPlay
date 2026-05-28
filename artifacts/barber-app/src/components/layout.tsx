@@ -9,6 +9,7 @@ import {
   Activity,
   LayoutGrid,
   List,
+  Users,
 } from "lucide-react";
 import { useGetSettings } from "@workspace/api-client-react";
 
@@ -36,6 +37,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
       ],
     },
     { href: "/services", label: "Serviços", icon: Scissors },
+    { href: "/barbers", label: "Barbeiros", icon: Users },
     { href: "/financial", label: "Financeiro", icon: CreditCard },
     { href: "/settings", label: "Configurações", icon: SettingsIcon },
   ];

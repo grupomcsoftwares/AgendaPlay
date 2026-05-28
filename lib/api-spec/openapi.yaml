@@ -23,6 +23,8 @@ tags:
     description: Financial operations
   - name: settings
     description: Settings operations
+  - name: barbers
+    description: Barber operations
 
 paths:
   /healthz:
@@ -452,6 +454,11 @@ paths:
           required: true
           schema:
             type: integer
+        - name: barberId
+          in: query
+          description: Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
+          schema:
+            type: integer
       responses:
         "200":
           description: Availability
@@ -561,6 +568,103 @@ paths:
               schema:
                 $ref: "#/components/schemas/FinancialSummary"
 
+  /barbers:
+    get:
+      operationId: listBarbers
+      tags: [barbers]
+      summary: List barbers
+      parameters:
+        - name: activeOnly
+          in: query
+          schema:
+            type: boolean
+        - name: serviceId
+          in: query
+          description: Only return barbers that perform this service
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of barbers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Barber"
+    post:
+      operationId: createBarber
+      tags: [barbers]
+      summary: Create a barber
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Barber"
+
+  /barbers/{id}:
+    get:
+      operationId: getBarber
+      tags: [barbers]
+      summary: Get a barber
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Barber
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Barber"
+    patch:
+      operationId: updateBarber
+      tags: [barbers]
+      summary: Update a barber
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BarberUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Barber"
+    delete:
+      operationId: deleteBarber
+      tags: [barbers]
+      summary: Delete a barber
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /settings:
     get:
       operationId: getSettings
@@ -600,6 +704,9 @@ components:
         scheduledAt:
           type: string
           description: ISO 8601 datetime of the new slot
+        barberId:
+          type: integer
+          description: Optionally switch barber when rescheduling
 
     HealthStatus:
       type: object
@@ -653,7 +760,7 @@ components:
 
     Service:
       type: object
-      required: [id, name, durationMinutes, price]
+      required: [id, name, durationMinutes, price, barberIds]
       properties:
         id:
           type: integer
@@ -667,6 +774,11 @@ components:
           type: number
         imageUrl:
           type: ["string", "null"]
+        barberIds:
+          type: array
+          description: IDs of barbers that perform this service. Empty array means "all barbers" (legacy).
+          items:
+            type: integer
 
     ServiceInput:
       type: object
@@ -682,6 +794,10 @@ components:
           type: number
         imageUrl:
           type: string
+        barberIds:
+          type: array
+          items:
+            type: integer
 
     ServiceUpdate:
       type: object
@@ -696,6 +812,71 @@ components:
           type: number
         imageUrl:
           type: ["string", "null"]
+        barberIds:
+          type: array
+          items:
+            type: integer
+
+    Barber:
+      type: object
+      required: [id, name, active, sortOrder, createdAt, serviceIds]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        photoUrl:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        serviceIds:
+          type: array
+          description: IDs of services this barber performs. Empty means "all services".
+          items:
+            type: integer
+
+    BarberInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        photoUrl:
+          type: string
+        bio:
+          type: string
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        serviceIds:
+          type: array
+          items:
+            type: integer
+
+    BarberUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        photoUrl:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        sortOrder:
+          type: integer
+        serviceIds:
+          type: array
+          items:
+            type: integer
 
     Appointment:
       type: object
@@ -711,6 +892,10 @@ components:
           type: ["integer", "null"]
         serviceName:
           type: string
+        barberId:
+          type: ["integer", "null"]
+        barberName:
+          type: ["string", "null"]
         servicePrice:
           type: number
         serviceDuration:
@@ -740,6 +925,10 @@ components:
         serviceId:
           type: integer
         serviceName:
+          type: string
+        barberId:
+          type: integer
+        barberName:
           type: string
         servicePrice:
           type: number

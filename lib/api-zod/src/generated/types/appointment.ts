@@ -15,6 +15,10 @@ export interface Appointment {
   /** @nullable */
   serviceId?: number | null;
   serviceName: string;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
   servicePrice: number;
   serviceDuration: number;
   scheduledAt: string;

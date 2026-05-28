@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { Sidebar } from "./components/layout";
 import Dashboard from "./pages/dashboard";
 import Services from "./pages/services";
+import Barbers from "./pages/barbers";
 import Clients from "./pages/clients";
 import Settings from "./pages/settings";
 import Queue from "./pages/queue";
@@ -51,6 +52,9 @@ function Router() {
       </Route>
       <Route path="/services">
         <Sidebar><Services /></Sidebar>
+      </Route>
+      <Route path="/barbers">
+        <Sidebar><Barbers /></Sidebar>
       </Route>
       <Route path="/financial">
         <Sidebar><Financial /></Sidebar>

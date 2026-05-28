@@ -15,4 +15,6 @@ export interface Service {
   price: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** IDs of barbers that perform this service. Empty array means "all barbers" (legacy). */
+  barberIds: number[];
 }

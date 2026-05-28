@@ -352,6 +352,7 @@ export default function Appointments() {
                 <TableHead>Horário</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
+                <TableHead>Profissional</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -364,6 +365,7 @@ export default function Appointments() {
                   </TableCell>
                   <TableCell className="font-medium">{apt.clientName}</TableCell>
                   <TableCell>{apt.serviceName}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
                   <TableCell>{getStatusBadge(apt.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">

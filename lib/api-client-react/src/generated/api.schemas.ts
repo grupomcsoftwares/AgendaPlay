@@ -8,6 +8,8 @@
 export interface RescheduleByTokenInput {
   /** ISO 8601 datetime of the new slot */
   scheduledAt: string;
+  /** Optionally switch barber when rescheduling */
+  barberId?: number;
 }
 
 export interface HealthStatus {
@@ -50,6 +52,8 @@ export interface Service {
   price: number;
   /** @nullable */
   imageUrl?: string | null;
+  /** IDs of barbers that perform this service. Empty array means "all barbers" (legacy). */
+  barberIds: number[];
 }
 
 export interface ServiceInput {
@@ -58,6 +62,7 @@ export interface ServiceInput {
   durationMinutes: number;
   price: number;
   imageUrl?: string;
+  barberIds?: number[];
 }
 
 export interface ServiceUpdate {
@@ -68,6 +73,41 @@ export interface ServiceUpdate {
   price?: number;
   /** @nullable */
   imageUrl?: string | null;
+  barberIds?: number[];
+}
+
+export interface Barber {
+  id: number;
+  name: string;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  bio?: string | null;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+  /** IDs of services this barber performs. Empty means "all services". */
+  serviceIds: number[];
+}
+
+export interface BarberInput {
+  name: string;
+  photoUrl?: string;
+  bio?: string;
+  active?: boolean;
+  sortOrder?: number;
+  serviceIds?: number[];
+}
+
+export interface BarberUpdate {
+  name?: string;
+  /** @nullable */
+  photoUrl?: string | null;
+  /** @nullable */
+  bio?: string | null;
+  active?: boolean;
+  sortOrder?: number;
+  serviceIds?: number[];
 }
 
 export type AppointmentPaymentMethod = typeof AppointmentPaymentMethod[keyof typeof AppointmentPaymentMethod];
@@ -86,6 +126,10 @@ export interface Appointment {
   /** @nullable */
   serviceId?: number | null;
   serviceName: string;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
   servicePrice: number;
   serviceDuration: number;
   scheduledAt: string;
@@ -111,6 +155,8 @@ export interface AppointmentInput {
   clientName: string;
   serviceId?: number;
   serviceName: string;
+  barberId?: number;
+  barberName?: string;
   servicePrice: number;
   serviceDuration: number;
   scheduledAt: string;
@@ -269,10 +315,22 @@ export type GetAvailabilityParams = {
  */
 date: string;
 serviceId: number;
+/**
+ * Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
+ */
+barberId?: number;
 };
 
 export type GetFinancialSummaryParams = {
 month?: number;
 year?: number;
+};
+
+export type ListBarbersParams = {
+activeOnly?: boolean;
+/**
+ * Only return barbers that perform this service
+ */
+serviceId?: number;
 };
 

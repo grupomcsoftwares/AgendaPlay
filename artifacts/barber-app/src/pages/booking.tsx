@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,14 @@ import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronL
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 const AMBER_DEEP = "hsl(38 80% 45%)";
-const STEP_LABELS = ["Serviço", "Data e hora", "Seus dados", "Pagamento"];
+const STEP_LABELS_BASE = ["Serviço", "Data e hora", "Seus dados", "Pagamento"] as const;
+const STEP_LABELS_WITH_BARBER = ["Serviço", "Profissional", "Data e hora", "Seus dados", "Pagamento"] as const;
 
-function StepIndicator({ current }: { current: number }) {
+function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
+  const cols = labels.length === 5 ? "grid-cols-5" : "grid-cols-4";
   return (
-    <div className="grid grid-cols-4 gap-3 w-full">
-      {STEP_LABELS.map((label, i) => {
+    <div className={`grid ${cols} gap-3 w-full`}>
+      {labels.map((label, i) => {
         const idx = i + 1;
         const isActive = idx <= current;
         return (
@@ -51,11 +53,15 @@ export default function Booking() {
   const [, setLocation] = useLocation();
   const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
   const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+  const { data: barbers } = useListBarbers({ activeOnly: true }, { query: { queryKey: getListBarbersQueryKey({ activeOnly: true }) } });
   const createAppointment = useCreateAppointment();
 
   const [step, setStep] = useState(1);
+  // When true, step 1 shows the barber picker instead of the service list.
+  const [pickingBarber, setPickingBarber] = useState(false);
   const [formData, setFormData] = useState<{
     serviceId: string;
+    barberId: string;
     date: Date;
     time: string;
     name: string;
@@ -64,6 +70,7 @@ export default function Booking() {
     paymentMethod: "now" | "on_site";
   }>({
     serviceId: "",
+    barberId: "",
     date: new Date(),
     time: "",
     name: "",
@@ -75,6 +82,9 @@ export default function Booking() {
   const handleBook = () => {
     const service = services?.find(s => s.id.toString() === formData.serviceId);
     if (!service) return;
+    const barber = formData.barberId
+      ? barbers?.find(b => b.id.toString() === formData.barberId)
+      : undefined;
 
     const y = formData.date.getFullYear();
     const m = (formData.date.getMonth() + 1).toString().padStart(2, "0");
@@ -89,6 +99,7 @@ export default function Booking() {
         serviceName: service.name,
         servicePrice: service.price,
         serviceDuration: service.durationMinutes,
+        ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
         paymentMethod: formData.paymentMethod,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes
@@ -104,6 +115,37 @@ export default function Booking() {
   };
 
   const selectedService = services?.find(s => s.id.toString() === formData.serviceId);
+  const selectedBarber = formData.barberId
+    ? barbers?.find(b => b.id.toString() === formData.barberId)
+    : undefined;
+
+  // Active barbers eligible to perform the selected service.
+  // Barbers with NO service links are treated as "all services" (legacy / convenience).
+  const eligibleBarbers = React.useMemo(() => {
+    if (!barbers || !selectedService) return [];
+    return barbers.filter(b => b.serviceIds.length === 0 || b.serviceIds.includes(selectedService.id));
+  }, [barbers, selectedService]);
+  const needsBarberStep = eligibleBarbers.length >= 2;
+  const stepLabels = needsBarberStep ? STEP_LABELS_WITH_BARBER : STEP_LABELS_BASE;
+  // When the picker is open, we're on the "Profissional" indicator (step 2 of 5).
+  const indicatorStep = pickingBarber ? 2 : step === 1 ? 1 : needsBarberStep ? step + 1 : step;
+
+  const handleServicePick = (serviceId: number) => {
+    const list = (barbers ?? []).filter(b => b.serviceIds.length === 0 || b.serviceIds.includes(serviceId));
+    if (list.length >= 2) {
+      setFormData(prev => ({ ...prev, serviceId: serviceId.toString(), barberId: "", time: "" }));
+      setPickingBarber(true);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        serviceId: serviceId.toString(),
+        barberId: list[0]?.id.toString() ?? "",
+        time: "",
+      }));
+      setPickingBarber(false);
+      setStep(2);
+    }
+  };
 
   const paymentEnableNow = settings?.paymentEnableNow ?? false;
   const paymentEnableOnSite = settings?.paymentEnableOnSite ?? true;
@@ -121,9 +163,13 @@ export default function Booking() {
 
   const dateKey = `${formData.date.getFullYear()}-${(formData.date.getMonth()+1).toString().padStart(2,"0")}-${formData.date.getDate().toString().padStart(2,"0")}`;
   const availabilityServiceId = selectedService?.id ?? 0;
+  const availabilityBarberId = formData.barberId ? parseInt(formData.barberId, 10) : undefined;
+  const availabilityParams = availabilityBarberId
+    ? { date: dateKey, serviceId: availabilityServiceId, barberId: availabilityBarberId }
+    : { date: dateKey, serviceId: availabilityServiceId };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
-    { date: dateKey, serviceId: availabilityServiceId },
-    { query: { queryKey: getGetAvailabilityQueryKey({ date: dateKey, serviceId: availabilityServiceId }), enabled: step === 2 && availabilityServiceId > 0 } }
+    availabilityParams,
+    { query: { queryKey: getGetAvailabilityQueryKey(availabilityParams), enabled: step === 2 && availabilityServiceId > 0 && !pickingBarber } }
   );
 
   // Clear selected time if it's no longer available after a refresh.
@@ -154,9 +200,83 @@ export default function Booking() {
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
 
-        <StepIndicator current={step} />
+        <StepIndicator current={indicatorStep} labels={stepLabels} />
 
-        {step === 1 && (
+        {step === 1 && pickingBarber && (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => {
+                setPickingBarber(false);
+                setFormData(prev => ({ ...prev, serviceId: "", barberId: "" }));
+              }}
+              data-testid="button-back-to-services"
+              className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+              style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Trocar serviço
+            </button>
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Escolha o profissional</h2>
+              <p className="text-sm text-muted-foreground">
+                Quem você prefere para o serviço {selectedService?.name}?
+              </p>
+            </div>
+            <div className="space-y-3">
+              {eligibleBarbers.map((b) => {
+                const isSelected = formData.barberId === b.id.toString();
+                const initials = b.name
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((n) => n.charAt(0).toUpperCase())
+                  .join("");
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    data-testid={`button-barber-${b.id}`}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, barberId: b.id.toString(), time: "" }));
+                      setPickingBarber(false);
+                      setStep(2);
+                    }}
+                    className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
+                    style={{
+                      backgroundColor: "hsl(0 0% 7%)",
+                      border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+                      style={{
+                        backgroundColor: AMBER_SOFT,
+                        color: AMBER,
+                        fontWeight: 700,
+                        fontSize: "1.05rem",
+                        border: `1px solid ${AMBER}`,
+                      }}
+                    >
+                      {b.photoUrl ? (
+                        <img src={b.photoUrl} alt={b.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{initials || <User className="w-5 h-5" />}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-base">{b.name}</p>
+                      {b.bio && <p className="text-xs text-muted-foreground mt-0.5 truncate">{b.bio}</p>}
+                    </div>
+                    <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(0 0% 40%)" }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 1 && !pickingBarber && (
           <div className="space-y-4">
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Escolha um serviço</h2>
@@ -170,10 +290,7 @@ export default function Booking() {
                     key={service.id}
                     type="button"
                     data-testid={`button-service-${service.id}`}
-                    onClick={() => {
-                      setFormData({ ...formData, serviceId: service.id.toString() });
-                      setStep(2);
-                    }}
+                    onClick={() => handleServicePick(service.id)}
                     className="w-full text-left rounded-2xl p-4 transition-all"
                     style={{
                       backgroundColor: "hsl(0 0% 7%)",
@@ -285,6 +402,41 @@ export default function Booking() {
                       </span>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {selectedBarber && (
+                <div
+                  className="rounded-xl p-3 flex items-center gap-3"
+                  style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+                    style={{ backgroundColor: AMBER_SOFT, color: AMBER, border: `1px solid ${AMBER}`, fontWeight: 700 }}
+                  >
+                    {selectedBarber.photoUrl ? (
+                      <img src={selectedBarber.photoUrl} alt={selectedBarber.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs">
+                        {selectedBarber.name.split(" ").slice(0, 2).map((n) => n.charAt(0).toUpperCase()).join("")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Profissional</p>
+                    <p className="font-semibold text-sm truncate">{selectedBarber.name}</p>
+                  </div>
+                  {needsBarberStep && (
+                    <button
+                      type="button"
+                      data-testid="button-change-barber"
+                      onClick={() => { setPickingBarber(true); setStep(1); }}
+                      className="text-xs underline transition-opacity hover:opacity-70"
+                      style={{ background: "none", border: "none", color: AMBER, cursor: "pointer" }}
+                    >
+                      Trocar
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -585,6 +737,12 @@ export default function Booking() {
                     <span className="text-muted-foreground">Serviço</span>
                     <span className="font-semibold">{selectedService.name}</span>
                   </div>
+                  {selectedBarber && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Profissional</span>
+                      <span className="font-semibold">{selectedBarber.name}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Data e hora</span>
                     <span className="font-semibold">

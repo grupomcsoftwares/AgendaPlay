@@ -8,6 +8,8 @@ export const appointmentsTable = pgTable("appointments", {
   clientName: text("client_name").notNull(),
   serviceId: integer("service_id"),
   serviceName: text("service_name").notNull(),
+  barberId: integer("barber_id"),
+  barberName: text("barber_name"),
   servicePrice: numeric("service_price", { precision: 10, scale: 2 }).notNull(),
   serviceDuration: integer("service_duration").notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),

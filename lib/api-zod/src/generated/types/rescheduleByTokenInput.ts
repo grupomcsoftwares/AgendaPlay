@@ -9,4 +9,6 @@
 export interface RescheduleByTokenInput {
   /** ISO 8601 datetime of the new slot */
   scheduledAt: string;
+  /** Optionally switch barber when rescheduling */
+  barberId?: number;
 }

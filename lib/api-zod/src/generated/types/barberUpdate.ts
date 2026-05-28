@@ -6,13 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ServiceUpdate {
+export interface BarberUpdate {
   name?: string;
   /** @nullable */
-  description?: string | null;
-  durationMinutes?: number;
-  price?: number;
+  photoUrl?: string | null;
   /** @nullable */
-  imageUrl?: string | null;
-  barberIds?: number[];
+  bio?: string | null;
+  active?: boolean;
+  sortOrder?: number;
+  serviceIds?: number[];
 }

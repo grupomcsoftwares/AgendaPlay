@@ -7,6 +7,7 @@ import queueRouter from "./queue";
 import dashboardRouter from "./dashboard";
 import financialRouter from "./financial";
 import settingsRouter from "./settings";
+import barbersRouter from "./barbers";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(queueRouter);
 router.use(dashboardRouter);
 router.use(financialRouter);
 router.use(settingsRouter);
+router.use(barbersRouter);
 
 export default router;

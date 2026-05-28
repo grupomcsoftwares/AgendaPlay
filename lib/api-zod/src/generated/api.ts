@@ -103,7 +103,8 @@ export const ListServicesResponseItem = zod.object({
   "description": zod.string().nullish(),
   "durationMinutes": zod.number(),
   "price": zod.number(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 export const ListServicesResponse = zod.array(ListServicesResponseItem)
 
@@ -116,7 +117,8 @@ export const CreateServiceBody = zod.object({
   "description": zod.string().optional(),
   "durationMinutes": zod.number(),
   "price": zod.number(),
-  "imageUrl": zod.string().optional()
+  "imageUrl": zod.string().optional(),
+  "barberIds": zod.array(zod.number()).optional()
 })
 
 
@@ -133,7 +135,8 @@ export const GetServiceResponse = zod.object({
   "description": zod.string().nullish(),
   "durationMinutes": zod.number(),
   "price": zod.number(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 
 
@@ -149,7 +152,8 @@ export const UpdateServiceBody = zod.object({
   "description": zod.string().nullish(),
   "durationMinutes": zod.number().optional(),
   "price": zod.number().optional(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "barberIds": zod.array(zod.number()).optional()
 })
 
 export const UpdateServiceResponse = zod.object({
@@ -158,7 +162,8 @@ export const UpdateServiceResponse = zod.object({
   "description": zod.string().nullish(),
   "durationMinutes": zod.number(),
   "price": zod.number(),
-  "imageUrl": zod.string().nullish()
+  "imageUrl": zod.string().nullish(),
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 
 
@@ -184,6 +189,8 @@ export const ListAppointmentsResponseItem = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -204,6 +211,8 @@ export const CreateAppointmentBody = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().optional(),
   "serviceName": zod.string(),
+  "barberId": zod.number().optional(),
+  "barberName": zod.string().optional(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -225,6 +234,8 @@ export const GetAppointmentResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -259,6 +270,8 @@ export const UpdateAppointmentResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -291,6 +304,8 @@ export const StartAppointmentResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -315,6 +330,8 @@ export const CompleteAppointmentResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -339,6 +356,8 @@ export const CancelAppointmentResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -363,6 +382,8 @@ export const GetAppointmentByTokenResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -387,6 +408,8 @@ export const CancelAppointmentByTokenResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -406,7 +429,8 @@ export const RescheduleAppointmentByTokenParams = zod.object({
 })
 
 export const RescheduleAppointmentByTokenBody = zod.object({
-  "scheduledAt": zod.string().describe('ISO 8601 datetime of the new slot')
+  "scheduledAt": zod.string().describe('ISO 8601 datetime of the new slot'),
+  "barberId": zod.number().optional().describe('Optionally switch barber when rescheduling')
 })
 
 export const RescheduleAppointmentByTokenResponse = zod.object({
@@ -415,6 +439,8 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -431,7 +457,8 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
  */
 export const GetAvailabilityQueryParams = zod.object({
   "date": zod.coerce.string(),
-  "serviceId": zod.coerce.number()
+  "serviceId": zod.coerce.number(),
+  "barberId": zod.coerce.number().optional().describe('Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.')
 })
 
 export const GetAvailabilityResponse = zod.object({
@@ -523,6 +550,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -538,6 +567,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
   "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
@@ -572,6 +603,95 @@ export const GetFinancialSummaryResponse = zod.object({
   "revenue": zod.number(),
   "count": zod.number()
 }))
+})
+
+
+/**
+ * @summary List barbers
+ */
+export const ListBarbersQueryParams = zod.object({
+  "activeOnly": zod.coerce.boolean().optional(),
+  "serviceId": zod.coerce.number().optional().describe('Only return barbers that perform this service')
+})
+
+export const ListBarbersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.string(),
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+})
+export const ListBarbersResponse = zod.array(ListBarbersResponseItem)
+
+
+/**
+ * @summary Create a barber
+ */
+export const CreateBarberBody = zod.object({
+  "name": zod.string(),
+  "photoUrl": zod.string().optional(),
+  "bio": zod.string().optional(),
+  "active": zod.boolean().optional(),
+  "sortOrder": zod.number().optional(),
+  "serviceIds": zod.array(zod.number()).optional()
+})
+
+
+/**
+ * @summary Get a barber
+ */
+export const GetBarberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetBarberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.string(),
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+})
+
+
+/**
+ * @summary Update a barber
+ */
+export const UpdateBarberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateBarberBody = zod.object({
+  "name": zod.string().optional(),
+  "photoUrl": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "active": zod.boolean().optional(),
+  "sortOrder": zod.number().optional(),
+  "serviceIds": zod.array(zod.number()).optional()
+})
+
+export const UpdateBarberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "photoUrl": zod.string().nullish(),
+  "bio": zod.string().nullish(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.string(),
+  "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".')
+})
+
+
+/**
+ * @summary Delete a barber
+ */
+export const DeleteBarberParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

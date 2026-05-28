@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { isBarberAllowedForService } from "./barbers";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -93,7 +94,7 @@ router.get("/availability", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { date, serviceId } = parsed.data;
+  const { date, serviceId, barberId } = parsed.data;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
     res.status(400).json({ error: "Invalid date format (expected YYYY-MM-DD)" });
     return;
@@ -105,6 +106,7 @@ router.get("/availability", async (req, res): Promise<void> => {
     return;
   }
   const duration = service.durationMinutes;
+  const barberFilter = typeof barberId === "number" ? barberId : null;
 
   const [settings] = await db.select().from(settingsTable).limit(1);
   const weekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
@@ -137,6 +139,10 @@ router.get("/availability", async (req, res): Promise<void> => {
   for (const a of appts) {
     if (a.status === "cancelled") continue;
     if (localYMD(a.scheduledAt) !== date) continue;
+    // When a specific barber is requested, only count their own appointments.
+    // Legacy appointments without a barberId block ALL barbers' agendas so we never
+    // accidentally double-book a shop that wasn't using barbers before.
+    if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;
     const start = parseHHMM(localHHMM(a.scheduledAt));
     blocked.push([start, start + a.serviceDuration]);
   }
@@ -183,6 +189,20 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const startMin = parseHHMM(localHHMM(scheduledAtDate));
   const endMin = startMin + parsed.data.serviceDuration;
 
+  // Validate barber up front (cheap; minor TOCTOU vs. deactivation is acceptable).
+  if (typeof parsed.data.barberId === "number") {
+    const check = await isBarberAllowedForService(db, parsed.data.barberId, parsed.data.serviceId ?? null);
+    if (!check.ok) {
+      res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
+      return;
+    }
+    // Server is source of truth for the denormalized name.
+    parsed.data.barberName = check.barberName;
+  } else {
+    // Strip any client-supplied barberName when no barberId is provided.
+    parsed.data.barberName = undefined;
+  }
+
   let conflict = false;
   const appointment = await db.transaction(async (tx) => {
     // Serialize availability checks for this date so two concurrent bookings can't both pass.
@@ -201,9 +221,12 @@ router.post("/appointments", async (req, res): Promise<void> => {
     // Enforce the same 5-min gap that GET /availability advertises so the
     // server can't accept a booking that the slot grid would have blocked.
     const BUFFER = 5;
+    const incomingBarberId = parsed.data.barberId ?? null;
     for (const a of sameDay) {
       if (a.status === "cancelled") continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
+      // Per-barber agendas: only collide with own bookings, unless either side has no barber.
+      if (incomingBarberId !== null && a.barberId !== null && a.barberId !== incomingBarberId) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
       const aEnd = aStart + a.serviceDuration;
       if (startMin < aEnd + BUFFER && endMin + BUFFER > aStart) {
@@ -438,6 +461,21 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   const localDate = localYMD(newDate);
   const startMin = parseHHMM(localHHMM(newDate));
 
+  // Validate explicit barber switch before opening the tx.
+  let overrideBarberName: string | undefined;
+  if (typeof req.body?.barberId === "number") {
+    // We don't know existing.serviceId yet — fetch once for validation.
+    const [pre] = await db.select().from(appointmentsTable).where(eq(appointmentsTable.cancelToken, token));
+    if (pre) {
+      const check = await isBarberAllowedForService(db, req.body.barberId, pre.serviceId ?? null);
+      if (!check.ok) {
+        res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
+        return;
+      }
+      overrideBarberName = check.barberName;
+    }
+  }
+
   const result = await db.transaction(async (tx) => {
     let hash = 0;
     for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
@@ -462,10 +500,13 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
       .select()
       .from(appointmentsTable)
       .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+    // Reschedule keeps the same barber by default; honour explicit override too.
+    const targetBarberId = typeof req.body?.barberId === "number" ? req.body.barberId : existing.barberId;
     for (const a of sameDay) {
       if (a.id === existing.id) continue; // never collide with self
       if (a.status === "cancelled") continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
+      if (targetBarberId !== null && a.barberId !== null && a.barberId !== targetBarberId) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
       const aEnd = aStart + a.serviceDuration;
       if (startMin < aEnd + BUFFER && endMin + BUFFER > aStart) {
@@ -473,9 +514,14 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
       }
     }
 
+    const updateSet: Record<string, unknown> = { scheduledAt: newDate };
+    if (typeof req.body?.barberId === "number" && req.body.barberId !== existing.barberId) {
+      updateSet.barberId = req.body.barberId;
+      updateSet.barberName = overrideBarberName ?? null;
+    }
     const [updated] = await tx
       .update(appointmentsTable)
-      .set({ scheduledAt: newDate })
+      .set(updateSet)
       .where(and(
         eq(appointmentsTable.id, existing.id),
         sql`${appointmentsTable.status} IN ('pending', 'confirmed')`,

@@ -12,4 +12,8 @@ export type GetAvailabilityParams = {
  */
 date: string;
 serviceId: number;
+/**
+ * Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
+ */
+barberId?: number;
 };

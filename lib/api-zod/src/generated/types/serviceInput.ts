@@ -12,4 +12,5 @@ export interface ServiceInput {
   durationMinutes: number;
   price: number;
   imageUrl?: string;
+  barberIds?: number[];
 }
