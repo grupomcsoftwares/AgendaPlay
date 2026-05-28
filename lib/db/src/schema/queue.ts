@@ -17,6 +17,7 @@ export const queueTable = pgTable(
     position: integer("position").notNull(),
     status: text("status").notNull().default("waiting"),
     notes: text("notes"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

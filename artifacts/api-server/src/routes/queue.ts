@@ -13,6 +13,7 @@ function formatEntry(e: typeof queueTable.$inferSelect) {
   return {
     ...e,
     servicePrice: parseFloat(e.servicePrice),
+    startedAt: e.startedAt ? e.startedAt.toISOString() : null,
     createdAt: e.createdAt.toISOString(),
   };
 }
@@ -55,7 +56,7 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
 
   await tx
     .update(queueTable)
-    .set({ status: "in_progress" })
+    .set({ status: "in_progress", startedAt: new Date() })
     .where(eq(queueTable.id, next.id));
   if (next.appointmentId !== null) {
     await tx
@@ -152,7 +153,7 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
 
     const [started] = await tx
       .update(queueTable)
-      .set({ status: "in_progress" })
+      .set({ status: "in_progress", startedAt: new Date() })
       .where(eq(queueTable.id, params.data.id))
       .returning();
     if (!started) return null;

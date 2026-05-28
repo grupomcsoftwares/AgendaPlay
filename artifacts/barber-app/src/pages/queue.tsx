@@ -31,6 +31,65 @@ function LiveClock() {
   );
 }
 
+function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; durationMinutes: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const startMs = new Date(startedAt).getTime();
+  const totalMs = durationMinutes * 60_000;
+  const elapsedMs = Math.max(0, now - startMs);
+  const remainingMs = Math.max(0, totalMs - elapsedMs);
+  const pct = Math.min(100, (elapsedMs / totalMs) * 100);
+  const overdue = elapsedMs > totalMs;
+
+  const mins = Math.floor(remainingMs / 60_000);
+  const secs = Math.floor((remainingMs % 60_000) / 1000);
+  const label = overdue
+    ? `+${Math.floor(elapsedMs / 60_000) - durationMinutes} min em atraso`
+    : `${mins}:${secs.toString().padStart(2, "0")} restantes`;
+
+  const accent = overdue ? "hsl(0 72% 55%)" : "hsl(var(--sidebar-primary))";
+
+  return (
+    <div className="w-full max-w-md" data-testid="service-progress">
+      <div className="flex items-center justify-between mb-2" style={{ fontSize: "0.8rem" }}>
+        <span style={{ color: "hsl(0 0% 55%)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          {overdue ? "Tempo excedido" : "Em andamento"}
+        </span>
+        <span
+          data-testid="text-remaining-time"
+          style={{ color: accent, fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.05em" }}
+        >
+          {label}
+        </span>
+      </div>
+      <div
+        className="w-full rounded-full overflow-hidden"
+        style={{ height: 8, backgroundColor: "hsl(0 0% 14%)" }}
+      >
+        <div
+          style={{
+            width: `${pct}%`,
+            height: "100%",
+            backgroundColor: accent,
+            transition: "width 0.8s linear",
+            boxShadow: overdue ? "none" : `0 0 12px ${accent}`,
+          }}
+        />
+      </div>
+      <div className="flex items-center justify-between mt-1.5" style={{ fontSize: "0.7rem", color: "hsl(0 0% 40%)" }}>
+        <span>
+          {Math.floor(elapsedMs / 60_000)}:{Math.floor((elapsedMs % 60_000) / 1000).toString().padStart(2, "0")} decorridos
+        </span>
+        <span>{durationMinutes} min</span>
+      </div>
+    </div>
+  );
+}
+
 function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
   const d = new Date(scheduledAt);
   const hh = d.getHours().toString().padStart(2, "0");
@@ -213,10 +272,13 @@ export default function Queue() {
                   <p className="mt-2" style={{ color: "hsl(var(--sidebar-primary))", fontSize: "1.125rem", fontWeight: 500 }}>
                     {currentEntry.serviceName}
                   </p>
-                  <p style={{ color: "hsl(0 0% 45%)", fontSize: "0.875rem", marginTop: 4 }}>
-                    {currentEntry.serviceDuration} min
-                  </p>
                 </div>
+                {currentEntry.startedAt && (
+                  <ServiceProgress
+                    startedAt={currentEntry.startedAt}
+                    durationMinutes={currentEntry.serviceDuration}
+                  />
+                )}
                 <button
                   onClick={() => handleRemove(currentEntry.id)}
                   data-testid={`button-complete-${currentEntry.id}`}

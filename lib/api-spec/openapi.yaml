@@ -695,6 +695,8 @@ components:
           type: string
         notes:
           type: ["string", "null"]
+        startedAt:
+          type: ["string", "null"]
         createdAt:
           type: string
 
