@@ -90,25 +90,63 @@ function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; du
   );
 }
 
+const WEEKDAYS_SHORT = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+
+function isSameDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function dayLabel(d: Date): { label: string; isToday: boolean } {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  if (isSameDay(d, today)) return { label: "HOJE", isToday: true };
+  if (isSameDay(d, tomorrow)) return { label: "AMANHÃ", isToday: false };
+  const dd = d.getDate().toString().padStart(2, "0");
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  return { label: `${WEEKDAYS_SHORT[d.getDay()]} ${dd}/${mm}`, isToday: false };
+}
+
 function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
   const d = new Date(scheduledAt);
   const hh = d.getHours().toString().padStart(2, "0");
   const mm = d.getMinutes().toString().padStart(2, "0");
+  const { label, isToday } = dayLabel(d);
   return (
     <div
+      className="flex flex-col items-center"
       style={{
         backgroundColor: "hsl(0 0% 12%)",
         borderRadius: "0.5rem",
-        padding: "0.5rem 1.25rem",
-        fontFamily: "monospace",
-        fontSize: "2rem",
-        fontWeight: 700,
-        letterSpacing: "0.15em",
-        color: "hsl(var(--foreground))",
+        padding: "0.4rem 1.25rem 0.5rem",
         flexShrink: 0,
       }}
     >
-      {hh} : {mm}
+      <span
+        data-testid="text-scheduled-day"
+        style={{
+          fontFamily: "monospace",
+          fontSize: "0.65rem",
+          fontWeight: 700,
+          letterSpacing: "0.1em",
+          color: isToday ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 55%)",
+          marginBottom: 2,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: "monospace",
+          fontSize: "2rem",
+          fontWeight: 700,
+          letterSpacing: "0.15em",
+          color: "hsl(var(--foreground))",
+          lineHeight: 1,
+        }}
+      >
+        {hh} : {mm}
+      </span>
     </div>
   );
 }
@@ -365,7 +403,7 @@ export default function Queue() {
           >
             <Clock className="h-4 w-4" style={{ color: "hsl(var(--sidebar-primary))" }} />
             <span style={{ fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              Fila de Hoje
+              Próximos da Fila
             </span>
             {waitingQueue.length > 0 && (
               <span
@@ -389,7 +427,7 @@ export default function Queue() {
                 className="flex items-center justify-center h-full"
                 style={{ color: "hsl(0 0% 30%)", fontSize: "0.875rem" }}
               >
-                Nenhum agendamento restante hoje
+                Nenhum cliente na fila
               </div>
             ) : (
               <div className="p-3 space-y-2">
@@ -419,26 +457,31 @@ export default function Queue() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {entry.scheduledAt && (
-                        <span
-                          data-testid={`queue-time-${entry.id}`}
-                          style={{
-                            fontFamily: "monospace",
-                            fontSize: "0.85rem",
-                            fontWeight: 700,
-                            color: "hsl(var(--sidebar-primary))",
-                            letterSpacing: "0.05em",
-                            backgroundColor: "hsl(var(--sidebar-primary) / 0.1)",
-                            padding: "0.2rem 0.5rem",
-                            borderRadius: "0.375rem",
-                          }}
-                        >
-                          {new Date(entry.scheduledAt).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      )}
+                      {entry.scheduledAt && (() => {
+                        const sd = new Date(entry.scheduledAt);
+                        const { label, isToday } = dayLabel(sd);
+                        const time = sd.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                        const accent = isToday ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 65%)";
+                        const bg = isToday ? "hsl(var(--sidebar-primary) / 0.1)" : "hsl(0 0% 14%)";
+                        return (
+                          <span
+                            data-testid={`queue-time-${entry.id}`}
+                            className="flex flex-col items-end"
+                            style={{
+                              fontFamily: "monospace",
+                              fontWeight: 700,
+                              letterSpacing: "0.05em",
+                              backgroundColor: bg,
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "0.375rem",
+                              lineHeight: 1.15,
+                            }}
+                          >
+                            <span style={{ fontSize: "0.6rem", color: accent, letterSpacing: "0.08em" }}>{label}</span>
+                            <span style={{ fontSize: "0.85rem", color: accent }}>{time}</span>
+                          </span>
+                        );
+                      })()}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleStart(entry.id)}
