@@ -5,6 +5,11 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+export interface RescheduleByTokenInput {
+  /** ISO 8601 datetime of the new slot */
+  scheduledAt: string;
+}
+
 export interface HealthStatus {
   status: string;
 }

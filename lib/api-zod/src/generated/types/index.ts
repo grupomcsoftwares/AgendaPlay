@@ -26,6 +26,7 @@ export * from './listAppointmentsParams';
 export * from './listClientsParams';
 export * from './queueEntry';
 export * from './queueInput';
+export * from './rescheduleByTokenInput';
 export * from './revenueByDay';
 export * from './revenueByService';
 export * from './service';

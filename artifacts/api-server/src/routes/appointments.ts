@@ -415,6 +415,95 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
   res.json(formatAppointmentWithToken(result.appointment!));
 });
 
+router.post("/appointments/by-token/:token/reschedule", async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "");
+  if (!token) {
+    res.status(400).json({ error: "Token required" });
+    return;
+  }
+  const rawSched = typeof req.body?.scheduledAt === "string" ? req.body.scheduledAt : null;
+  if (!rawSched) {
+    res.status(400).json({ error: "scheduledAt required" });
+    return;
+  }
+  const newDate = new Date(rawSched);
+  if (Number.isNaN(newDate.getTime())) {
+    res.status(400).json({ error: "Invalid scheduledAt" });
+    return;
+  }
+  if (newDate.getTime() <= Date.now()) {
+    res.status(400).json({ error: "O novo horário deve estar no futuro." });
+    return;
+  }
+  const localDate = localYMD(newDate);
+  const startMin = parseHHMM(localHHMM(newDate));
+
+  const result = await db.transaction(async (tx) => {
+    let hash = 0;
+    for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(742003, ${hash})`);
+
+    const [existing] = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(eq(appointmentsTable.cancelToken, token));
+    if (!existing) return { error: "notfound" as const };
+    if (existing.status === "cancelled") return { error: "cancelled" as const };
+    if (existing.status === "in_progress" || existing.status === "completed") {
+      return { error: "locked" as const };
+    }
+
+    const endMin = startMin + existing.serviceDuration;
+    const BUFFER = 5;
+    const dayStart = new Date(`${localDate}T00:00:00Z`);
+    const before = new Date(dayStart.getTime() - 24 * 3600 * 1000);
+    const after = new Date(dayStart.getTime() + 48 * 3600 * 1000);
+    const sameDay = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+    for (const a of sameDay) {
+      if (a.id === existing.id) continue; // never collide with self
+      if (a.status === "cancelled") continue;
+      if (localYMD(a.scheduledAt) !== localDate) continue;
+      const aStart = parseHHMM(localHHMM(a.scheduledAt));
+      const aEnd = aStart + a.serviceDuration;
+      if (startMin < aEnd + BUFFER && endMin + BUFFER > aStart) {
+        return { error: "conflict" as const };
+      }
+    }
+
+    const [updated] = await tx
+      .update(appointmentsTable)
+      .set({ scheduledAt: newDate })
+      .where(and(
+        eq(appointmentsTable.id, existing.id),
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed')`,
+      ))
+      .returning();
+    if (!updated) return { error: "locked" as const };
+    return { appointment: updated };
+  });
+
+  if (result.error === "notfound") {
+    res.status(404).json({ error: "Agendamento não encontrado" });
+    return;
+  }
+  if (result.error === "cancelled") {
+    res.status(409).json({ error: "Este agendamento foi cancelado." });
+    return;
+  }
+  if (result.error === "locked") {
+    res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído." });
+    return;
+  }
+  if (result.error === "conflict") {
+    res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
+    return;
+  }
+  res.json(formatAppointmentWithToken(result.appointment!));
+});
+
 router.post("/appointments/:id/cancel", async (req, res): Promise<void> => {
   const params = CancelAppointmentParams.safeParse(req.params);
   if (!params.success) {

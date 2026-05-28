@@ -410,6 +410,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /appointments/by-token/{token}/reschedule:
+    post:
+      operationId: rescheduleAppointmentByToken
+      tags: [appointments]
+      summary: Reschedule an appointment using its public cancel token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleByTokenInput"
+      responses:
+        "200":
+          description: Rescheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
   /availability:
     get:
       operationId: getAvailability
@@ -568,6 +593,14 @@ paths:
 
 components:
   schemas:
+    RescheduleByTokenInput:
+      type: object
+      required: [scheduledAt]
+      properties:
+        scheduledAt:
+          type: string
+          description: ISO 8601 datetime of the new slot
+
     HealthStatus:
       type: object
       properties:

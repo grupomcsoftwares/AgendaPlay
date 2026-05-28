@@ -1,8 +1,17 @@
 import { useState } from "react";
 import { useRoute } from "wouter";
-import { useGetAppointmentByToken, useCancelAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetAppointmentByToken,
+  useCancelAppointmentByToken,
+  useRescheduleAppointmentByToken,
+  useGetAvailability,
+  getGetAppointmentByTokenQueryKey,
+  getGetAvailabilityQueryKey,
+  useGetSettings,
+  getGetSettingsQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const AMBER = "hsl(38 88% 55%)";
@@ -21,12 +30,27 @@ export default function CancelBooking() {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [reschedOpen, setReschedOpen] = useState(false);
+  const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
+  const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
   const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
   const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
     query: { queryKey: getGetAppointmentByTokenQueryKey(token), enabled: !!token },
   });
   const cancelMut = useCancelAppointmentByToken();
+  const rescheduleMut = useRescheduleAppointmentByToken();
+
+  const serviceId = appointment?.serviceId ?? 0;
+  const { data: availability, isFetching: loadingSlots } = useGetAvailability(
+    { date: reschedDate, serviceId },
+    {
+      query: {
+        queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceId }),
+        enabled: reschedOpen && !!reschedDate && serviceId > 0,
+      },
+    },
+  );
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -49,6 +73,43 @@ export default function CancelBooking() {
   const { date, time } = formatDateTime(appointment.scheduledAt);
   const cancelled = appointment.status === "cancelled";
   const locked = appointment.status === "in_progress" || appointment.status === "completed";
+
+  const openReschedule = () => {
+    setErrorMsg(null);
+    // Default the picker to the appointment's current date so the user sees
+    // the day's slots straight away.
+    const cur = appointment ? new Date(appointment.scheduledAt) : new Date();
+    const y = cur.getFullYear();
+    const m = (cur.getMonth() + 1).toString().padStart(2, "0");
+    const d = cur.getDate().toString().padStart(2, "0");
+    setReschedDate(`${y}-${m}-${d}`);
+    setReschedTime("");
+    setReschedOpen(true);
+  };
+
+  const handleReschedule = () => {
+    if (!reschedDate || !reschedTime) return;
+    setErrorMsg(null);
+    // Fixed -03:00 (Brazil) — matches server's TZ assumption.
+    const scheduledAt = new Date(`${reschedDate}T${reschedTime}:00-03:00`).toISOString();
+    rescheduleMut.mutate(
+      { token, data: { scheduledAt } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
+          queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
+          setReschedOpen(false);
+        },
+        onError: (err: unknown) => {
+          const data = (err as { data?: { error?: string } } | null)?.data;
+          setErrorMsg(data?.error ?? "Não foi possível alterar o horário. Tente outro.");
+          // If the slot was taken, clear it so the user picks again.
+          setReschedTime("");
+          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceId }) });
+        },
+      },
+    );
+  };
 
   const handleCancel = () => {
     setErrorMsg(null);
@@ -147,22 +208,191 @@ export default function CancelBooking() {
               </button>
             </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            data-testid="button-cancel"
-            className="w-full rounded-xl py-3 text-sm font-semibold"
-            style={{
-              backgroundColor: "hsl(0 0% 9%)",
-              border: "1px solid hsl(0 62% 50% / 0.4)",
-              color: "hsl(0 70% 65%)",
-              cursor: "pointer",
+        ) : reschedOpen ? (
+          <ReschedulePanel
+            date={reschedDate}
+            setDate={setReschedDate}
+            time={reschedTime}
+            setTime={setReschedTime}
+            slots={availability?.slots ?? []}
+            loadingSlots={loadingSlots}
+            pending={rescheduleMut.isPending}
+            onCancel={() => {
+              setReschedOpen(false);
+              setReschedTime("");
             }}
-          >
-            Cancelar agendamento
-          </button>
+            onConfirm={handleReschedule}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={openReschedule}
+              data-testid="button-reschedule"
+              className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: "hsl(0 0% 9%)",
+                border: `1px solid ${AMBER}`,
+                color: AMBER,
+                cursor: "pointer",
+              }}
+            >
+              <CalendarClock className="w-4 h-4" />
+              Mudar horário
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              data-testid="button-cancel"
+              className="rounded-xl py-3 text-sm font-semibold"
+              style={{
+                backgroundColor: "hsl(0 0% 9%)",
+                border: "1px solid hsl(0 62% 50% / 0.4)",
+                color: "hsl(0 70% 65%)",
+                cursor: "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ReschedulePanel({
+  date,
+  setDate,
+  time,
+  setTime,
+  slots,
+  loadingSlots,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  date: string;
+  setDate: (d: string) => void;
+  time: string;
+  setTime: (t: string) => void;
+  slots: Array<{ time: string; available: boolean }>;
+  loadingSlots: boolean;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // Build a 14-day picker starting today (Brazil local).
+  const today = new Date();
+  const days: Array<{ key: string; weekday: string; dayNum: string }> = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, "0");
+    const dd = d.getDate().toString().padStart(2, "0");
+    days.push({
+      key: `${y}-${m}-${dd}`,
+      weekday: ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][d.getDay()],
+      dayNum: dd,
+    });
+  }
+
+  return (
+    <div className="space-y-4 bg-card border border-border rounded-2xl p-5">
+      <div className="flex items-center gap-2">
+        <CalendarClock className="w-4 h-4" style={{ color: AMBER }} />
+        <h2 className="text-sm font-bold uppercase tracking-wider">Escolha um novo horário</h2>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Dia</p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1" data-testid="reschedule-days">
+          {days.map((d) => {
+            const active = d.key === date;
+            return (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => {
+                  setDate(d.key);
+                  setTime("");
+                }}
+                data-testid={`day-${d.key}`}
+                className="flex flex-col items-center rounded-lg flex-shrink-0"
+                style={{
+                  width: 48,
+                  padding: "0.4rem 0",
+                  backgroundColor: active ? AMBER : "hsl(0 0% 12%)",
+                  color: active ? "hsl(0 0% 0%)" : "hsl(0 0% 70%)",
+                  border: `1px solid ${active ? AMBER : "hsl(0 0% 18%)"}`,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: "0.7rem",
+                }}
+              >
+                <span style={{ opacity: 0.8 }}>{d.weekday}</span>
+                <span style={{ fontSize: "1rem", fontWeight: 700 }}>{d.dayNum}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Horário</p>
+        {loadingSlots ? (
+          <p className="text-sm text-muted-foreground">Carregando horários…</p>
+        ) : slots.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Sem horários neste dia.</p>
+        ) : (
+          <div className="grid grid-cols-4 gap-1.5" data-testid="reschedule-slots">
+            {slots.map((s) => {
+              const active = s.time === time;
+              return (
+                <button
+                  key={s.time}
+                  type="button"
+                  disabled={!s.available}
+                  onClick={() => setTime(s.time)}
+                  data-testid={`slot-${s.time}`}
+                  className="rounded-md text-xs font-semibold py-2"
+                  style={{
+                    backgroundColor: active ? AMBER : s.available ? "hsl(0 0% 12%)" : "hsl(0 0% 8%)",
+                    color: active ? "hsl(0 0% 0%)" : s.available ? "hsl(0 0% 80%)" : "hsl(0 0% 30%)",
+                    border: `1px solid ${active ? AMBER : "hsl(0 0% 16%)"}`,
+                    cursor: s.available ? "pointer" : "not-allowed",
+                    textDecoration: s.available ? "none" : "line-through",
+                  }}
+                >
+                  {s.time}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 pt-1">
+        <Button variant="outline" onClick={onCancel} disabled={pending}>
+          Voltar
+        </Button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={!time || pending}
+          data-testid="button-confirm-reschedule"
+          className="rounded-md text-sm font-semibold"
+          style={{
+            backgroundColor: !time || pending ? "hsl(38 30% 30%)" : AMBER,
+            color: "hsl(0 0% 0%)",
+            border: "none",
+            cursor: !time || pending ? "not-allowed" : "pointer",
+            padding: "0.5rem 1rem",
+          }}
+        >
+          {pending ? "Salvando…" : "Confirmar"}
+        </button>
       </div>
     </div>
   );

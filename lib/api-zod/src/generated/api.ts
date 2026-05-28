@@ -399,6 +399,34 @@ export const CancelAppointmentByTokenResponse = zod.object({
 
 
 /**
+ * @summary Reschedule an appointment using its public cancel token
+ */
+export const RescheduleAppointmentByTokenParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const RescheduleAppointmentByTokenBody = zod.object({
+  "scheduledAt": zod.string().describe('ISO 8601 datetime of the new slot')
+})
+
+export const RescheduleAppointmentByTokenResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
  * @summary Get available time slots for a date and service
  */
 export const GetAvailabilityQueryParams = zod.object({

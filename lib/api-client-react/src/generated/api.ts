@@ -36,6 +36,7 @@ import type {
   ListClientsParams,
   QueueEntry,
   QueueInput,
+  RescheduleByTokenInput,
   Service,
   ServiceInput,
   ServiceUpdate,
@@ -1602,6 +1603,78 @@ export const useCancelAppointmentByToken = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCancelAppointmentByTokenMutationOptions(options));
+    }
+
+export const getRescheduleAppointmentByTokenUrl = (token: string,) => {
+
+
+
+
+  return `/api/appointments/by-token/${token}/reschedule`
+}
+
+/**
+ * @summary Reschedule an appointment using its public cancel token
+ */
+export const rescheduleAppointmentByToken = async (token: string,
+    rescheduleByTokenInput: RescheduleByTokenInput, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getRescheduleAppointmentByTokenUrl(token),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      rescheduleByTokenInput,)
+  }
+);}
+
+
+
+
+export const getRescheduleAppointmentByTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rescheduleAppointmentByToken>>, TError,{token: string;data: BodyType<RescheduleByTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rescheduleAppointmentByToken>>, TError,{token: string;data: BodyType<RescheduleByTokenInput>}, TContext> => {
+
+const mutationKey = ['rescheduleAppointmentByToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rescheduleAppointmentByToken>>, {token: string;data: BodyType<RescheduleByTokenInput>}> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  rescheduleAppointmentByToken(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RescheduleAppointmentByTokenMutationResult = NonNullable<Awaited<ReturnType<typeof rescheduleAppointmentByToken>>>
+    export type RescheduleAppointmentByTokenMutationBody = BodyType<RescheduleByTokenInput>
+    export type RescheduleAppointmentByTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Reschedule an appointment using its public cancel token
+ */
+export const useRescheduleAppointmentByToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rescheduleAppointmentByToken>>, TError,{token: string;data: BodyType<RescheduleByTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rescheduleAppointmentByToken>>,
+        TError,
+        {token: string;data: BodyType<RescheduleByTokenInput>},
+        TContext
+      > => {
+      return useMutation(getRescheduleAppointmentByTokenMutationOptions(options));
     }
 
 export const getGetAvailabilityUrl = (params: GetAvailabilityParams,) => {
