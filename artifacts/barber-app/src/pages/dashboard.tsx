@@ -5,7 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
-  const { data: summary, isLoading } = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
+  const { data: summary, isLoading } = useGetDashboardSummary({
+    query: {
+      queryKey: getGetDashboardSummaryQueryKey(),
+      // Live sync: dashboard reflects new bookings, cancellations and queue
+      // transitions every 5s without manual refresh.
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    },
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);

@@ -38,7 +38,18 @@ export default function Appointments() {
   const [date, setDate] = useState<Date>(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
 
-  const { data: appointments, isLoading } = useListAppointments({ date: dateStr }, { query: { queryKey: getListAppointmentsQueryKey({ date: dateStr }) } });
+  const { data: appointments, isLoading } = useListAppointments(
+    { date: dateStr },
+    {
+      query: {
+        queryKey: getListAppointmentsQueryKey({ date: dateStr }),
+        // Poll every 5s so bookings made on the public page, cancellations via
+        // link, and queue auto-start/auto-complete appear without manual refresh.
+        refetchInterval: 5000,
+        refetchOnWindowFocus: true,
+      },
+    },
+  );
   const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
 
