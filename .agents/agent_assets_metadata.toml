@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "KO15hKCE4Yf1Mod5j29cy"
+uri = "file://artifacts/barber-app/public/app-icon-source.png"
+type = "image"
+title = "barber app icon"
