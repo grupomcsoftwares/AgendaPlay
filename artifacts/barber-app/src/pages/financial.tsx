@@ -2,9 +2,14 @@ import React, { useState } from "react";
 import { useGetFinancialSummary, getGetFinancialSummaryQueryKey } from "@workspace/api-client-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Scissors } from "lucide-react";
+import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Financial() {
   const currentMonth = new Date().getMonth() + 1;
@@ -13,6 +18,7 @@ export default function Financial() {
   const [month, setMonth] = useState(currentMonth.toString());
   const [year, setYear] = useState(currentYear.toString());
   const [day, setDay] = useState("all");
+  const [calOpen, setCalOpen] = useState(false);
 
   const params = {
     month: parseInt(month),
@@ -25,8 +31,19 @@ export default function Financial() {
     { query: { queryKey: getGetFinancialSummaryQueryKey(params) } }
   );
 
-  const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+  // Month-level summary (no day filter) to highlight days that have revenue in the calendar.
+  const monthParams = { month: parseInt(month), year: parseInt(year) };
+  const { data: monthSummary } = useGetFinancialSummary(
+    monthParams,
+    { query: { queryKey: getGetFinancialSummaryQueryKey(monthParams) } }
+  );
+  const daysWithData = new Set(
+    (monthSummary?.revenueByDay ?? []).map((d) => parseInt(d.date.split("-")[2])),
+  );
+
+  const displayMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
+  const selectedDate =
+    day !== "all" ? new Date(parseInt(year), parseInt(month) - 1, parseInt(day)) : undefined;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -49,15 +66,59 @@ export default function Financial() {
           <p className="text-muted-foreground mt-1">Acompanhe o faturamento do seu negócio.</p>
         </div>
         <div className="flex gap-2">
-          <Select value={day} onValueChange={setDay}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os dias</SelectItem>
-              {days.map(d => <SelectItem key={d} value={d}>Dia {d}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Popover open={calOpen} onOpenChange={setCalOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className="justify-start gap-2 font-normal min-w-[180px]"
+              >
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                {selectedDate
+                  ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
+                  : "Todos os dias"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                locale={ptBR}
+                month={displayMonth}
+                onMonthChange={(d) => {
+                  setMonth((d.getMonth() + 1).toString());
+                  setYear(d.getFullYear().toString());
+                }}
+                selected={selectedDate}
+                onSelect={(d) => {
+                  if (!d) return;
+                  setMonth((d.getMonth() + 1).toString());
+                  setYear(d.getFullYear().toString());
+                  setDay(d.getDate().toString());
+                  setCalOpen(false);
+                }}
+                modifiers={{
+                  hasData: (date) =>
+                    date.getMonth() === parseInt(month) - 1 &&
+                    date.getFullYear() === parseInt(year) &&
+                    daysWithData.has(date.getDate()),
+                }}
+                modifiersClassNames={{
+                  hasData: "bg-primary/20 text-primary font-semibold",
+                }}
+              />
+              <div className="border-t border-border p-2">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-center"
+                  onClick={() => {
+                    setDay("all");
+                    setCalOpen(false);
+                  }}
+                >
+                  Todos os dias
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Select value={month} onValueChange={(v) => { setMonth(v); setDay("all"); }}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
