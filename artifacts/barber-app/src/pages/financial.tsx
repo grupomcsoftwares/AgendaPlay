@@ -3,7 +3,6 @@ import { useGetFinancialSummary, getGetFinancialSummaryQueryKey } from "@workspa
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -49,15 +48,6 @@ export default function Financial() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
-
-  const months = [
-    { value: "1", label: "Janeiro" }, { value: "2", label: "Fevereiro" },
-    { value: "3", label: "Março" }, { value: "4", label: "Abril" },
-    { value: "5", label: "Maio" }, { value: "6", label: "Junho" },
-    { value: "7", label: "Julho" }, { value: "8", label: "Agosto" },
-    { value: "9", label: "Setembro" }, { value: "10", label: "Outubro" },
-    { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
-  ];
 
   return (
     <div className="flex-1 p-8 bg-background overflow-auto space-y-6">
@@ -120,24 +110,6 @@ export default function Financial() {
               </div>
             </PopoverContent>
           </Popover>
-          <Select value={month} onValueChange={(v) => { setMonth(v); setDay("all"); }}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={year} onValueChange={(v) => { setYear(v); setDay("all"); }}>
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
