@@ -14,10 +14,11 @@ import { ptBR } from "date-fns/locale";
 export default function Financial() {
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
-  
+  const currentDay = new Date().getDate();
+
   const [month, setMonth] = useState(currentMonth.toString());
   const [year, setYear] = useState(currentYear.toString());
-  const [day, setDay] = useState("all");
+  const [day, setDay] = useState(currentDay.toString());
   const [calOpen, setCalOpen] = useState(false);
 
   const params = {
