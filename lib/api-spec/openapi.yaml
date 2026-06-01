@@ -560,6 +560,11 @@ paths:
           in: query
           schema:
             type: integer
+        - name: day
+          in: query
+          description: Optional day of month (1-31). When provided, the summary is limited to that single day.
+          schema:
+            type: integer
       responses:
         "200":
           description: Financial summary

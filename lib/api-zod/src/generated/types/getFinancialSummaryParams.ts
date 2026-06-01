@@ -9,4 +9,8 @@
 export type GetFinancialSummaryParams = {
 month?: number;
 year?: number;
+/**
+ * Optional day of month (1-31). When provided, the summary is limited to that single day.
+ */
+day?: number;
 };

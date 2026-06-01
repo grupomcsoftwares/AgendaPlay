@@ -10,16 +10,17 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
   const now = new Date();
   const month = (query.success && query.data.month) ? Number(query.data.month) : now.getMonth() + 1;
   const year = (query.success && query.data.year) ? Number(query.data.year) : now.getFullYear();
+  const day = (query.success && query.data.day) ? Number(query.data.day) : null;
 
-  const monthStart = new Date(year, month - 1, 1);
-  const nextMonthStart = new Date(year, month, 1);
+  const rangeStart = day !== null ? new Date(year, month - 1, day) : new Date(year, month - 1, 1);
+  const rangeEnd = day !== null ? new Date(year, month - 1, day + 1) : new Date(year, month, 1);
 
   const appointments = await db
     .select()
     .from(appointmentsTable)
     .where(and(
-      gte(appointmentsTable.scheduledAt, monthStart),
-      lt(appointmentsTable.scheduledAt, nextMonthStart),
+      gte(appointmentsTable.scheduledAt, rangeStart),
+      lt(appointmentsTable.scheduledAt, rangeEnd),
       eq(appointmentsTable.status, "completed")
     ));
 

@@ -12,11 +12,21 @@ export default function Financial() {
   
   const [month, setMonth] = useState(currentMonth.toString());
   const [year, setYear] = useState(currentYear.toString());
+  const [day, setDay] = useState("all");
+
+  const params = {
+    month: parseInt(month),
+    year: parseInt(year),
+    ...(day !== "all" ? { day: parseInt(day) } : {}),
+  };
 
   const { data: summary, isLoading } = useGetFinancialSummary(
-    { month: parseInt(month), year: parseInt(year) },
-    { query: { queryKey: getGetFinancialSummaryQueryKey({ month: parseInt(month), year: parseInt(year) }) } }
+    params,
+    { query: { queryKey: getGetFinancialSummaryQueryKey(params) } }
   );
+
+  const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -39,7 +49,16 @@ export default function Financial() {
           <p className="text-muted-foreground mt-1">Acompanhe o faturamento do seu negócio.</p>
         </div>
         <div className="flex gap-2">
-          <Select value={month} onValueChange={setMonth}>
+          <Select value={day} onValueChange={setDay}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os dias</SelectItem>
+              {days.map(d => <SelectItem key={d} value={d}>Dia {d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={month} onValueChange={(v) => { setMonth(v); setDay("all"); }}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>
@@ -47,7 +66,7 @@ export default function Financial() {
               {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={year} onValueChange={setYear}>
+          <Select value={year} onValueChange={(v) => { setYear(v); setDay("all"); }}>
             <SelectTrigger className="w-[100px]">
               <SelectValue />
             </SelectTrigger>

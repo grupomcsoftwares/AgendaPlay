@@ -586,7 +586,8 @@ export const GetDashboardSummaryResponse = zod.object({
  */
 export const GetFinancialSummaryQueryParams = zod.object({
   "month": zod.coerce.number().optional(),
-  "year": zod.coerce.number().optional()
+  "year": zod.coerce.number().optional(),
+  "day": zod.coerce.number().optional().describe('Optional day of month (1-31). When provided, the summary is limited to that single day.')
 })
 
 export const GetFinancialSummaryResponse = zod.object({
