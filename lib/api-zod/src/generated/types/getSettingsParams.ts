@@ -6,14 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListBarbersParams = {
+export type GetSettingsParams = {
 /**
  * Shop owner user ID (required for public booking page)
  */
 shopId?: string;
-activeOnly?: boolean;
-/**
- * Only return barbers that perform this service
- */
-serviceId?: number;
 };

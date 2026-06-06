@@ -6,6 +6,7 @@ import { GetFinancialSummaryQueryParams } from "@workspace/api-zod";
 const router: IRouter = Router();
 
 router.get("/financial/summary", async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
   const query = GetFinancialSummaryQueryParams.safeParse(req.query);
   const now = new Date();
   const month = (query.success && query.data.month) ? Number(query.data.month) : now.getMonth() + 1;
@@ -19,6 +20,7 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
     .select()
     .from(appointmentsTable)
     .where(and(
+      eq(appointmentsTable.userId, userId),
       gte(appointmentsTable.scheduledAt, rangeStart),
       lt(appointmentsTable.scheduledAt, rangeEnd),
       eq(appointmentsTable.status, "completed")
@@ -28,7 +30,6 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
   const totalAppointments = appointments.length;
   const averageTicket = totalAppointments > 0 ? totalRevenue / totalAppointments : 0;
 
-  // Revenue by service
   const serviceMap = new Map<string, { revenue: number; count: number }>();
   for (const a of appointments) {
     const existing = serviceMap.get(a.serviceName) ?? { revenue: 0, count: 0 };
@@ -41,7 +42,6 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
     .map(([serviceName, data]) => ({ serviceName, ...data }))
     .sort((a, b) => b.revenue - a.revenue);
 
-  // Revenue by day
   const dayMap = new Map<string, { revenue: number; count: number }>();
   for (const a of appointments) {
     const date = a.scheduledAt.toISOString().split("T")[0];

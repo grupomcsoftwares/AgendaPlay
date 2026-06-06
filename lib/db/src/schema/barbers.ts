@@ -5,6 +5,7 @@ import type { WeeklySchedule } from "./settings";
 
 export const barbersTable = pgTable("barbers", {
   id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().default(""),
   name: text("name").notNull(),
   photoUrl: text("photo_url"),
   bio: text("bio"),
@@ -25,6 +26,6 @@ export const barberServicesTable = pgTable(
   }),
 );
 
-export const insertBarberSchema = createInsertSchema(barbersTable).omit({ id: true, createdAt: true });
+export const insertBarberSchema = createInsertSchema(barbersTable).omit({ id: true, createdAt: true, userId: true });
 export type InsertBarber = z.infer<typeof insertBarberSchema>;
 export type Barber = typeof barbersTable.$inferSelect;

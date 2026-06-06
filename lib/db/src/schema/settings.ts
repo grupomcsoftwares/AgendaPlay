@@ -22,6 +22,7 @@ export type WeeklySchedule = {
 
 export const settingsTable = pgTable("settings", {
   id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().default(""),
   barbershopName: text("barbershop_name").notNull().default("Minha Barbearia"),
   ownerName: text("owner_name").notNull().default("Proprietário"),
   logoUrl: text("logo_url"),
@@ -36,6 +37,6 @@ export const settingsTable = pgTable("settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
-export const insertSettingsSchema = createInsertSchema(settingsTable).omit({ id: true, updatedAt: true });
+export const insertSettingsSchema = createInsertSchema(settingsTable).omit({ id: true, updatedAt: true, userId: true });
 export type InsertSettings = z.infer<typeof insertSettingsSchema>;
 export type Settings = typeof settingsTable.$inferSelect;

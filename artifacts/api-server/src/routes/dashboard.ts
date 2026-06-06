@@ -4,7 +4,8 @@ import { db, appointmentsTable, clientsTable, queueTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/summary", async (_req, res): Promise<void> => {
+router.get("/dashboard/summary", async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart);
@@ -17,11 +18,12 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(appointmentsTable)
-      .where(and(gte(appointmentsTable.scheduledAt, todayStart), lt(appointmentsTable.scheduledAt, todayEnd))),
+      .where(and(eq(appointmentsTable.userId, userId), gte(appointmentsTable.scheduledAt, todayStart), lt(appointmentsTable.scheduledAt, todayEnd))),
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(appointmentsTable)
       .where(and(
+        eq(appointmentsTable.userId, userId),
         gte(appointmentsTable.scheduledAt, todayStart),
         lt(appointmentsTable.scheduledAt, todayEnd),
         eq(appointmentsTable.status, "completed")
@@ -30,6 +32,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       .select({ count: sql<number>`COUNT(*)` })
       .from(appointmentsTable)
       .where(and(
+        eq(appointmentsTable.userId, userId),
         gte(appointmentsTable.scheduledAt, todayStart),
         lt(appointmentsTable.scheduledAt, todayEnd),
         eq(appointmentsTable.status, "pending")
@@ -38,24 +41,26 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       .select({ total: sql<string>`COALESCE(SUM(${appointmentsTable.servicePrice}), 0)` })
       .from(appointmentsTable)
       .where(and(
+        eq(appointmentsTable.userId, userId),
         gte(appointmentsTable.scheduledAt, monthStart),
         lt(appointmentsTable.scheduledAt, nextMonthStart),
         eq(appointmentsTable.status, "completed")
       )),
-    db.select({ count: sql<number>`COUNT(*)` }).from(clientsTable),
+    db.select({ count: sql<number>`COUNT(*)` }).from(clientsTable).where(eq(clientsTable.userId, userId)),
     db
       .select({ count: sql<number>`COUNT(*)` })
       .from(queueTable)
-      .where(sql`${queueTable.status} = 'waiting'`),
+      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'waiting'`)),
     db
       .select()
       .from(appointmentsTable)
-      .where(eq(appointmentsTable.status, "in_progress"))
+      .where(and(eq(appointmentsTable.userId, userId), eq(appointmentsTable.status, "in_progress")))
       .limit(1),
     db
       .select()
       .from(appointmentsTable)
       .where(and(
+        eq(appointmentsTable.userId, userId),
         eq(appointmentsTable.status, "pending"),
         gte(appointmentsTable.scheduledAt, now)
       ))

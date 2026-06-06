@@ -97,6 +97,10 @@ export const DeleteClientParams = zod.object({
 /**
  * @summary List all services
  */
+export const ListServicesQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)')
+})
+
 export const ListServicesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -212,6 +216,7 @@ export const ListAppointmentsResponse = zod.array(ListAppointmentsResponseItem)
  * @summary Create an appointment
  */
 export const CreateAppointmentBody = zod.object({
+  "shopId": zod.string().optional().describe('Shop owner user ID (required for public booking page)'),
   "clientId": zod.number().optional(),
   "clientName": zod.string(),
   "serviceId": zod.number().optional(),
@@ -461,6 +466,7 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
  * @summary Get available time slots for a date and service
  */
 export const GetAvailabilityQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)'),
   "date": zod.coerce.string(),
   "serviceId": zod.coerce.number(),
   "barberId": zod.coerce.number().optional().describe('Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.')
@@ -616,6 +622,7 @@ export const GetFinancialSummaryResponse = zod.object({
  * @summary List barbers
  */
 export const ListBarbersQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)'),
   "activeOnly": zod.coerce.boolean().optional(),
   "serviceId": zod.coerce.number().optional().describe('Only return barbers that perform this service')
 })
@@ -959,6 +966,10 @@ export const DeleteBarberParams = zod.object({
 /**
  * @summary Get barbershop settings
  */
+export const GetSettingsQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)')
+})
+
 export const getSettingsResponseLogoUrlMax = 3000000;
 
 

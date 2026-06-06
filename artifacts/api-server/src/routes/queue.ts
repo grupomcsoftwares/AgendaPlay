@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { db, queueTable, appointmentsTable } from "@workspace/db";
 import {
   AddToQueueBody,
@@ -22,21 +22,13 @@ function formatEntry(
   };
 }
 
-// Auto-advance: if the chair is empty, promote the next eligible waiting entry.
-// Walk-ins (no appointmentId) are always eligible. Booked entries become eligible
-// once their scheduledAt has arrived. Runs inside a tx with an advisory lock so
-// concurrent polls cannot promote two entries.
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-async function autoAdvanceInTx(tx: Tx): Promise<void> {
+async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742002")})`);
 
   const now = new Date();
 
-  // Auto-complete any in-progress entry whose scheduled window has ended.
-  // For booked entries we use scheduledAt + serviceDuration (the planned end).
-  // For walk-ins we use startedAt + serviceDuration (so a forgotten chair
-  // doesn't block the queue forever).
   const inProgressRows = await tx
     .select({
       id: queueTable.id,
@@ -47,7 +39,7 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
     })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-    .where(eq(queueTable.status, "in_progress"));
+    .where(and(eq(queueTable.userId, userId), eq(queueTable.status, "in_progress")));
 
   for (const row of inProgressRows) {
     const anchor = row.scheduledAt ?? row.startedAt;
@@ -69,12 +61,10 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
   const stillInProgress = await tx
     .select({ id: queueTable.id })
     .from(queueTable)
-    .where(eq(queueTable.status, "in_progress"))
+    .where(and(eq(queueTable.userId, userId), eq(queueTable.status, "in_progress")))
     .limit(1);
   if (stillInProgress.length > 0) return;
 
-  // Walk-ins first (any waiting entry with no appointment), else booked entries
-  // whose scheduled time has arrived — within each group, lowest position wins.
   const candidates = await tx
     .select({
       id: queueTable.id,
@@ -84,7 +74,7 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
     })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-    .where(sql`${queueTable.status} = 'waiting'`)
+    .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'waiting'`))
     .orderBy(queueTable.position);
 
   const next = candidates.find(
@@ -104,15 +94,16 @@ async function autoAdvanceInTx(tx: Tx): Promise<void> {
   }
 }
 
-router.get("/queue", async (_req, res): Promise<void> => {
+router.get("/queue", async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
   await db.transaction(async (tx) => {
-    await autoAdvanceInTx(tx);
+    await autoAdvanceInTx(tx, userId);
   });
   const rows = await db
     .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-    .where(sql`${queueTable.status} != 'completed'`)
+    .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
     .orderBy(queueTable.position);
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
@@ -123,15 +114,17 @@ router.post("/queue", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const entry = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
     const [maxResult] = await tx
       .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
       .from(queueTable)
-      .where(sql`${queueTable.status} != 'completed'`);
+      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`));
     const nextPosition = (maxResult?.maxPos ?? 0) + 1;
     const [created] = await tx.insert(queueTable).values({
       ...parsed.data,
+      userId,
       servicePrice: String(parsed.data.servicePrice),
       position: nextPosition,
       status: "waiting",
@@ -147,8 +140,11 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const entry = await db.transaction(async (tx) => {
-    const [removed] = await tx.delete(queueTable).where(eq(queueTable.id, params.data.id)).returning();
+    const [removed] = await tx.delete(queueTable)
+      .where(and(eq(queueTable.id, params.data.id), eq(queueTable.userId, userId)))
+      .returning();
     if (!removed) return null;
     if (removed.appointmentId) {
       await tx
@@ -156,8 +152,7 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
         .set({ status: "completed" })
         .where(eq(appointmentsTable.id, removed.appointmentId));
     }
-    // Promote next eligible entry into the empty chair right away.
-    await autoAdvanceInTx(tx);
+    await autoAdvanceInTx(tx, userId);
     return removed;
   });
   if (!entry) {
@@ -173,12 +168,12 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const entry = await db.transaction(async (tx) => {
-    // Complete all currently in-progress queue entries (and their linked appointments).
     const previouslyActive = await tx
       .update(queueTable)
       .set({ status: "completed" })
-      .where(sql`${queueTable.status} = 'in_progress'`)
+      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'in_progress'`))
       .returning({ appointmentId: queueTable.appointmentId });
     const linkedIds = previouslyActive
       .map((r) => r.appointmentId)
@@ -193,7 +188,7 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
     const [started] = await tx
       .update(queueTable)
       .set({ status: "in_progress", startedAt: new Date() })
-      .where(eq(queueTable.id, params.data.id))
+      .where(and(eq(queueTable.id, params.data.id), eq(queueTable.userId, userId)))
       .returning();
     if (!started) return null;
     if (started.appointmentId) {

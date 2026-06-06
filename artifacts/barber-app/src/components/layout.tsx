@@ -26,7 +26,7 @@ type NavItem = {
 export function Sidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [, setLocation] = useLocation();
-  const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
+  const { data: settings } = useGetSettings(undefined, { query: { queryKey: ["settings"] } });
   const { user, logout } = useAuth();
 
   const navItems: NavItem[] = [

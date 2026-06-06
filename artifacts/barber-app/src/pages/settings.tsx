@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useAuth } from "@/context/AuthContext";
 
 type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
@@ -82,10 +83,12 @@ function resizeImageToDataUrl(file: File, max = 256): Promise<string> {
 }
 
 export default function Settings() {
-  const { data: settings, isLoading } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+  const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoProcessing, setLogoProcessing] = useState(false);
@@ -414,9 +417,38 @@ export default function Settings() {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle>Página de Agendamento</CardTitle>
-              <CardDescription>Mensagem exibida para os clientes na página pública</CardDescription>
+              <CardDescription>Link público para seus clientes agendarem online</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {user && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Link className="h-4 w-4" /> Link de Agendamento
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/booking?shopId=${user.id}`}
+                      className="font-mono text-xs bg-muted"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/booking?shopId=${user.id}`);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }}
+                    >
+                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Compartilhe este link com seus clientes para que eles possam agendar diretamente.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Mensagem de Boas-vindas</Label>
                 <Textarea 

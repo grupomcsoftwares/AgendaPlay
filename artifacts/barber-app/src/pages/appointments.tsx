@@ -51,7 +51,7 @@ export default function Appointments() {
       },
     },
   );
-  const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
+  const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
 
   const createAppointment = useCreateAppointment();

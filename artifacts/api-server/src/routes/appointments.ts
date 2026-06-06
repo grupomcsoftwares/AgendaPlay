@@ -1,8 +1,8 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
-import { isBarberAllowedForService } from "./barbers";
+import { isBarberAllowedForService } from "./barbers.js";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -39,10 +39,15 @@ function parseHHMM(s: string): number {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+function resolveShop(req: Request): string | null {
+  if (req.session?.userId) return req.session.userId;
+  const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
+  return shopId || null;
+}
+
 const router: IRouter = Router();
 
 function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
-  // cancelToken is a public capability secret — never include it in generic responses.
   const { cancelToken: _omit, ...rest } = a;
   void _omit;
   return {
@@ -63,6 +68,7 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
 }
 
 router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
   const query = ListAppointmentsQueryParams.safeParse(req.query);
   let appointments;
   if (query.success && query.data.date) {
@@ -72,24 +78,31 @@ router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
     appointments = await db
       .select()
       .from(appointmentsTable)
-      .where(and(gte(appointmentsTable.scheduledAt, date), lt(appointmentsTable.scheduledAt, nextDay)))
+      .where(and(eq(appointmentsTable.userId, userId), gte(appointmentsTable.scheduledAt, date), lt(appointmentsTable.scheduledAt, nextDay)))
       .orderBy(appointmentsTable.scheduledAt);
   } else if (query.success && query.data.status) {
     appointments = await db
       .select()
       .from(appointmentsTable)
-      .where(eq(appointmentsTable.status, query.data.status))
+      .where(and(eq(appointmentsTable.userId, userId), eq(appointmentsTable.status, query.data.status)))
       .orderBy(appointmentsTable.scheduledAt);
   } else {
     appointments = await db
       .select()
       .from(appointmentsTable)
+      .where(eq(appointmentsTable.userId, userId))
       .orderBy(appointmentsTable.scheduledAt);
   }
   res.json(appointments.map(formatAppointment));
 });
 
 router.get("/availability", async (req, res): Promise<void> => {
+  const shopId = resolveShop(req);
+  if (!shopId) {
+    res.status(400).json({ error: "shopId obrigatório" });
+    return;
+  }
+
   const parsed = GetAvailabilityQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -101,7 +114,8 @@ router.get("/availability", async (req, res): Promise<void> => {
     return;
   }
 
-  const [service] = await db.select().from(servicesTable).where(eq(servicesTable.id, serviceId));
+  const [service] = await db.select().from(servicesTable)
+    .where(and(eq(servicesTable.id, serviceId), eq(servicesTable.userId, shopId)));
   if (!service) {
     res.status(404).json({ error: "Service not found" });
     return;
@@ -109,13 +123,13 @@ router.get("/availability", async (req, res): Promise<void> => {
   const duration = service.durationMinutes;
   const barberFilter = typeof barberId === "number" ? barberId : null;
 
-  const [settings] = await db.select().from(settingsTable).limit(1);
+  const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);
   const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
 
-  // Per-barber schedule overrides the shop schedule when set.
   let barberWeekly: WeeklySchedule | null = null;
   if (barberFilter !== null) {
-    const [b] = await db.select().from(barbersTable).where(eq(barbersTable.id, barberFilter));
+    const [b] = await db.select().from(barbersTable)
+      .where(and(eq(barbersTable.id, barberFilter), eq(barbersTable.userId, shopId)));
     barberWeekly = (b?.weeklySchedule ?? null) as WeeklySchedule | null;
   }
   const weekly = barberWeekly ?? shopWeekly;
@@ -142,15 +156,12 @@ router.get("/availability", async (req, res): Promise<void> => {
   const appts = await db
     .select()
     .from(appointmentsTable)
-    .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+    .where(and(eq(appointmentsTable.userId, shopId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
 
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {
     if (a.status === "cancelled") continue;
     if (localYMD(a.scheduledAt) !== date) continue;
-    // When a specific barber is requested, only count their own appointments.
-    // Legacy appointments without a barberId block ALL barbers' agendas so we never
-    // accidentally double-book a shop that wasn't using barbers before.
     if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;
     const start = parseHHMM(localHHMM(a.scheduledAt));
     blocked.push([start, start + a.serviceDuration]);
@@ -160,18 +171,11 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  // Step by the service's own duration so back-to-back slots fit perfectly:
-  // a 30-min cut yields 2 slots/hour, a 20-min trim yields 3, etc.
-  // Floor of 5 min keeps things sane if a service has duration 0.
   const step = Math.max(5, duration);
-  // Required gap (in minutes) between consecutive appointments.
   const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
-    // Expand each blocked window by the buffer on both sides so the new slot
-    // cannot start within 5 min of an existing appointment's end, nor end
-    // within 5 min of an existing appointment's start.
     const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
     const inPast = t <= nowMin;
     const available = !overlapsLunch && !overlapsAppt && !inPast;
@@ -184,6 +188,13 @@ router.get("/availability", async (req, res): Promise<void> => {
 });
 
 router.post("/appointments", async (req, res): Promise<void> => {
+  // shopId can come from session (admin booking) or body (public booking page)
+  const shopId = req.session?.userId ?? (typeof req.body?.shopId === "string" ? req.body.shopId.trim() : "");
+  if (!shopId) {
+    res.status(400).json({ error: "shopId obrigatório" });
+    return;
+  }
+
   const parsed = CreateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -198,24 +209,19 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const startMin = parseHHMM(localHHMM(scheduledAtDate));
   const endMin = startMin + parsed.data.serviceDuration;
 
-  // Validate barber up front (cheap; minor TOCTOU vs. deactivation is acceptable).
   if (typeof parsed.data.barberId === "number") {
     const check = await isBarberAllowedForService(db, parsed.data.barberId, parsed.data.serviceId ?? null);
     if (!check.ok) {
       res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
       return;
     }
-    // Server is source of truth for the denormalized name.
     parsed.data.barberName = check.barberName;
   } else {
-    // Strip any client-supplied barberName when no barberId is provided.
     parsed.data.barberName = undefined;
   }
 
   let conflict = false;
   const appointment = await db.transaction(async (tx) => {
-    // Serialize availability checks for this date so two concurrent bookings can't both pass.
-    // Hash YYYY-MM-DD to a stable int for advisory lock key.
     let hash = 0;
     for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
     await tx.execute(sql`SELECT pg_advisory_xact_lock(742003, ${hash})`);
@@ -226,15 +232,12 @@ router.post("/appointments", async (req, res): Promise<void> => {
     const sameDay = await tx
       .select()
       .from(appointmentsTable)
-      .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
-    // Enforce the same 5-min gap that GET /availability advertises so the
-    // server can't accept a booking that the slot grid would have blocked.
+      .where(and(eq(appointmentsTable.userId, shopId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
     const BUFFER = 5;
     const incomingBarberId = parsed.data.barberId ?? null;
     for (const a of sameDay) {
       if (a.status === "cancelled") continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
-      // Per-barber agendas: only collide with own bookings, unless either side has no barber.
       if (incomingBarberId !== null && a.barberId !== null && a.barberId !== incomingBarberId) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
       const aEnd = aStart + a.serviceDuration;
@@ -246,21 +249,22 @@ router.post("/appointments", async (req, res): Promise<void> => {
 
     const [created] = await tx.insert(appointmentsTable).values({
       ...parsed.data,
+      userId: shopId,
       servicePrice: String(parsed.data.servicePrice),
       scheduledAt: scheduledAtDate,
       status: "pending",
       cancelToken: crypto.randomUUID(),
     }).returning();
 
-    // Serialize concurrent queue-position assignments with a transaction-scoped advisory lock.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
     const [maxResult] = await tx
       .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
       .from(queueTable)
-      .where(sql`${queueTable.status} != 'completed'`);
+      .where(and(eq(queueTable.userId, shopId), sql`${queueTable.status} != 'completed'`));
     const nextPosition = (maxResult?.maxPos ?? 0) + 1;
 
     await tx.insert(queueTable).values({
+      userId: shopId,
       appointmentId: created.id,
       clientName: created.clientName,
       serviceName: created.serviceName,
@@ -286,10 +290,11 @@ router.get("/appointments/:id", requireAuth, async (req, res): Promise<void> => 
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const [appointment] = await db
     .select()
     .from(appointmentsTable)
-    .where(eq(appointmentsTable.id, params.data.id));
+    .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)));
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
     return;
@@ -308,6 +313,7 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const updateData: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.servicePrice !== undefined) {
     updateData.servicePrice = String(parsed.data.servicePrice);
@@ -318,7 +324,7 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
   const [appointment] = await db
     .update(appointmentsTable)
     .set(updateData)
-    .where(eq(appointmentsTable.id, params.data.id))
+    .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
     .returning();
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
@@ -333,11 +339,12 @@ router.delete("/appointments/:id", requireAuth, async (req, res): Promise<void> 
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const appointment = await db.transaction(async (tx) => {
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
     const [a] = await tx
       .delete(appointmentsTable)
-      .where(eq(appointmentsTable.id, params.data.id))
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
       .returning();
     return a;
   });
@@ -354,10 +361,11 @@ router.post("/appointments/:id/start", requireAuth, async (req, res): Promise<vo
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const [appointment] = await db
     .update(appointmentsTable)
     .set({ status: "in_progress" })
-    .where(eq(appointmentsTable.id, params.data.id))
+    .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
     .returning();
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
@@ -372,11 +380,12 @@ router.post("/appointments/:id/complete", requireAuth, async (req, res): Promise
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const appointment = await db.transaction(async (tx) => {
     const [a] = await tx
       .update(appointmentsTable)
       .set({ status: "completed" })
-      .where(eq(appointmentsTable.id, params.data.id))
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
       .returning();
     if (!a) return null;
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
@@ -389,6 +398,8 @@ router.post("/appointments/:id/complete", requireAuth, async (req, res): Promise
   res.json(formatAppointment(appointment));
 });
 
+// Token-based routes — token is globally unique, no shopId needed.
+// We derive the shop from the appointment's own userId for availability checks.
 router.get("/appointments/by-token/:token", async (req, res): Promise<void> => {
   const token = String(req.params.token ?? "");
   if (!token) {
@@ -422,8 +433,6 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
     if (existing.status === "completed" || existing.status === "in_progress") {
       return { error: "locked" as const };
     }
-    // Conditional update — only flip if still in a cancellable state, preventing
-    // a concurrent admin start/complete from being overwritten under contention.
     const [updated] = await tx
       .update(appointmentsTable)
       .set({ status: "cancelled" })
@@ -470,10 +479,8 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   const localDate = localYMD(newDate);
   const startMin = parseHHMM(localHHMM(newDate));
 
-  // Validate explicit barber switch before opening the tx.
   let overrideBarberName: string | undefined;
   if (typeof req.body?.barberId === "number") {
-    // We don't know existing.serviceId yet — fetch once for validation.
     const [pre] = await db.select().from(appointmentsTable).where(eq(appointmentsTable.cancelToken, token));
     if (pre) {
       const check = await isBarberAllowedForService(db, req.body.barberId, pre.serviceId ?? null);
@@ -505,14 +512,14 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     const dayStart = new Date(`${localDate}T00:00:00Z`);
     const before = new Date(dayStart.getTime() - 24 * 3600 * 1000);
     const after = new Date(dayStart.getTime() + 48 * 3600 * 1000);
+    // Scope conflict check to the same shop
     const sameDay = await tx
       .select()
       .from(appointmentsTable)
-      .where(and(gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
-    // Reschedule keeps the same barber by default; honour explicit override too.
+      .where(and(eq(appointmentsTable.userId, existing.userId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
     const targetBarberId = typeof req.body?.barberId === "number" ? req.body.barberId : existing.barberId;
     for (const a of sameDay) {
-      if (a.id === existing.id) continue; // never collide with self
+      if (a.id === existing.id) continue;
       if (a.status === "cancelled") continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
       if (targetBarberId !== null && a.barberId !== null && a.barberId !== targetBarberId) continue;
@@ -565,11 +572,12 @@ router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<v
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.session.userId!;
   const appointment = await db.transaction(async (tx) => {
     const [a] = await tx
       .update(appointmentsTable)
       .set({ status: "cancelled" })
-      .where(eq(appointmentsTable.id, params.data.id))
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
       .returning();
     if (!a) return null;
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));

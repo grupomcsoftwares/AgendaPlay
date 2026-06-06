@@ -107,7 +107,7 @@ function ServiceImageUpload({
 }
 
 export default function Services() {
-  const { data: services, isLoading } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
+  const { data: services, isLoading } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const createService = useCreateService();
   const updateService = useUpdateService();
   const deleteService = useDeleteService();

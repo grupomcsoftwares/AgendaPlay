@@ -36,7 +36,11 @@ export default function CancelBooking() {
   const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
   const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
-  const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
+  const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+  const { data: settings } = useGetSettings(
+    shopId ? { shopId } : undefined,
+    { query: { queryKey: getGetSettingsQueryKey(shopId ? { shopId } : undefined) } }
+  );
   const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
     query: { queryKey: getGetAppointmentByTokenQueryKey(token), enabled: !!token },
   });
@@ -44,11 +48,16 @@ export default function CancelBooking() {
   const rescheduleMut = useRescheduleAppointmentByToken();
 
   const serviceId = appointment?.serviceId ?? 0;
+  const availParams = {
+    ...(shopId ? { shopId } : {}),
+    date: reschedDate,
+    serviceId,
+  };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
-    { date: reschedDate, serviceId },
+    availParams,
     {
       query: {
-        queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceId }),
+        queryKey: getGetAvailabilityQueryKey(availParams),
         enabled: reschedOpen && !!reschedDate && serviceId > 0,
       },
     },

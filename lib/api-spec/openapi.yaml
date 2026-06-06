@@ -139,6 +139,12 @@ paths:
       operationId: listServices
       tags: [services]
       summary: List all services
+      parameters:
+        - name: shopId
+          in: query
+          description: Shop owner user ID (required for public booking page)
+          schema:
+            type: string
       responses:
         "200":
           description: List of services
@@ -443,6 +449,11 @@ paths:
       tags: [appointments]
       summary: Get available time slots for a date and service
       parameters:
+        - name: shopId
+          in: query
+          description: Shop owner user ID (required for public booking page)
+          schema:
+            type: string
         - name: date
           in: query
           required: true
@@ -579,6 +590,11 @@ paths:
       tags: [barbers]
       summary: List barbers
       parameters:
+        - name: shopId
+          in: query
+          description: Shop owner user ID (required for public booking page)
+          schema:
+            type: string
         - name: activeOnly
           in: query
           schema:
@@ -675,6 +691,12 @@ paths:
       operationId: getSettings
       tags: [settings]
       summary: Get barbershop settings
+      parameters:
+        - name: shopId
+          in: query
+          description: Shop owner user ID (required for public booking page)
+          schema:
+            type: string
       responses:
         "200":
           description: Settings
@@ -942,6 +964,9 @@ components:
       type: object
       required: [clientName, serviceName, scheduledAt, servicePrice, serviceDuration]
       properties:
+        shopId:
+          type: string
+          description: Shop owner user ID (required for public booking page)
         clientId:
           type: integer
         clientName:

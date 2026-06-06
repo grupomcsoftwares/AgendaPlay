@@ -176,6 +176,8 @@ export const AppointmentInputPaymentMethod = {
 } as const;
 
 export interface AppointmentInput {
+  /** Shop owner user ID (required for public booking page) */
+  shopId?: string;
   clientId?: number;
   clientName: string;
   serviceId?: number;
@@ -321,12 +323,23 @@ export type ListClientsParams = {
 search?: string;
 };
 
+export type ListServicesParams = {
+/**
+ * Shop owner user ID (required for public booking page)
+ */
+shopId?: string;
+};
+
 export type ListAppointmentsParams = {
 date?: string;
 status?: string;
 };
 
 export type GetAvailabilityParams = {
+/**
+ * Shop owner user ID (required for public booking page)
+ */
+shopId?: string;
 /**
  * YYYY-MM-DD
  */
@@ -348,10 +361,21 @@ day?: number;
 };
 
 export type ListBarbersParams = {
+/**
+ * Shop owner user ID (required for public booking page)
+ */
+shopId?: string;
 activeOnly?: boolean;
 /**
  * Only return barbers that perform this service
  */
 serviceId?: number;
+};
+
+export type GetSettingsParams = {
+/**
+ * Shop owner user ID (required for public booking page)
+ */
+shopId?: string;
 };
 

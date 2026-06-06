@@ -102,7 +102,7 @@ function BarberPhotoUpload({
 
 export default function Barbers() {
   const { data: barbers, isLoading } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
-  const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
+  const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const createBarber = useCreateBarber();
   const updateBarber = useUpdateBarber();
   const deleteBarber = useDeleteBarber();

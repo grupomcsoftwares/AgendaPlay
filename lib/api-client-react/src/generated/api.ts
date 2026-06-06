@@ -34,10 +34,12 @@ import type {
   FinancialSummary,
   GetAvailabilityParams,
   GetFinancialSummaryParams,
+  GetSettingsParams,
   HealthStatus,
   ListAppointmentsParams,
   ListBarbersParams,
   ListClientsParams,
+  ListServicesParams,
   QueueEntry,
   QueueInput,
   RescheduleByTokenInput,
@@ -511,20 +513,27 @@ export const useDeleteClient = <TError = ErrorType<unknown>,
       return useMutation(getDeleteClientMutationOptions(options));
     }
 
-export const getListServicesUrl = () => {
+export const getListServicesUrl = (params?: ListServicesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/services`
+  return stringifiedParams.length > 0 ? `/api/services?${stringifiedParams}` : `/api/services`
 }
 
 /**
  * @summary List all services
  */
-export const listServices = async ( options?: RequestInit): Promise<Service[]> => {
+export const listServices = async (params?: ListServicesParams, options?: RequestInit): Promise<Service[]> => {
 
-  return customFetch<Service[]>(getListServicesUrl(),
+  return customFetch<Service[]>(getListServicesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -537,23 +546,23 @@ export const listServices = async ( options?: RequestInit): Promise<Service[]> =
 
 
 
-export const getListServicesQueryKey = () => {
+export const getListServicesQueryKey = (params?: ListServicesParams,) => {
     return [
-    `/api/services`
+    `/api/services`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListServicesQueryOptions = <TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListServicesQueryOptions = <TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<unknown>>(params?: ListServicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListServicesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListServicesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listServices>>> = ({ signal }) => listServices({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listServices>>> = ({ signal }) => listServices(params, { signal, ...requestOptions });
 
 
 
@@ -571,11 +580,11 @@ export type ListServicesQueryError = ErrorType<unknown>
  */
 
 export function useListServices<TData = Awaited<ReturnType<typeof listServices>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListServicesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listServices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListServicesQueryOptions(options)
+  const queryOptions = getListServicesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -2588,20 +2597,27 @@ export const useDeleteBarber = <TError = ErrorType<unknown>,
       return useMutation(getDeleteBarberMutationOptions(options));
     }
 
-export const getGetSettingsUrl = () => {
+export const getGetSettingsUrl = (params?: GetSettingsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/settings`
+  return stringifiedParams.length > 0 ? `/api/settings?${stringifiedParams}` : `/api/settings`
 }
 
 /**
  * @summary Get barbershop settings
  */
-export const getSettings = async ( options?: RequestInit): Promise<Settings> => {
+export const getSettings = async (params?: GetSettingsParams, options?: RequestInit): Promise<Settings> => {
 
-  return customFetch<Settings>(getGetSettingsUrl(),
+  return customFetch<Settings>(getGetSettingsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2614,23 +2630,23 @@ export const getSettings = async ( options?: RequestInit): Promise<Settings> => 
 
 
 
-export const getGetSettingsQueryKey = () => {
+export const getGetSettingsQueryKey = (params?: GetSettingsParams,) => {
     return [
-    `/api/settings`
+    `/api/settings`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getSettings>>, TError = ErrorType<unknown>>(params?: GetSettingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetSettingsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetSettingsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({ signal }) => getSettings({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSettings>>> = ({ signal }) => getSettings(params, { signal, ...requestOptions });
 
 
 
@@ -2648,11 +2664,11 @@ export type GetSettingsQueryError = ErrorType<unknown>
  */
 
 export function useGetSettings<TData = Awaited<ReturnType<typeof getSettings>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetSettingsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetSettingsQueryOptions(options)
+  const queryOptions = getGetSettingsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

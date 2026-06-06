@@ -7,6 +7,7 @@ export const queueTable = pgTable(
   "queue",
   {
     id: serial("id").primaryKey(),
+    userId: text("user_id").notNull().default(""),
     appointmentId: integer("appointment_id").references(() => appointmentsTable.id, {
       onDelete: "set null",
     }),
@@ -25,6 +26,6 @@ export const queueTable = pgTable(
   }),
 );
 
-export const insertQueueSchema = createInsertSchema(queueTable).omit({ id: true, createdAt: true });
+export const insertQueueSchema = createInsertSchema(queueTable).omit({ id: true, createdAt: true, userId: true });
 export type InsertQueue = z.infer<typeof insertQueueSchema>;
 export type QueueEntry = typeof queueTable.$inferSelect;

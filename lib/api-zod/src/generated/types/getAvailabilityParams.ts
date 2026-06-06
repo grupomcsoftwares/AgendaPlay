@@ -8,6 +8,10 @@
 
 export type GetAvailabilityParams = {
 /**
+ * Shop owner user ID (required for public booking page)
+ */
+shopId?: string;
+/**
  * YYYY-MM-DD
  */
 date: string;

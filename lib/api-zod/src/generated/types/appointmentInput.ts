@@ -8,6 +8,8 @@
 import type { AppointmentInputPaymentMethod } from './appointmentInputPaymentMethod';
 
 export interface AppointmentInput {
+  /** Shop owner user ID (required for public booking page) */
+  shopId?: string;
   clientId?: number;
   clientName: string;
   serviceId?: number;

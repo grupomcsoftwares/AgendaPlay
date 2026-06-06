@@ -51,9 +51,23 @@ function StepIndicator({ current, labels }: { current: number; labels: readonly 
 
 export default function Booking() {
   const [, setLocation] = useLocation();
-  const { data: services } = useListServices({ query: { queryKey: getListServicesQueryKey() } });
-  const { data: settings } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
-  const { data: barbers } = useListBarbers({ activeOnly: true }, { query: { queryKey: getListBarbersQueryKey({ activeOnly: true }) } });
+
+  // Read shopId from URL query string (?shopId=<userId>).
+  // Admin users arriving without shopId rely on their session cookie instead.
+  const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+
+  const { data: services } = useListServices(
+    shopId ? { shopId } : undefined,
+    { query: { queryKey: getListServicesQueryKey(shopId ? { shopId } : undefined) } }
+  );
+  const { data: settings } = useGetSettings(
+    shopId ? { shopId } : undefined,
+    { query: { queryKey: getGetSettingsQueryKey(shopId ? { shopId } : undefined) } }
+  );
+  const { data: barbers } = useListBarbers(
+    { activeOnly: true, ...(shopId ? { shopId } : {}) },
+    { query: { queryKey: getListBarbersQueryKey({ activeOnly: true, ...(shopId ? { shopId } : {}) }) } }
+  );
   const createAppointment = useCreateAppointment();
 
   const [step, setStep] = useState(1);
@@ -98,6 +112,7 @@ export default function Booking() {
 
     createAppointment.mutate(
       { data: {
+        ...(shopId ? { shopId } : {}),
         clientName: formData.name,
         serviceId: service.id,
         serviceName: service.name,
@@ -113,7 +128,8 @@ export default function Booking() {
           setConfirmed(true);
           window.setTimeout(() => {
             if (created?.cancelToken) {
-              setLocation(`/agendamento/${created.cancelToken}?novo=1`);
+              const shopParam = shopId ? `&shopId=${shopId}` : "";
+              setLocation(`/agendamento/${created.cancelToken}?novo=1${shopParam}`);
             }
           }, 2200);
         }
@@ -181,9 +197,12 @@ export default function Booking() {
   const dateKey = `${formData.date.getFullYear()}-${(formData.date.getMonth()+1).toString().padStart(2,"0")}-${formData.date.getDate().toString().padStart(2,"0")}`;
   const availabilityServiceId = selectedService?.id ?? 0;
   const availabilityBarberId = formData.barberId ? parseInt(formData.barberId, 10) : undefined;
-  const availabilityParams = availabilityBarberId
-    ? { date: dateKey, serviceId: availabilityServiceId, barberId: availabilityBarberId }
-    : { date: dateKey, serviceId: availabilityServiceId };
+  const availabilityParams = {
+    ...(shopId ? { shopId } : {}),
+    date: dateKey,
+    serviceId: availabilityServiceId,
+    ...(availabilityBarberId ? { barberId: availabilityBarberId } : {}),
+  };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availabilityParams,
     { query: { queryKey: getGetAvailabilityQueryKey(availabilityParams), enabled: step === 2 && availabilityServiceId > 0 && !pickingBarber } }
