@@ -294,11 +294,11 @@ export default function Appointments() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
-          <p className="text-muted-foreground mt-1">Gerencie a agenda do dia.</p>
-          <div className="flex items-center gap-2 mt-3">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agendamentos</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">Gerencie a agenda do dia.</p>
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             <a href="/queue" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none no-underline">
               <Activity className="h-3.5 w-3.5 text-teal-400" />
               Painel de Fila
@@ -339,7 +339,7 @@ export default function Appointments() {
           </DialogContent>
         </Dialog>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             <button
@@ -543,7 +543,7 @@ export default function Appointments() {
         </div>
       </div>
 
-      <div className="border border-border rounded-lg bg-card">
+      <div className="border border-border rounded-lg bg-card overflow-x-auto">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />

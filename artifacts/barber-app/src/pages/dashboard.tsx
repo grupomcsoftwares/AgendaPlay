@@ -21,22 +21,20 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+      <div className="p-4 md:p-8 space-y-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 md:h-32 w-full" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-auto p-4 md:p-8 space-y-8 bg-background">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
-      </div>
+    <div className="flex-1 overflow-auto p-4 md:p-8 space-y-5 md:space-y-8 bg-background">
+      <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="bg-card border-border">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Faturamento Mensal</CardTitle>
@@ -82,7 +80,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle>Em Atendimento</CardTitle>

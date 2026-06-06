@@ -223,12 +223,12 @@ export default function Services() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Serviços</h1>
-          <p className="text-muted-foreground mt-1">Gerencie os serviços oferecidos na barbearia.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Serviços</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">Gerencie os serviços oferecidos na barbearia.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button
             variant={isReordering ? "default" : "outline"}
             className="gap-2"
@@ -364,7 +364,7 @@ export default function Services() {
       </div>
     </div>
 
-    <div className="border border-border rounded-lg bg-card">
+    <div className="border border-border rounded-lg bg-card overflow-x-auto">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />

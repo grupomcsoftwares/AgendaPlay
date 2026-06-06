@@ -220,10 +220,10 @@ export default function Barbers() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Barbeiros</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Barbeiros</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Cadastre os profissionais que atendem. Quando houver mais de um, o cliente escolhe na hora de agendar.
           </p>
         </div>
@@ -446,7 +446,7 @@ export default function Barbers() {
         </Dialog>
       </div>
 
-      <div className="border border-border rounded-lg bg-card">
+      <div className="border border-border rounded-lg bg-card overflow-x-auto">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />

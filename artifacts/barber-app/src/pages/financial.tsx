@@ -51,12 +51,12 @@ export default function Financial() {
 
   return (
     <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-muted-foreground mt-1">Acompanhe o faturamento do seu negócio.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Financeiro</h1>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">Acompanhe o faturamento do seu negócio.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Popover open={calOpen} onOpenChange={setCalOpen}>
             <PopoverTrigger asChild>
               <Button
