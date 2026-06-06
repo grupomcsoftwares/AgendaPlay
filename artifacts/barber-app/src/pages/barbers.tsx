@@ -118,10 +118,11 @@ export default function Barbers() {
     active: boolean;
     serviceIds: number[];
     weeklySchedule: WeeklySchedule | null;
-  }>({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null });
+    commissionRate: number | null;
+  }>({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null, commissionRate: null });
 
   const resetForm = () => {
-    setFormData({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null });
+    setFormData({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null, commissionRate: null });
     setEditingId(null);
   };
 
@@ -160,6 +161,7 @@ export default function Barbers() {
       active: formData.active,
       serviceIds: formData.serviceIds,
       weeklySchedule: formData.weeklySchedule,
+      commissionRate: formData.commissionRate,
     };
     if (editingId) {
       updateBarber.mutate(
@@ -291,6 +293,30 @@ export default function Barbers() {
                   onCheckedChange={(c) => setFormData({ ...formData, active: c })}
                   data-testid="switch-barber-active"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="barber-commission" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Comissão (%)
+                </Label>
+                <Input
+                  id="barber-commission"
+                  data-testid="input-barber-commission"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={formData.commissionRate ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFormData({ ...formData, commissionRate: v === "" ? null : parseFloat(v) });
+                  }}
+                  placeholder="Ex: 40 (opcional)"
+                  className="h-11 bg-muted/40 border-border/60 focus-visible:bg-background"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Percentual de comissão do profissional sobre cada atendimento.
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -467,6 +493,7 @@ export default function Barbers() {
                 <TableHead className="w-[72px]">Foto</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Serviços</TableHead>
+                <TableHead>Comissão</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -495,6 +522,9 @@ export default function Barbers() {
                       {b.bio && <p className="text-xs text-muted-foreground">{b.bio}</p>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{serviceNames}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {b.commissionRate != null ? `${b.commissionRate}%` : "—"}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={b.active ? "default" : "secondary"} data-testid={`badge-barber-status-${b.id}`}>
                         {b.active ? "Ativo" : "Inativo"}
@@ -523,6 +553,7 @@ export default function Barbers() {
                             active: b.active,
                             serviceIds: [...b.serviceIds],
                             weeklySchedule: (b.weeklySchedule as WeeklySchedule | null | undefined) ?? null,
+                            commissionRate: b.commissionRate ?? null,
                           });
                           setIsOpen(true);
                         }}

@@ -8,6 +8,7 @@ import dashboardRouter from "./dashboard.js";
 import financialRouter from "./financial.js";
 import settingsRouter from "./settings.js";
 import barbersRouter from "./barbers.js";
+import comboDiscountsRouter from "./combo-discounts.js";
 import authRouter from "./auth.js";
 import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
@@ -37,6 +38,7 @@ router.use(appointmentsRouter);
 // Mixed public/admin routers — requireAuth applied at route level inside each file
 router.use(settingsRouter);
 router.use(barbersRouter);
+router.use(comboDiscountsRouter);
 
 // Purely admin routers — always require auth
 const adminRouter = Router();

@@ -19,6 +19,8 @@ export * from './barberUpdate';
 export * from './client';
 export * from './clientInput';
 export * from './clientUpdate';
+export * from './comboDiscount';
+export * from './comboDiscountInput';
 export * from './dashboardSummary';
 export * from './daySchedule';
 export * from './financialSummary';

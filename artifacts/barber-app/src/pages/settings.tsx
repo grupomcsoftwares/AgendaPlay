@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useGetSettings, useUpdateSettings, useUpdateUserSlug, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import {
+  useGetSettings, useUpdateSettings, useUpdateUserSlug, getGetSettingsQueryKey,
+  useListComboDiscounts, useCreateComboDiscount, useUpdateComboDiscount, useDeleteComboDiscount, getListComboDiscountsQueryKey,
+  useListServices, getListServicesQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -100,6 +104,16 @@ export default function Settings() {
   const { user, refresh } = useAuth();
   const [copied, setCopied] = useState(false);
 
+  const { data: combos } = useListComboDiscounts({ query: { queryKey: getListComboDiscountsQueryKey() } });
+  const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
+  const createCombo = useCreateComboDiscount();
+  const updateComboMut = useUpdateComboDiscount();
+  const deleteCombo = useDeleteComboDiscount();
+
+  const [comboOpen, setComboOpen] = useState(false);
+  const [editingComboId, setEditingComboId] = useState<number | null>(null);
+  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10 });
+
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -119,6 +133,11 @@ export default function Settings() {
     paymentEnableNow: false,
     paymentEnableOnSite: true,
     pixKey: "",
+    maxBookingDays: 30,
+    minAdvanceMinutes: 0,
+    minCancelMinutes: 0,
+    slotIntervalMinutes: 15,
+    smartSlots: false,
   });
 
   useEffect(() => {
@@ -142,6 +161,11 @@ export default function Settings() {
         paymentEnableNow: settings.paymentEnableNow ?? false,
         paymentEnableOnSite: settings.paymentEnableOnSite ?? true,
         pixKey: settings.pixKey || "",
+        maxBookingDays: settings.maxBookingDays ?? 30,
+        minAdvanceMinutes: settings.minAdvanceMinutes ?? 0,
+        minCancelMinutes: settings.minCancelMinutes ?? 0,
+        slotIntervalMinutes: settings.slotIntervalMinutes ?? 15,
+        smartSlots: settings.smartSlots ?? false,
       });
     }
   }, [settings]);
@@ -205,6 +229,56 @@ export default function Settings() {
           toast({ title: msg, variant: "destructive" });
         },
       }
+    );
+  };
+
+  const handleComboToggleService = (sid: number) => {
+    setComboForm((f) => ({
+      ...f,
+      serviceIds: f.serviceIds.includes(sid) ? f.serviceIds.filter((x) => x !== sid) : [...f.serviceIds, sid],
+    }));
+  };
+
+  const handleComboSave = () => {
+    if (comboForm.serviceIds.length < 2) {
+      toast({ title: "Selecione pelo menos 2 serviços para o combo", variant: "destructive" });
+      return;
+    }
+    const autoName = comboForm.name.trim() ||
+      comboForm.serviceIds.map((id) => services?.find((s) => s.id === id)?.name || `#${id}`).join(" + ");
+    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent };
+    if (editingComboId) {
+      updateComboMut.mutate(
+        { id: editingComboId, data: payload },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
+            setComboOpen(false);
+            setEditingComboId(null);
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+            toast({ title: "Combo atualizado" });
+          },
+        },
+      );
+    } else {
+      createCombo.mutate(
+        { data: payload },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
+            setComboOpen(false);
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+            toast({ title: "Combo criado" });
+          },
+        },
+      );
+    }
+  };
+
+  const handleComboDelete = (id: number) => {
+    deleteCombo.mutate(
+      { id },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
     );
   };
 
@@ -480,6 +554,93 @@ export default function Settings() {
 
           <Card className="bg-card border-border">
             <CardHeader>
+              <CardTitle>Regras de Agendamento</CardTitle>
+              <CardDescription>Configure o comportamento da agenda online</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Período máximo para agendar</Label>
+                <select
+                  value={formData.maxBookingDays}
+                  onChange={(e) => setFormData({ ...formData, maxBookingDays: Number(e.target.value) })}
+                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
+                >
+                  <option value={7}>7 dias</option>
+                  <option value={15}>15 dias</option>
+                  <option value={30}>30 dias</option>
+                  <option value={60}>60 dias</option>
+                  <option value={90}>90 dias</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Até quantos dias no futuro o cliente pode agendar.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Antecedência mínima para agendar</Label>
+                <select
+                  value={formData.minAdvanceMinutes}
+                  onChange={(e) => setFormData({ ...formData, minAdvanceMinutes: Number(e.target.value) })}
+                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
+                >
+                  <option value={0}>Sem restrição</option>
+                  <option value={30}>30 minutos</option>
+                  <option value={60}>1 hora</option>
+                  <option value={120}>2 horas</option>
+                  <option value={240}>4 horas</option>
+                  <option value={480}>8 horas</option>
+                  <option value={1440}>1 dia</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Tempo mínimo entre agora e o horário escolhido.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Antecedência mínima para cancelar</Label>
+                <select
+                  value={formData.minCancelMinutes}
+                  onChange={(e) => setFormData({ ...formData, minCancelMinutes: Number(e.target.value) })}
+                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
+                >
+                  <option value={0}>Sem restrição</option>
+                  <option value={30}>30 minutos antes</option>
+                  <option value={60}>1 hora antes</option>
+                  <option value={120}>2 horas antes</option>
+                  <option value={240}>4 horas antes</option>
+                  <option value={1440}>1 dia antes</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Cliente não pode cancelar após este prazo.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Escala de horários</Label>
+                <select
+                  value={formData.slotIntervalMinutes}
+                  onChange={(e) => setFormData({ ...formData, slotIntervalMinutes: Number(e.target.value) })}
+                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
+                >
+                  <option value={10}>A cada 10 minutos</option>
+                  <option value={15}>A cada 15 minutos</option>
+                  <option value={30}>A cada 30 minutos</option>
+                  <option value={60}>A cada 60 minutos</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Intervalo entre os horários disponíveis para o cliente escolher.</p>
+              </div>
+
+              <div className="flex items-center justify-between border border-border rounded-lg p-4">
+                <div className="space-y-1 pr-4">
+                  <p className="font-semibold">Horários inteligentes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Usa a duração do serviço como intervalo, evitando horários sobrepostos
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.smartSlots}
+                  onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border">
+            <CardHeader>
               <CardTitle>Página de Agendamento</CardTitle>
               <CardDescription>Link público para seus clientes agendarem online</CardDescription>
             </CardHeader>
@@ -597,6 +758,143 @@ export default function Settings() {
           </Card>
         </div>
       </div>
+
+      <Card className="bg-card border-border max-w-5xl">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Descontos por Combo</CardTitle>
+            <CardDescription>
+              Aplique desconto automático quando o cliente escolher 2 ou mais serviços juntos
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2 shrink-0"
+            onClick={() => {
+              setEditingComboId(null);
+              setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+              setComboOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> Novo combo
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!combos || combos.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              Nenhum combo configurado. Clique em "Novo combo" para criar.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {combos.map((c) => {
+                const names = (c.serviceIds as number[]).map(
+                  (id) => services?.find((s) => s.id === id)?.name || `#${id}`
+                ).join(" + ");
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between border border-border rounded-lg px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{names}</p>
+                      <p className="text-xs text-muted-foreground">{c.discountPercent}% de desconto</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingComboId(c.id);
+                          setComboForm({
+                            name: c.name,
+                            serviceIds: c.serviceIds as number[],
+                            discountPercent: c.discountPercent,
+                          });
+                          setComboOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleComboDelete(c.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {comboOpen && (
+            <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/20 mt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">
+                  {editingComboId ? "Editar combo" : "Novo combo"}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setComboOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Serviços do combo (mínimo 2)</Label>
+                {!services || services.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Cadastre serviços primeiro.</p>
+                ) : (
+                  <div className="space-y-1 max-h-40 overflow-y-auto border border-border rounded-md p-2 bg-background">
+                    {services.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 px-1 py-1 cursor-pointer hover:bg-muted/40 rounded text-sm">
+                        <input
+                          type="checkbox"
+                          checked={comboForm.serviceIds.includes(s.id)}
+                          onChange={() => handleComboToggleService(s.id)}
+                          className="h-4 w-4 accent-primary"
+                        />
+                        <span className="flex-1">{s.name}</span>
+                        <span className="text-xs text-muted-foreground">{s.durationMinutes} min</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Desconto (%)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={comboForm.discountPercent}
+                  onChange={(e) => setComboForm({ ...comboForm, discountPercent: Number(e.target.value) })}
+                  className="h-9"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setComboOpen(false)}>Cancelar</Button>
+                <Button
+                  size="sm"
+                  onClick={handleComboSave}
+                  disabled={createCombo.isPending || updateComboMut.isPending || comboForm.serviceIds.length < 2}
+                >
+                  {createCombo.isPending || updateComboMut.isPending ? "Salvando..." : "Salvar combo"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex justify-end max-w-5xl">
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">

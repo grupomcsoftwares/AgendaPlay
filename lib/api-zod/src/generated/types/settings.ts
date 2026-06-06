@@ -31,4 +31,14 @@ export interface Settings {
   paymentEnableOnSite?: boolean;
   /** @nullable */
   pixKey?: string | null;
+  /** Maximum days in advance a client can book (7, 15, 30). */
+  maxBookingDays?: number;
+  /** Minimum minutes of advance notice required to book a slot. */
+  minAdvanceMinutes?: number;
+  /** Minimum minutes before the appointment that cancellation is allowed. */
+  minCancelMinutes?: number;
+  /** Time slot grid interval in minutes (10, 15, 30, 60). */
+  slotIntervalMinutes?: number;
+  /** When true, slot step equals service duration for tighter scheduling. */
+  smartSlots?: boolean;
 }

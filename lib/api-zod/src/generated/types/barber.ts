@@ -16,6 +16,11 @@ export interface Barber {
   bio?: string | null;
   active: boolean;
   sortOrder: number;
+  /**
+     * Commission percentage (0-100). Null means no commission tracked.
+     * @nullable
+     */
+  commissionRate?: number | null;
   createdAt: string;
   /** IDs of services this barber performs. Empty means "all services". */
   serviceIds: number[];

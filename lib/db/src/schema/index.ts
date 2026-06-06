@@ -5,3 +5,4 @@ export * from "./queue";
 export * from "./settings";
 export * from "./barbers";
 export * from "./users";
+export * from "./combo-discounts";

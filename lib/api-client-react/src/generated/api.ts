@@ -30,6 +30,8 @@ import type {
   Client,
   ClientInput,
   ClientUpdate,
+  ComboDiscount,
+  ComboDiscountInput,
   DashboardSummary,
   FinancialSummary,
   GetAvailabilityParams,
@@ -2823,5 +2825,295 @@ export const useUpdateSettings = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateSettingsMutationOptions(options));
+    }
+
+export const getListComboDiscountsUrl = () => {
+
+
+
+
+  return `/api/combo-discounts`
+}
+
+/**
+ * @summary List combo discounts
+ */
+export const listComboDiscounts = async ( options?: RequestInit): Promise<ComboDiscount[]> => {
+
+  return customFetch<ComboDiscount[]>(getListComboDiscountsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListComboDiscountsQueryKey = () => {
+    return [
+    `/api/combo-discounts`
+    ] as const;
+    }
+
+
+export const getListComboDiscountsQueryOptions = <TData = Awaited<ReturnType<typeof listComboDiscounts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListComboDiscountsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComboDiscounts>>> = ({ signal }) => listComboDiscounts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListComboDiscountsQueryResult = NonNullable<Awaited<ReturnType<typeof listComboDiscounts>>>
+export type ListComboDiscountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List combo discounts
+ */
+
+export function useListComboDiscounts<TData = Awaited<ReturnType<typeof listComboDiscounts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListComboDiscountsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateComboDiscountUrl = () => {
+
+
+
+
+  return `/api/combo-discounts`
+}
+
+/**
+ * @summary Create a combo discount
+ */
+export const createComboDiscount = async (comboDiscountInput: ComboDiscountInput, options?: RequestInit): Promise<ComboDiscount> => {
+
+  return customFetch<ComboDiscount>(getCreateComboDiscountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      comboDiscountInput,)
+  }
+);}
+
+
+
+
+export const getCreateComboDiscountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComboDiscount>>, TError,{data: BodyType<ComboDiscountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createComboDiscount>>, TError,{data: BodyType<ComboDiscountInput>}, TContext> => {
+
+const mutationKey = ['createComboDiscount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createComboDiscount>>, {data: BodyType<ComboDiscountInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createComboDiscount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateComboDiscountMutationResult = NonNullable<Awaited<ReturnType<typeof createComboDiscount>>>
+    export type CreateComboDiscountMutationBody = BodyType<ComboDiscountInput>
+    export type CreateComboDiscountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a combo discount
+ */
+export const useCreateComboDiscount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComboDiscount>>, TError,{data: BodyType<ComboDiscountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createComboDiscount>>,
+        TError,
+        {data: BodyType<ComboDiscountInput>},
+        TContext
+      > => {
+      return useMutation(getCreateComboDiscountMutationOptions(options));
+    }
+
+export const getUpdateComboDiscountUrl = (id: number,) => {
+
+
+
+
+  return `/api/combo-discounts/${id}`
+}
+
+/**
+ * @summary Update a combo discount
+ */
+export const updateComboDiscount = async (id: number,
+    comboDiscountInput: ComboDiscountInput, options?: RequestInit): Promise<ComboDiscount> => {
+
+  return customFetch<ComboDiscount>(getUpdateComboDiscountUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      comboDiscountInput,)
+  }
+);}
+
+
+
+
+export const getUpdateComboDiscountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateComboDiscount>>, TError,{id: number;data: BodyType<ComboDiscountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateComboDiscount>>, TError,{id: number;data: BodyType<ComboDiscountInput>}, TContext> => {
+
+const mutationKey = ['updateComboDiscount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateComboDiscount>>, {id: number;data: BodyType<ComboDiscountInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateComboDiscount(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateComboDiscountMutationResult = NonNullable<Awaited<ReturnType<typeof updateComboDiscount>>>
+    export type UpdateComboDiscountMutationBody = BodyType<ComboDiscountInput>
+    export type UpdateComboDiscountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a combo discount
+ */
+export const useUpdateComboDiscount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateComboDiscount>>, TError,{id: number;data: BodyType<ComboDiscountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateComboDiscount>>,
+        TError,
+        {id: number;data: BodyType<ComboDiscountInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateComboDiscountMutationOptions(options));
+    }
+
+export const getDeleteComboDiscountUrl = (id: number,) => {
+
+
+
+
+  return `/api/combo-discounts/${id}`
+}
+
+/**
+ * @summary Delete a combo discount
+ */
+export const deleteComboDiscount = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteComboDiscountUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteComboDiscountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComboDiscount>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteComboDiscount>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteComboDiscount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteComboDiscount>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteComboDiscount(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteComboDiscountMutationResult = NonNullable<Awaited<ReturnType<typeof deleteComboDiscount>>>
+
+    export type DeleteComboDiscountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a combo discount
+ */
+export const useDeleteComboDiscount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteComboDiscount>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteComboDiscount>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteComboDiscountMutationOptions(options));
     }
 

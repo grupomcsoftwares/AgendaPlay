@@ -62,6 +62,7 @@ export async function isBarberAllowedForService(
 function formatBarber(b: BarberRow, serviceIds: number[]) {
   return {
     ...b,
+    commissionRate: b.commissionRate != null ? parseFloat(b.commissionRate) : null,
     createdAt: b.createdAt.toISOString(),
     serviceIds,
   };
@@ -130,9 +131,13 @@ router.post("/barbers", requireAuth, async (req, res): Promise<void> => {
     }
   }
 
-  const { serviceIds, ...rest } = parsed.data;
+  const { serviceIds, commissionRate, ...rest } = parsed.data;
   const created = await db.transaction(async (tx) => {
-    const [b] = await tx.insert(barbersTable).values({ ...rest, userId }).returning();
+    const [b] = await tx.insert(barbersTable).values({
+      ...rest,
+      userId,
+      ...(commissionRate != null ? { commissionRate: String(commissionRate) } : {}),
+    }).returning();
     if (serviceIds && serviceIds.length > 0) {
       await tx.insert(barberServicesTable).values(
         serviceIds.map((sid) => ({ barberId: b.id, serviceId: sid })),
@@ -174,11 +179,15 @@ router.patch("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = req.session.userId!;
-  const { serviceIds, ...rest } = parsed.data;
+  const { serviceIds, commissionRate, ...rest } = parsed.data;
+  const updateFields = {
+    ...rest,
+    ...(commissionRate !== undefined ? { commissionRate: commissionRate != null ? String(commissionRate) : null } : {}),
+  };
   const updated = await db.transaction(async (tx) => {
     const whereCond = and(eq(barbersTable.id, params.data.id), eq(barbersTable.userId, userId));
-    const [b] = Object.keys(rest).length
-      ? await tx.update(barbersTable).set(rest).where(whereCond).returning()
+    const [b] = Object.keys(updateFields).length
+      ? await tx.update(barbersTable).set(updateFields).where(whereCond).returning()
       : await tx.select().from(barbersTable).where(whereCond);
     if (!b) return null;
     if (serviceIds !== undefined) {

@@ -126,6 +126,22 @@ router.get("/availability", async (req, res): Promise<void> => {
   const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);
   const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
 
+  // Booking rules from settings
+  const maxBookingDays = settings?.maxBookingDays ?? 30;
+  const minAdvanceMinutes = settings?.minAdvanceMinutes ?? 0;
+  const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
+  const smartSlots = settings?.smartSlots ?? false;
+
+  // Reject dates too far in the future
+  const today = localYMD(new Date());
+  const requestedDate = new Date(`${date}T12:00:00Z`);
+  const todayDate = new Date(`${today}T12:00:00Z`);
+  const daysDiff = Math.round((requestedDate.getTime() - todayDate.getTime()) / (24 * 3600 * 1000));
+  if (daysDiff > maxBookingDays) {
+    res.json({ date, dayClosed: true, slots: [] });
+    return;
+  }
+
   let barberWeekly: WeeklySchedule | null = null;
   if (barberFilter !== null) {
     const [b] = await db.select().from(barbersTable)
@@ -171,13 +187,15 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  const step = Math.max(5, duration);
+  // Step: if smartSlots, use service duration as step (tighter packing);
+  // otherwise use the configured grid interval
+  const step = smartSlots ? Math.max(slotIntervalMinutes, duration) : Math.max(5, slotIntervalMinutes);
   const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
     const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
-    const inPast = t <= nowMin;
+    const inPast = nowMin >= 0 && t < nowMin + minAdvanceMinutes;
     const available = !overlapsLunch && !overlapsAppt && !inPast;
     const hh = Math.floor(t / 60).toString().padStart(2, "0");
     const mm = (t % 60).toString().padStart(2, "0");

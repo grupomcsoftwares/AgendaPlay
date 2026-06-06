@@ -25,6 +25,8 @@ tags:
     description: Settings operations
   - name: barbers
     description: Barber operations
+  - name: combo-discounts
+    description: Combo discount operations
 
 paths:
   /healthz:
@@ -743,6 +745,76 @@ paths:
               schema:
                 $ref: "#/components/schemas/Settings"
 
+  /combo-discounts:
+    get:
+      operationId: listComboDiscounts
+      tags: [combo-discounts]
+      summary: List combo discounts
+      responses:
+        "200":
+          description: List of combo discounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComboDiscount"
+    post:
+      operationId: createComboDiscount
+      tags: [combo-discounts]
+      summary: Create a combo discount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComboDiscountInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComboDiscount"
+
+  /combo-discounts/{id}:
+    patch:
+      operationId: updateComboDiscount
+      tags: [combo-discounts]
+      summary: Update a combo discount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComboDiscountInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComboDiscount"
+    delete:
+      operationId: deleteComboDiscount
+      tags: [combo-discounts]
+      summary: Delete a combo discount
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     RescheduleByTokenInput:
@@ -887,6 +959,9 @@ components:
           type: boolean
         sortOrder:
           type: integer
+        commissionRate:
+          type: ["number", "null"]
+          description: Commission percentage (0-100). Null means no commission tracked.
         createdAt:
           type: string
         serviceIds:
@@ -914,6 +989,9 @@ components:
           type: boolean
         sortOrder:
           type: integer
+        commissionRate:
+          type: ["number", "null"]
+          description: Commission percentage (0-100).
         serviceIds:
           type: array
           items:
@@ -936,6 +1014,9 @@ components:
           type: boolean
         sortOrder:
           type: integer
+        commissionRate:
+          type: ["number", "null"]
+          description: Commission percentage (0-100).
         serviceIds:
           type: array
           items:
@@ -1225,7 +1306,21 @@ components:
           type: boolean
         pixKey:
           type: ["string", "null"]
-
+        maxBookingDays:
+          type: integer
+          description: Maximum days in advance a client can book (7, 15, 30).
+        minAdvanceMinutes:
+          type: integer
+          description: Minimum minutes of advance notice required to book a slot.
+        minCancelMinutes:
+          type: integer
+          description: Minimum minutes before the appointment that cancellation is allowed.
+        slotIntervalMinutes:
+          type: integer
+          description: Time slot grid interval in minutes (10, 15, 30, 60).
+        smartSlots:
+          type: boolean
+          description: When true, slot step equals service duration for tighter scheduling.
 
     SlugUpdate:
       type: object
@@ -1273,3 +1368,43 @@ components:
           type: boolean
         pixKey:
           type: ["string", "null"]
+        maxBookingDays:
+          type: integer
+        minAdvanceMinutes:
+          type: integer
+        minCancelMinutes:
+          type: integer
+        slotIntervalMinutes:
+          type: integer
+        smartSlots:
+          type: boolean
+
+    ComboDiscount:
+      type: object
+      required: [id, name, serviceIds, discountPercent]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: integer
+        discountPercent:
+          type: number
+        createdAt:
+          type: string
+
+    ComboDiscountInput:
+      type: object
+      required: [name, serviceIds, discountPercent]
+      properties:
+        name:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: integer
+        discountPercent:
+          type: number

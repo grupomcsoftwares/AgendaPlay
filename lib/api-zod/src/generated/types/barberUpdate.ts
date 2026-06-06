@@ -15,6 +15,11 @@ export interface BarberUpdate {
   bio?: string | null;
   active?: boolean;
   sortOrder?: number;
+  /**
+     * Commission percentage (0-100).
+     * @nullable
+     */
+  commissionRate?: number | null;
   serviceIds?: number[];
   weeklySchedule?: WeeklySchedule | null;
 }

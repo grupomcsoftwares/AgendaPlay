@@ -106,6 +106,11 @@ export interface Barber {
   bio?: string | null;
   active: boolean;
   sortOrder: number;
+  /**
+     * Commission percentage (0-100). Null means no commission tracked.
+     * @nullable
+     */
+  commissionRate?: number | null;
   createdAt: string;
   /** IDs of services this barber performs. Empty means "all services". */
   serviceIds: number[];
@@ -119,6 +124,11 @@ export interface BarberInput {
   bio?: string;
   active?: boolean;
   sortOrder?: number;
+  /**
+     * Commission percentage (0-100).
+     * @nullable
+     */
+  commissionRate?: number | null;
   serviceIds?: number[];
   weeklySchedule?: WeeklySchedule | null;
 }
@@ -131,6 +141,11 @@ export interface BarberUpdate {
   bio?: string | null;
   active?: boolean;
   sortOrder?: number;
+  /**
+     * Commission percentage (0-100).
+     * @nullable
+     */
+  commissionRate?: number | null;
   serviceIds?: number[];
   weeklySchedule?: WeeklySchedule | null;
 }
@@ -296,6 +311,16 @@ export interface Settings {
   paymentEnableOnSite?: boolean;
   /** @nullable */
   pixKey?: string | null;
+  /** Maximum days in advance a client can book (7, 15, 30). */
+  maxBookingDays?: number;
+  /** Minimum minutes of advance notice required to book a slot. */
+  minAdvanceMinutes?: number;
+  /** Minimum minutes before the appointment that cancellation is allowed. */
+  minCancelMinutes?: number;
+  /** Time slot grid interval in minutes (10, 15, 30, 60). */
+  slotIntervalMinutes?: number;
+  /** When true, slot step equals service duration for tighter scheduling. */
+  smartSlots?: boolean;
 }
 
 export interface SlugUpdate {
@@ -333,6 +358,25 @@ export interface SettingsUpdate {
   paymentEnableOnSite?: boolean;
   /** @nullable */
   pixKey?: string | null;
+  maxBookingDays?: number;
+  minAdvanceMinutes?: number;
+  minCancelMinutes?: number;
+  slotIntervalMinutes?: number;
+  smartSlots?: boolean;
+}
+
+export interface ComboDiscount {
+  id: number;
+  name: string;
+  serviceIds: number[];
+  discountPercent: number;
+  createdAt?: string;
+}
+
+export interface ComboDiscountInput {
+  name: string;
+  serviceIds: number[];
+  discountPercent: number;
 }
 
 export type ListClientsParams = {

@@ -634,6 +634,7 @@ export const ListBarbersResponseItem = zod.object({
   "bio": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
+  "commissionRate": zod.number().nullish().describe('Commission percentage (0-100). Null means no commission tracked.'),
   "createdAt": zod.string(),
   "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
   "weeklySchedule": zod.union([zod.object({
@@ -700,6 +701,7 @@ export const CreateBarberBody = zod.object({
   "bio": zod.string().optional(),
   "active": zod.boolean().optional(),
   "sortOrder": zod.number().optional(),
+  "commissionRate": zod.number().nullish().describe('Commission percentage (0-100).'),
   "serviceIds": zod.array(zod.number()).optional(),
   "weeklySchedule": zod.union([zod.object({
   "monday": zod.object({
@@ -769,6 +771,7 @@ export const GetBarberResponse = zod.object({
   "bio": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
+  "commissionRate": zod.number().nullish().describe('Commission percentage (0-100). Null means no commission tracked.'),
   "createdAt": zod.string(),
   "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
   "weeklySchedule": zod.union([zod.object({
@@ -838,6 +841,7 @@ export const UpdateBarberBody = zod.object({
   "bio": zod.string().nullish(),
   "active": zod.boolean().optional(),
   "sortOrder": zod.number().optional(),
+  "commissionRate": zod.number().nullish().describe('Commission percentage (0-100).'),
   "serviceIds": zod.array(zod.number()).optional(),
   "weeklySchedule": zod.union([zod.object({
   "monday": zod.object({
@@ -899,6 +903,7 @@ export const UpdateBarberResponse = zod.object({
   "bio": zod.string().nullish(),
   "active": zod.boolean(),
   "sortOrder": zod.number(),
+  "commissionRate": zod.number().nullish().describe('Commission percentage (0-100). Null means no commission tracked.'),
   "createdAt": zod.string(),
   "serviceIds": zod.array(zod.number()).describe('IDs of services this barber performs. Empty means \"all services\".'),
   "weeklySchedule": zod.union([zod.object({
@@ -1054,7 +1059,12 @@ export const GetSettingsResponse = zod.object({
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
-  "pixKey": zod.string().nullish()
+  "pixKey": zod.string().nullish(),
+  "maxBookingDays": zod.number().optional().describe('Maximum days in advance a client can book (7, 15, 30).'),
+  "minAdvanceMinutes": zod.number().optional().describe('Minimum minutes of advance notice required to book a slot.'),
+  "minCancelMinutes": zod.number().optional().describe('Minimum minutes before the appointment that cancellation is allowed.'),
+  "slotIntervalMinutes": zod.number().optional().describe('Time slot grid interval in minutes (10, 15, 30, 60).'),
+  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.')
 })
 
 
@@ -1127,7 +1137,12 @@ export const UpdateSettingsBody = zod.object({
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
-  "pixKey": zod.string().nullish()
+  "pixKey": zod.string().nullish(),
+  "maxBookingDays": zod.number().optional(),
+  "minAdvanceMinutes": zod.number().optional(),
+  "minCancelMinutes": zod.number().optional(),
+  "slotIntervalMinutes": zod.number().optional(),
+  "smartSlots": zod.boolean().optional()
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
@@ -1197,7 +1212,65 @@ export const UpdateSettingsResponse = zod.object({
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
-  "pixKey": zod.string().nullish()
+  "pixKey": zod.string().nullish(),
+  "maxBookingDays": zod.number().optional().describe('Maximum days in advance a client can book (7, 15, 30).'),
+  "minAdvanceMinutes": zod.number().optional().describe('Minimum minutes of advance notice required to book a slot.'),
+  "minCancelMinutes": zod.number().optional().describe('Minimum minutes before the appointment that cancellation is allowed.'),
+  "slotIntervalMinutes": zod.number().optional().describe('Time slot grid interval in minutes (10, 15, 30, 60).'),
+  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.')
+})
+
+
+/**
+ * @summary List combo discounts
+ */
+export const ListComboDiscountsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "serviceIds": zod.array(zod.number()),
+  "discountPercent": zod.number(),
+  "createdAt": zod.string().optional()
+})
+export const ListComboDiscountsResponse = zod.array(ListComboDiscountsResponseItem)
+
+
+/**
+ * @summary Create a combo discount
+ */
+export const CreateComboDiscountBody = zod.object({
+  "name": zod.string(),
+  "serviceIds": zod.array(zod.number()),
+  "discountPercent": zod.number()
+})
+
+
+/**
+ * @summary Update a combo discount
+ */
+export const UpdateComboDiscountParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateComboDiscountBody = zod.object({
+  "name": zod.string(),
+  "serviceIds": zod.array(zod.number()),
+  "discountPercent": zod.number()
+})
+
+export const UpdateComboDiscountResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "serviceIds": zod.array(zod.number()),
+  "discountPercent": zod.number(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a combo discount
+ */
+export const DeleteComboDiscountParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

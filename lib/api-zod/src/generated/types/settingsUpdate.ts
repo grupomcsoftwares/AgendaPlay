@@ -30,4 +30,9 @@ export interface SettingsUpdate {
   paymentEnableOnSite?: boolean;
   /** @nullable */
   pixKey?: string | null;
+  maxBookingDays?: number;
+  minAdvanceMinutes?: number;
+  minCancelMinutes?: number;
+  slotIntervalMinutes?: number;
+  smartSlots?: boolean;
 }
