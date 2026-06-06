@@ -104,6 +104,7 @@ export const ListServicesResponseItem = zod.object({
   "durationMinutes": zod.number(),
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "sortOrder": zod.number(),
   "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 export const ListServicesResponse = zod.array(ListServicesResponseItem)
@@ -118,6 +119,7 @@ export const CreateServiceBody = zod.object({
   "durationMinutes": zod.number(),
   "price": zod.number(),
   "imageUrl": zod.string().optional(),
+  "sortOrder": zod.number().optional(),
   "barberIds": zod.array(zod.number()).optional()
 })
 
@@ -136,6 +138,7 @@ export const GetServiceResponse = zod.object({
   "durationMinutes": zod.number(),
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "sortOrder": zod.number(),
   "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 
@@ -153,6 +156,7 @@ export const UpdateServiceBody = zod.object({
   "durationMinutes": zod.number().optional(),
   "price": zod.number().optional(),
   "imageUrl": zod.string().nullish(),
+  "sortOrder": zod.number().optional(),
   "barberIds": zod.array(zod.number()).optional()
 })
 
@@ -163,6 +167,7 @@ export const UpdateServiceResponse = zod.object({
   "durationMinutes": zod.number(),
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
+  "sortOrder": zod.number(),
   "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
 })
 

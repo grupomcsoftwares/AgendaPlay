@@ -765,7 +765,7 @@ components:
 
     Service:
       type: object
-      required: [id, name, durationMinutes, price, barberIds]
+      required: [id, name, durationMinutes, price, sortOrder, barberIds]
       properties:
         id:
           type: integer
@@ -779,6 +779,8 @@ components:
           type: number
         imageUrl:
           type: ["string", "null"]
+        sortOrder:
+          type: integer
         barberIds:
           type: array
           description: IDs of barbers that perform this service. Empty array means "all barbers" (legacy).
@@ -799,6 +801,8 @@ components:
           type: number
         imageUrl:
           type: string
+        sortOrder:
+          type: integer
         barberIds:
           type: array
           items:
@@ -817,6 +821,8 @@ components:
           type: number
         imageUrl:
           type: ["string", "null"]
+        sortOrder:
+          type: integer
         barberIds:
           type: array
           items:

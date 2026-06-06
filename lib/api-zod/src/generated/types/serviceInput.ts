@@ -12,5 +12,6 @@ export interface ServiceInput {
   durationMinutes: number;
   price: number;
   imageUrl?: string;
+  sortOrder?: number;
   barberIds?: number[];
 }

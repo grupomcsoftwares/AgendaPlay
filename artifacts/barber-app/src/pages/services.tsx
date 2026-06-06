@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useListServices, useCreateService, useUpdateService, useDeleteService, getListServicesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Scissors, Upload, Clock, X, ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Upload, Clock, X, ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -113,6 +113,7 @@ export default function Services() {
   const deleteService = useDeleteService();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isReordering, setIsReordering] = useState(false);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -180,6 +181,28 @@ export default function Services() {
     }
   };
 
+  const handleReorder = async (movedId: number, newIndex: number) => {
+    if (!services) return;
+    const list = [...services];
+    const fromIndex = list.findIndex((s) => s.id === movedId);
+    if (fromIndex === -1 || fromIndex === newIndex) return;
+    const [moved] = list.splice(fromIndex, 1);
+    list.splice(newIndex, 0, moved);
+    const payload = list.map((s, i) => ({ id: s.id, sortOrder: i + 1 }));
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}api/services/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Falha ao reordenar");
+      queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+      toast({ title: "Ordem atualizada" });
+    } catch {
+      toast({ title: "Erro ao reordenar", variant: "destructive" });
+    }
+  };
+
   const handleDelete = (id: number) => {
     if (confirm("Tem certeza que deseja remover este serviço?")) {
       deleteService.mutate(
@@ -205,16 +228,25 @@ export default function Services() {
           <h1 className="text-3xl font-bold tracking-tight">Serviços</h1>
           <p className="text-muted-foreground mt-1">Gerencie os serviços oferecidos na barbearia.</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> Novo Serviço
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden border-border/60">
+        <div className="flex gap-2">
+          <Button
+            variant={isReordering ? "default" : "outline"}
+            className="gap-2"
+            onClick={() => setIsReordering(!isReordering)}
+            data-testid="button-reorder-mode"
+          >
+            {isReordering ? "Pronto" : "Organizar"}
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" /> Novo Serviço
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden border-border/60">
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
               <DialogTitle className="text-xl font-semibold tracking-tight">
                 {editingId ? "Editar serviço" : "Novo serviço"}
@@ -330,8 +362,9 @@ export default function Services() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
-      <div className="border border-border rounded-lg bg-card">
+    <div className="border border-border rounded-lg bg-card">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -374,31 +407,56 @@ export default function Services() {
                   <TableCell>{service.durationMinutes} min</TableCell>
                   <TableCell>{formatCurrency(service.price)}</TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => {
-                        setEditingId(service.id);
-                        setFormData({
-                          name: service.name,
-                          description: service.description || "",
-                          durationMinutes: service.durationMinutes.toString(),
-                          price: service.price.toString(),
-                          imageUrl: service.imageUrl || "",
-                        });
-                        setIsCreateOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(service.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {isReordering ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={services.indexOf(service) === 0}
+                          onClick={() => handleReorder(service.id, services.indexOf(service) - 1)}
+                          data-testid={`button-service-up-${service.id}`}
+                        >
+                          <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={services.indexOf(service) === services.length - 1}
+                          onClick={() => handleReorder(service.id, services.indexOf(service) + 1)}
+                          data-testid={`button-service-down-${service.id}`}
+                        >
+                          <ArrowDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingId(service.id);
+                            setFormData({
+                              name: service.name,
+                              description: service.description || "",
+                              durationMinutes: service.durationMinutes.toString(),
+                              price: service.price.toString(),
+                              imageUrl: service.imageUrl || "",
+                            });
+                            setIsCreateOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDelete(service.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

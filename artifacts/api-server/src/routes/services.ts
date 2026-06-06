@@ -33,7 +33,7 @@ async function withBarberIds(rows: ServiceRow[]) {
 }
 
 router.get("/services", async (_req, res): Promise<void> => {
-  const services = await db.select().from(servicesTable).orderBy(servicesTable.name);
+  const services = await db.select().from(servicesTable).orderBy(servicesTable.sortOrder);
   res.json(await withBarberIds(services));
 });
 
@@ -45,9 +45,12 @@ router.post("/services", async (req, res): Promise<void> => {
   }
   const { barberIds, ...rest } = parsed.data;
   const service = await db.transaction(async (tx) => {
+    const maxOrder = await tx.select({ max: servicesTable.sortOrder }).from(servicesTable).orderBy(servicesTable.sortOrder).limit(1);
+    const nextSort = (maxOrder[0]?.max ?? 0) + 1;
     const [s] = await tx.insert(servicesTable).values({
       ...rest,
       price: String(rest.price),
+      sortOrder: rest.sortOrder ?? nextSort,
     }).returning();
     if (barberIds && barberIds.length > 0) {
       await tx.insert(barberServicesTable).values(
@@ -73,6 +76,24 @@ router.get("/services/:id", async (req, res): Promise<void> => {
   }
   const [enriched] = await withBarberIds([service]);
   res.json(enriched);
+});
+
+router.patch("/services/reorder", async (req, res): Promise<void> => {
+  const items = req.body as Array<{ id: number; sortOrder: number }>;
+  if (!Array.isArray(items) || items.some((i) => typeof i.id !== "number" || typeof i.sortOrder !== "number")) {
+    res.status(400).json({ error: "Invalid reorder payload" });
+    return;
+  }
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      await tx
+        .update(servicesTable)
+        .set({ sortOrder: item.sortOrder })
+        .where(eq(servicesTable.id, item.id));
+    }
+  });
+  const services = await db.select().from(servicesTable).orderBy(servicesTable.sortOrder);
+  res.json(await withBarberIds(services));
 });
 
 router.patch("/services/:id", async (req, res): Promise<void> => {

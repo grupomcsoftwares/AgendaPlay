@@ -14,5 +14,6 @@ export interface ServiceUpdate {
   price?: number;
   /** @nullable */
   imageUrl?: string | null;
+  sortOrder?: number;
   barberIds?: number[];
 }

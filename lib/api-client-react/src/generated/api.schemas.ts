@@ -52,6 +52,7 @@ export interface Service {
   price: number;
   /** @nullable */
   imageUrl?: string | null;
+  sortOrder: number;
   /** IDs of barbers that perform this service. Empty array means "all barbers" (legacy). */
   barberIds: number[];
 }
@@ -62,6 +63,7 @@ export interface ServiceInput {
   durationMinutes: number;
   price: number;
   imageUrl?: string;
+  sortOrder?: number;
   barberIds?: number[];
 }
 
@@ -73,6 +75,7 @@ export interface ServiceUpdate {
   price?: number;
   /** @nullable */
   imageUrl?: string | null;
+  sortOrder?: number;
   barberIds?: number[];
 }
 
