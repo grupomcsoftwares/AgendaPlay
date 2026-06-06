@@ -17,7 +17,7 @@ import {
   ApiError,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, MoreHorizontal, Activity, LayoutGrid } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Link } from "wouter";
 
 const INITIAL_FORM = { clientId: "new", clientName: "", serviceId: "", time: "" };
 
@@ -218,9 +220,32 @@ export default function Appointments() {
   return (
     <div className="flex-1 p-8 bg-background overflow-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
-          <p className="text-muted-foreground mt-1">Gerencie a agenda do dia.</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
+            <p className="text-muted-foreground mt-1">Gerencie a agenda do dia.</p>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="mt-1 text-muted-foreground hover:text-foreground">
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem asChild>
+                <Link href="/queue" className="flex items-center gap-2 cursor-pointer">
+                  <Activity className="h-4 w-4" />
+                  Painel de Fila
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/booking" className="flex items-center gap-2 cursor-pointer">
+                  <LayoutGrid className="h-4 w-4" />
+                  Página de Agendamento
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex items-center gap-4">
