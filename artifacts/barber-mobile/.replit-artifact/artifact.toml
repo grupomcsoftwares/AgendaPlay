@@ -1,0 +1,26 @@
+kind = "mobile"
+previewPath = "/mobile/"
+title = "BarberApp Mobile"
+version = "1.0.0"
+id = "artifacts/barber-mobile"
+router = "path"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+name = "expo"
+paths = [ "/mobile/" ]
+localPort = 3001
+
+[services.development]
+run = "node scripts/dev-server.js"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/barber-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/barber-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "3001"
+BASE_PATH = "/mobile/"

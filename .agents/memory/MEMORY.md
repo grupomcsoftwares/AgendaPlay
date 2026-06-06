@@ -1,1 +1,2 @@
 - [Barbershop logo storage](logo-storage.md) — shop logo is a resized PNG data URL in settings.logoUrl, not object storage; migrate if assets grow.
+- [Expo workflow port detection bug](expo-workflow-port-bug.md) — port detection broken for kind=mobile in this env; workaround: configureWorkflow without waitForPort.
