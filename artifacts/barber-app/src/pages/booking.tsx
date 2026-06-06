@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 const AMBER = "hsl(38 88% 55%)";
@@ -396,74 +396,94 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
                 return (
-                  <button
-                    key={service.id}
-                    type="button"
-                    data-testid={`button-service-${service.id}`}
-                    onClick={() => handleToggleService(service.id)}
-                    className="w-full text-left rounded-2xl p-4 transition-all"
-                    style={{
-                      backgroundColor: isSelected ? "hsl(0 0% 10%)" : "hsl(0 0% 7%)",
-                      border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
-                        style={{
-                          backgroundColor: "hsl(0 0% 10%)",
-                          border: "1px solid hsl(0 0% 16%)",
-                        }}
-                      >
-                        {service.imageUrl ? (
-                          <img
-                            src={service.imageUrl}
-                            alt={service.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Scissors className="w-6 h-6" style={{ color: AMBER }} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div>
-                          <p className="font-semibold text-base">{service.name}</p>
-                          {service.description && (
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              {service.description}
-                            </p>
+                  <div key={service.id} className="relative">
+                    <button
+                      type="button"
+                      data-testid={`button-service-${service.id}`}
+                      onClick={() => {
+                        if (!isSelected) handleToggleService(service.id);
+                      }}
+                      className="w-full text-left rounded-2xl p-4 transition-all"
+                      style={{
+                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : "hsl(0 0% 7%)",
+                        border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                        cursor: isSelected ? "default" : "pointer",
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+                          style={{
+                            backgroundColor: "hsl(0 0% 10%)",
+                            border: "1px solid hsl(0 0% 16%)",
+                          }}
+                        >
+                          {service.imageUrl ? (
+                            <img
+                              src={service.imageUrl}
+                              alt={service.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Scissors className="w-6 h-6" style={{ color: AMBER }} />
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="w-3.5 h-3.5" />
-                            {service.durationMinutes} min
-                          </span>
-                          <span
-                            className="flex items-center gap-1 font-semibold"
-                            style={{ color: AMBER }}
-                          >
-                            <DollarSign className="w-3.5 h-3.5" />
-                            R$ {service.price.toFixed(2).replace(".", ",")}
-                          </span>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div>
+                            <p className="font-semibold text-base">{service.name}</p>
+                            {service.description && (
+                              <p className="text-sm text-muted-foreground mt-0.5">
+                                {service.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="w-3.5 h-3.5" />
+                              {service.durationMinutes} min
+                            </span>
+                            <span
+                              className="flex items-center gap-1 font-semibold"
+                              style={{ color: AMBER }}
+                            >
+                              <DollarSign className="w-3.5 h-3.5" />
+                              R$ {service.price.toFixed(2).replace(".", ",")}
+                            </span>
+                          </div>
                         </div>
+                        {!isSelected && (
+                          <div
+                            className="rounded-full flex items-center justify-center shrink-0 mt-1"
+                            style={{
+                              width: 22,
+                              height: 22,
+                              border: "2px solid hsl(0 0% 25%)",
+                              backgroundColor: "transparent",
+                            }}
+                          />
+                        )}
                       </div>
-                      <div
-                        className="rounded-full flex items-center justify-center shrink-0 mt-1"
+                    </button>
+                    {isSelected && (
+                      <button
+                        type="button"
+                        data-testid={`button-remove-service-${service.id}`}
+                        onClick={() => handleToggleService(service.id)}
+                        className="absolute top-3 right-3 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
                         style={{
                           width: 22,
                           height: 22,
-                          border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 25%)"}`,
-                          backgroundColor: isSelected ? AMBER : "transparent",
+                          backgroundColor: AMBER,
                           color: "hsl(0 0% 10%)",
-                          transition: "all 0.15s",
+                          border: "none",
+                          cursor: "pointer",
                         }}
+                        title="Remover serviço"
                       >
-                        {isSelected && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-                      </div>
-                    </div>
-                  </button>
+                        <X className="w-3 h-3" strokeWidth={3} />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
