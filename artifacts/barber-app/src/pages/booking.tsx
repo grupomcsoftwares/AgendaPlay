@@ -57,6 +57,9 @@ export default function Booking() {
   const createAppointment = useCreateAppointment();
 
   const [step, setStep] = useState(1);
+  // Plays a celebratory check animation after a successful booking before
+  // navigating to the confirmation page.
+  const [confirmed, setConfirmed] = useState(false);
   // When true, step 1 shows the barber picker instead of the service list.
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
@@ -107,9 +110,12 @@ export default function Booking() {
       }},
       {
         onSuccess: (created) => {
-          if (created?.cancelToken) {
-            setLocation(`/agendamento/${created.cancelToken}?novo=1`);
-          }
+          setConfirmed(true);
+          window.setTimeout(() => {
+            if (created?.cancelToken) {
+              setLocation(`/agendamento/${created.cancelToken}?novo=1`);
+            }
+          }, 2200);
         }
       }
     );
@@ -885,6 +891,62 @@ export default function Booking() {
           )}
         </Card>
       </div>
+
+      {confirmed && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center"
+          style={{ backgroundColor: "hsl(0 0% 4% / 0.97)", backdropFilter: "blur(4px)" }}
+          data-testid="overlay-booking-confirmed"
+        >
+          <style>{`
+            @keyframes bkPop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes bkDraw { to { stroke-dashoffset: 0; } }
+            @keyframes bkRing { 0% { transform: scale(0.65); opacity: 0.55; } 100% { transform: scale(1.9); opacity: 0; } }
+            @keyframes bkUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+            .bk-pop { animation: bkPop 0.55s cubic-bezier(0.22,1,0.36,1) forwards; }
+            .bk-circle { stroke-dasharray: 1; stroke-dashoffset: 1; animation: bkDraw 0.55s ease forwards 0.1s; }
+            .bk-check { stroke-dasharray: 1; stroke-dashoffset: 1; animation: bkDraw 0.4s ease forwards 0.5s; }
+            .bk-ring { position: absolute; inset: 0; border-radius: 9999px; animation: bkRing 1.6s ease-out infinite 0.5s; }
+            .bk-ring-2 { animation-delay: 1s; }
+            .bk-fade { opacity: 0; animation: bkUp 0.5s ease forwards 0.8s; }
+            .bk-fade-2 { opacity: 0; animation: bkUp 0.5s ease forwards 1s; }
+          `}</style>
+
+          <div className="relative bk-pop" style={{ width: 128, height: 128 }}>
+            <span className="bk-ring" style={{ border: `2px solid ${AMBER}` }} />
+            <span className="bk-ring bk-ring-2" style={{ border: `2px solid ${AMBER}` }} />
+            <svg width="128" height="128" viewBox="0 0 128 128" style={{ position: "relative" }}>
+              <circle
+                cx="64"
+                cy="64"
+                r="58"
+                fill={AMBER_SOFT}
+                stroke={AMBER}
+                strokeWidth="4"
+                pathLength={1}
+                className="bk-circle"
+              />
+              <path
+                d="M40 66 L57 83 L90 46"
+                fill="none"
+                stroke={AMBER}
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                pathLength={1}
+                className="bk-check"
+              />
+            </svg>
+          </div>
+
+          <h2 className="bk-fade text-2xl font-bold mt-6">Agendamento confirmado!</h2>
+          <p className="bk-fade-2 text-sm text-muted-foreground mt-2">
+            {formData.paymentMethod === "now"
+              ? "Pagamento recebido. Te esperamos!"
+              : "Tudo certo! Te esperamos no horário marcado."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
