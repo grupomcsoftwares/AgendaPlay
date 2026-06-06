@@ -32,7 +32,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { Link } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
@@ -230,18 +229,14 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold tracking-tight">Agendamentos</h1>
           <p className="text-muted-foreground mt-1">Gerencie a agenda do dia.</p>
           <div className="flex items-center gap-2 mt-3">
-            <Link href="/queue">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none">
-                <Activity className="h-3.5 w-3.5 text-teal-400" />
-                Painel de Fila
-              </span>
-            </Link>
-            <Link href="/booking">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none">
-                <LayoutGrid className="h-3.5 w-3.5 text-violet-400" />
-                Página de Agendamento
-              </span>
-            </Link>
+            <a href="/queue" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none no-underline">
+              <Activity className="h-3.5 w-3.5 text-teal-400" />
+              Painel de Fila
+            </a>
+            <a href={bookingUrl || "/booking"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none no-underline">
+              <LayoutGrid className="h-3.5 w-3.5 text-violet-400" />
+              Página de Agendamento
+            </a>
             <button
               onClick={() => setQrOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none"
