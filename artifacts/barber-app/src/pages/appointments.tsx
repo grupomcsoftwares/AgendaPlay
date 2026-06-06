@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const INITIAL_FORM = { clientId: "new", clientName: "", serviceId: "", time: "" };
 
@@ -66,8 +67,20 @@ export default function Appointments() {
   const [formData, setFormData] = useState(INITIAL_FORM);
   // The booking modal can target a different day than the one shown in the list.
   const [formDate, setFormDate] = useState<Date>(new Date());
-  const [formDatePopoverOpen, setFormDatePopoverOpen] = useState(false);
   const formDateStr = format(formDate, "yyyy-MM-dd");
+
+  // Horizontal day strip shown in the booking modal: the next two weeks starting today.
+  const dayOptions = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, []);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
 
   // Refresh every surface that depends on appointment data so the public booking
@@ -238,31 +251,47 @@ export default function Appointments() {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Data</Label>
-                  <Popover open={formDatePopoverOpen} onOpenChange={setFormDatePopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-2 font-normal"
-                        data-testid="button-pick-form-date"
-                      >
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        {format(formDate, "dd 'de' MMMM, yyyy", { locale: ptBR })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        locale={ptBR}
-                        selected={formDate}
-                        onSelect={(d) => {
-                          if (!d) return;
-                          setFormDate(d);
-                          setFormData((prev) => ({ ...prev, time: "" }));
-                          setFormDatePopoverOpen(false);
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                    {dayOptions.map((d) => {
+                      const selected = sameDay(d, formDate);
+                      const today = sameDay(d, new Date());
+                      return (
+                        <button
+                          key={d.toISOString()}
+                          type="button"
+                          onClick={() => {
+                            setFormDate(d);
+                            setFormData((prev) => ({ ...prev, time: "" }));
+                          }}
+                          data-testid={`button-day-${format(d, "yyyy-MM-dd")}`}
+                          className={cn(
+                            "flex shrink-0 w-[64px] flex-col items-center rounded-lg border py-2 transition-colors",
+                            selected
+                              ? "border-amber-500 bg-amber-500/10"
+                              : "border-border hover:border-muted-foreground/40",
+                          )}
+                        >
+                          <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                            {format(d, "EEE", { locale: ptBR }).replace(".", "")}
+                          </span>
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold uppercase leading-tight",
+                              today ? "text-amber-500" : "text-transparent",
+                            )}
+                          >
+                            Hoje
+                          </span>
+                          <span className="text-xl font-bold leading-none text-foreground">
+                            {format(d, "d")}
+                          </span>
+                          <span className="mt-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                            {format(d, "MMM", { locale: ptBR }).replace(".", "")}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
