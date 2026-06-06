@@ -10,6 +10,7 @@ import settingsRouter from "./settings.js";
 import barbersRouter from "./barbers.js";
 import authRouter from "./auth.js";
 import stripeRouter from "./stripe.js";
+import shopRouter from "./shop.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
@@ -24,6 +25,7 @@ const router: IRouter = Router();
 router.use(authRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
+router.use(shopRouter);
 
 // services and appointments contain both public and admin routes;
 // requireAuth is applied at individual route level inside those files.

@@ -5,6 +5,29 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80) || "barbearia";
+}
+
+async function uniqueSlug(db_: typeof db, base: string): Promise<string> {
+  let slug = base;
+  let attempt = 0;
+  while (true) {
+    const [existing] = await db_.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.slug, slug)).limit(1);
+    if (!existing) return slug;
+    attempt++;
+    slug = `${base}-${attempt}`;
+  }
+}
+
 declare module "express-session" {
   interface SessionData {
     userId?: string;
@@ -57,11 +80,14 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+  const baseSlug = generateSlug(barbershopName);
+  const slug = await uniqueSlug(db, baseSlug);
   const [user] = await db.insert(usersTable).values({
     email: email.toLowerCase(),
     passwordHash,
     barbershopName,
     ownerName,
+    slug,
   }).returning();
 
   req.session.userId = user.id;
@@ -72,6 +98,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     ...status,
   });
@@ -105,6 +132,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
@@ -138,6 +166,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,

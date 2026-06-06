@@ -449,7 +449,9 @@ export default function Settings() {
                   <div className="flex gap-2">
                     <Input
                       readOnly
-                      value={`${window.location.origin}/booking?shopId=${user.id}`}
+                      value={user.slug
+                        ? `${window.location.origin}/b/${user.slug}`
+                        : `${window.location.origin}/booking?shopId=${user.id}`}
                       className="font-mono text-xs bg-muted"
                     />
                     <Button
@@ -457,7 +459,10 @@ export default function Settings() {
                       variant="outline"
                       size="icon"
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/booking?shopId=${user.id}`);
+                        const link = user.slug
+                          ? `${window.location.origin}/b/${user.slug}`
+                          : `${window.location.origin}/booking?shopId=${user.id}`;
+                        navigator.clipboard.writeText(link);
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}

@@ -50,12 +50,13 @@ function StepIndicator({ current, labels }: { current: number; labels: readonly 
   );
 }
 
-export default function Booking() {
+export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}) {
   const [, setLocation] = useLocation();
 
-  // Read shopId from URL query string (?shopId=<userId>).
+  // shopIdProp takes priority (used by public slug-based pages).
+  // Falls back to URL query string (?shopId=<userId>) for the admin-shared link.
   // Admin users arriving without shopId rely on their session cookie instead.
-  const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+  const shopId = shopIdProp ?? new URLSearchParams(window.location.search).get("shopId") ?? undefined;
 
   const { data: services } = useListServices(
     shopId ? { shopId } : undefined,

@@ -16,6 +16,7 @@ import Appointments from "./pages/appointments";
 import Financial from "./pages/financial";
 import Booking from "./pages/booking";
 import CancelBooking from "./pages/cancel";
+import PublicBooking from "./pages/public-booking";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
 import Register from "./pages/register";
@@ -89,6 +90,9 @@ function Router() {
       </Route>
       <Route path="/booking">
         <Booking />
+      </Route>
+      <Route path="/b/:slug">
+        <PublicBooking />
       </Route>
       <Route path="/agendamento/:token">
         <CancelBooking />

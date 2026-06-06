@@ -5,6 +5,7 @@ export type AuthUser = {
   email: string;
   barbershopName: string;
   ownerName: string;
+  slug?: string | null;
   trialStartedAt: string;
   trialDaysLeft: number;
   trialExpired: boolean;
