@@ -609,21 +609,6 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">Cliente não pode cancelar após este prazo.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Escala de horários</Label>
-                <select
-                  value={formData.slotIntervalMinutes}
-                  onChange={(e) => setFormData({ ...formData, slotIntervalMinutes: Number(e.target.value) })}
-                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
-                >
-                  <option value={10}>A cada 10 minutos</option>
-                  <option value={15}>A cada 15 minutos</option>
-                  <option value={30}>A cada 30 minutos</option>
-                  <option value={60}>A cada 60 minutos</option>
-                </select>
-                <p className="text-xs text-muted-foreground">Intervalo entre os horários disponíveis para o cliente escolher.</p>
-              </div>
-
               <div className="flex items-center justify-between border border-border rounded-lg p-4">
                 <div className="space-y-1 pr-4">
                   <p className="font-semibold">Horários inteligentes</p>
