@@ -31,7 +31,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex-1 overflow-auto p-8 space-y-8 bg-background">
+    <div className="flex-1 overflow-auto p-4 md:p-8 space-y-8 bg-background">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Visão Geral</h1>
       </div>

@@ -238,7 +238,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="flex-1 p-8 bg-background overflow-auto space-y-6">
+    <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
         <p className="text-muted-foreground mt-1">Gerencie as informações da barbearia.</p>
