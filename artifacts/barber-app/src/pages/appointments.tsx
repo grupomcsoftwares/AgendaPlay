@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   useListAppointments,
   useCreateAppointment,
+  useUpdateAppointment,
   useDeleteAppointment,
   useStartAppointment,
   useCompleteAppointment,
@@ -15,9 +16,10 @@ import {
   getGetAvailabilityQueryKey,
   getGetDashboardSummaryQueryKey,
   ApiError,
+  type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Activity, LayoutGrid, QrCode } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Activity, LayoutGrid, QrCode, Pencil, List } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
 const INITIAL_FORM = { clientId: "new", clientName: "", serviceId: "", time: "" };
+const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
   const { user } = useAuth();
@@ -43,25 +46,42 @@ export default function Appointments() {
     ? `${window.location.origin}/booking?shopId=${user.id}`
     : "";
   const [qrOpen, setQrOpen] = useState(false);
+  const [view, setView] = useState<"day" | "all">("day");
   const [date, setDate] = useState<Date>(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
 
-  const { data: appointments, isLoading } = useListAppointments(
+  // Day view — polls every 5s for live updates
+  const { data: dayAppointments, isLoading: dayLoading } = useListAppointments(
     { date: dateStr },
     {
       query: {
         queryKey: getListAppointmentsQueryKey({ date: dateStr }),
-        // Poll every 5s so bookings made on the public page, cancellations via
-        // link, and queue auto-start/auto-complete appear without manual refresh.
         refetchInterval: 5000,
         refetchOnWindowFocus: true,
       },
     },
   );
+
+  // All view — all appointments for this account
+  const { data: allAppointments, isLoading: allLoading } = useListAppointments(
+    {},
+    {
+      query: {
+        queryKey: getListAppointmentsQueryKey({}),
+        refetchInterval: 10000,
+        refetchOnWindowFocus: true,
+        enabled: view === "all",
+      },
+    },
+  );
+
+  const appointments = view === "day" ? dayAppointments : allAppointments;
+  const isLoading = view === "day" ? dayLoading : allLoading;
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
 
   const createAppointment = useCreateAppointment();
+  const updateAppointment = useUpdateAppointment();
   const deleteAppointment = useDeleteAppointment();
   const startAppointment = useStartAppointment();
   const completeAppointment = useCompleteAppointment();
@@ -75,6 +95,48 @@ export default function Appointments() {
   // The booking modal can target a different day than the one shown in the list.
   const [formDate, setFormDate] = useState<Date>(new Date());
   const formDateStr = format(formDate, "yyyy-MM-dd");
+
+  // Edit appointment state
+  const [editTarget, setEditTarget] = useState<Appointment | null>(null);
+  const [editDate, setEditDate] = useState<Date>(new Date());
+  const [editTime, setEditTime] = useState("");
+  const editDateStr = format(editDate, "yyyy-MM-dd");
+  const editServiceId = editTarget?.serviceId ?? 0;
+  const { data: editAvailability, isFetching: editLoadingSlots } = useGetAvailability(
+    { date: editDateStr, serviceId: editServiceId },
+    {
+      query: {
+        queryKey: getGetAvailabilityQueryKey({ date: editDateStr, serviceId: editServiceId }),
+        enabled: !!editTarget && editServiceId > 0,
+      },
+    },
+  );
+
+  const openEdit = (apt: Appointment) => {
+    const d = new Date(apt.scheduledAt);
+    setEditTarget(apt);
+    setEditDate(d);
+    setEditTime(format(d, "HH:mm"));
+  };
+
+  const handleEdit = () => {
+    if (!editTarget || !editTime) return;
+    const scheduledAt = new Date(`${editDateStr}T${editTime}:00-03:00`).toISOString();
+    updateAppointment.mutate(
+      { id: editTarget.id, data: { scheduledAt } },
+      {
+        onSuccess: () => {
+          invalidateAll();
+          setEditTarget(null);
+          toast({ title: "Horário atualizado" });
+        },
+        onError: (err) => {
+          const apiErr = err as ApiError<{ error?: string }>;
+          toast({ variant: "destructive", title: "Não foi possível alterar", description: apiErr?.data?.error ?? "Tente novamente." });
+        },
+      }
+    );
+  };
 
   // Horizontal day strip shown in the booking modal: the next two weeks starting today.
   const dayOptions = useMemo(() => {
@@ -90,14 +152,15 @@ export default function Appointments() {
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
 
-  // Refresh every surface that depends on appointment data so the public booking
-  // page, the dashboard widgets, and the day list all stay in sync.
-  const invalidate = () => {
+  // Refresh every surface that depends on appointment data.
+  const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: dateStr }) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: formDateStr }) });
+    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({}) });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
   };
+  const invalidate = invalidateAll;
 
   const selectedService = useMemo(
     () => services?.find((s) => s.id.toString() === formData.serviceId),
@@ -276,18 +339,44 @@ export default function Appointments() {
           </DialogContent>
         </Dialog>
 
-        <div className="flex items-center gap-4">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2 border-border" data-testid="button-pick-date">
-                <CalendarIcon className="h-4 w-4" />
-                {format(date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} />
-            </PopoverContent>
-          </Popover>
+        <div className="flex items-center gap-3">
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <button
+              type="button"
+              onClick={() => setView("day")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                view === "day" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" /> Por dia
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("all")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+                view === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <List className="h-3.5 w-3.5" /> Todos
+            </button>
+          </div>
+
+          {view === "day" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2 border-border" data-testid="button-pick-date">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} />
+              </PopoverContent>
+            </Popover>
+          )}
 
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -465,12 +554,15 @@ export default function Appointments() {
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium">Nenhum agendamento</h3>
-            <p className="text-muted-foreground">Não há horários marcados para esta data.</p>
+            <p className="text-muted-foreground">
+              {view === "day" ? "Não há horários marcados para esta data." : "Nenhum agendamento encontrado."}
+            </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
+                {view === "all" && <TableHead>Data</TableHead>}
                 <TableHead>Horário</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
@@ -481,8 +573,17 @@ export default function Appointments() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {appointments.sort((a,b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()).map((apt) => (
+              {[...(appointments)].sort((a,b) =>
+                view === "all"
+                  ? new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+                  : new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+              ).map((apt) => (
                 <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
+                  {view === "all" && (
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
+                    </TableCell>
+                  )}
                   <TableCell className="font-bold text-lg">
                     {format(new Date(apt.scheduledAt), "HH:mm")}
                   </TableCell>
@@ -493,6 +594,11 @@ export default function Appointments() {
                   <TableCell>{getStatusBadge(apt.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {(apt.status === 'pending' || apt.status === 'cancelled') && (
+                        <Button variant="ghost" size="icon" title="Editar horário" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
                       {apt.status === 'pending' && (
                         <>
                           <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}>
@@ -539,6 +645,98 @@ export default function Appointments() {
               data-testid="button-confirm-cancel"
             >
               {cancelAppointment.isPending ? "Cancelando…" : "Sim, cancelar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit appointment dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Editar Agendamento · {editTarget?.clientName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4 min-w-0">
+            <div className="space-y-2 min-w-0">
+              <Label>Nova Data</Label>
+              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 min-w-0">
+                {dayOptions.map((d) => {
+                  const selected = sameDay(d, editDate);
+                  const today = sameDay(d, new Date());
+                  return (
+                    <button
+                      key={d.toISOString()}
+                      type="button"
+                      onClick={() => { setEditDate(d); setEditTime(""); }}
+                      className={cn(
+                        "flex shrink-0 w-[64px] flex-col items-center rounded-lg border py-2 transition-colors",
+                        selected ? "border-amber-500 bg-amber-500/10" : "border-border hover:border-muted-foreground/40",
+                      )}
+                    >
+                      <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+                        {format(d, "EEE", { locale: ptBR }).replace(".", "")}
+                      </span>
+                      <span className={cn("text-[10px] font-bold uppercase leading-tight", today ? "text-amber-500" : "text-transparent")}>
+                        Hoje
+                      </span>
+                      <span className="text-xl font-bold leading-none text-foreground">{format(d, "d")}</span>
+                      <span className="mt-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                        {format(d, "MMM", { locale: ptBR }).replace(".", "")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Novo Horário</Label>
+              {editAvailability?.dayClosed ? (
+                <p className="text-sm text-muted-foreground py-3">Fechado neste dia. Escolha outra data.</p>
+              ) : editLoadingSlots && !editAvailability ? (
+                <p className="text-sm text-muted-foreground py-3">Carregando horários…</p>
+              ) : editAvailability && editAvailability.slots.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-3">Nenhum horário disponível neste dia.</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
+                  {(editAvailability?.slots ?? []).map(({ time: value, available }) => {
+                    const isSelected = editTime === value;
+                    const isCurrent = editTarget ? format(new Date(editTarget.scheduledAt), "HH:mm") === value && sameDay(editDate, new Date(editTarget.scheduledAt)) : false;
+                    const isAvail = available || isCurrent;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        disabled={!isAvail}
+                        onClick={() => isAvail && setEditTime(value)}
+                        className="rounded-md py-2 text-sm font-mono font-semibold border transition-colors"
+                        style={{
+                          borderColor: isSelected ? "hsl(var(--primary))" : isCurrent ? "hsl(var(--primary) / 0.4)" : "hsl(var(--border))",
+                          backgroundColor: isSelected ? "hsl(var(--primary) / 0.15)" : "transparent",
+                          color: isAvail ? "hsl(var(--foreground))" : "hsl(var(--muted-foreground))",
+                          cursor: isAvail ? "pointer" : "not-allowed",
+                          textDecoration: isAvail ? "none" : "line-through",
+                          opacity: isAvail ? 1 : 0.45,
+                        }}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditTarget(null)}>Cancelar</Button>
+            <Button
+              onClick={handleEdit}
+              disabled={!editTime || updateAppointment.isPending}
+              data-testid="button-confirm-edit"
+            >
+              {updateAppointment.isPending ? "Salvando…" : "Salvar alteração"}
             </Button>
           </DialogFooter>
         </DialogContent>
