@@ -48,7 +48,7 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     mode: "subscription",
-    success_url: `${baseUrl}/dashboard?subscribed=1`,
+    success_url: `${baseUrl}/subscribe?subscribed=1`,
     cancel_url: `${baseUrl}/subscribe?canceled=1`,
   });
 
