@@ -31,9 +31,16 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
   const navItems: NavItem[] = [
     { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
-    { href: "/appointments", label: "Lista de Agendamentos", icon: List },
-    { href: "/queue", label: "Painel de Fila", icon: Activity },
-    { href: "/booking", label: "Página de Agendamento", icon: LayoutGrid },
+    {
+      href: "/appointments",
+      label: "Agendamentos",
+      icon: List,
+      children: [
+        { href: "/appointments", label: "Lista de Agendamentos", icon: List },
+        { href: "/queue", label: "Painel de Fila", icon: Activity },
+        { href: "/booking", label: "Página de Agendamento", icon: LayoutGrid },
+      ],
+    },
     { href: "/services", label: "Serviços", icon: Scissors },
     { href: "/barbers", label: "Barbeiros", icon: Users },
     { href: "/financial", label: "Financeiro", icon: CreditCard },
