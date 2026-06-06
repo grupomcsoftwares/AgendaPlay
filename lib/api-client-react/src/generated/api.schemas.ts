@@ -365,18 +365,36 @@ export interface SettingsUpdate {
   smartSlots?: boolean;
 }
 
+export type ComboDiscountDiscountType = typeof ComboDiscountDiscountType[keyof typeof ComboDiscountDiscountType];
+
+
+export const ComboDiscountDiscountType = {
+  percent: 'percent',
+  value: 'value',
+} as const;
+
 export interface ComboDiscount {
   id: number;
   name: string;
   serviceIds: number[];
   discountPercent: number;
+  discountType: ComboDiscountDiscountType;
   createdAt?: string;
 }
+
+export type ComboDiscountInputDiscountType = typeof ComboDiscountInputDiscountType[keyof typeof ComboDiscountInputDiscountType];
+
+
+export const ComboDiscountInputDiscountType = {
+  percent: 'percent',
+  value: 'value',
+} as const;
 
 export interface ComboDiscountInput {
   name: string;
   serviceIds: number[];
   discountPercent: number;
+  discountType: ComboDiscountInputDiscountType;
 }
 
 export type ListClientsParams = {

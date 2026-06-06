@@ -8,6 +8,7 @@ export const comboDiscountsTable = pgTable("combo_discounts", {
   name: text("name").notNull().default(""),
   serviceIds: jsonb("service_ids").$type<number[]>().notNull().$default(() => []),
   discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }).notNull().default("0"),
+  discountType: text("discount_type").$type<"percent" | "value">().notNull().default("percent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

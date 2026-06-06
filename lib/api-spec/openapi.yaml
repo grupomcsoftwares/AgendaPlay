@@ -1381,7 +1381,7 @@ components:
 
     ComboDiscount:
       type: object
-      required: [id, name, serviceIds, discountPercent]
+      required: [id, name, serviceIds, discountPercent, discountType]
       properties:
         id:
           type: integer
@@ -1393,12 +1393,15 @@ components:
             type: integer
         discountPercent:
           type: number
+        discountType:
+          type: string
+          enum: [percent, value]
         createdAt:
           type: string
 
     ComboDiscountInput:
       type: object
-      required: [name, serviceIds, discountPercent]
+      required: [name, serviceIds, discountPercent, discountType]
       properties:
         name:
           type: string
@@ -1408,3 +1411,6 @@ components:
             type: integer
         discountPercent:
           type: number
+        discountType:
+          type: string
+          enum: [percent, value]

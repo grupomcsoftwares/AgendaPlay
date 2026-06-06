@@ -5,16 +5,17 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
-function parseComboInput(body: unknown): { name: string; serviceIds: number[]; discountPercent: number } | null {
+function parseComboInput(body: unknown): { name: string; serviceIds: number[]; discountPercent: number; discountType: "percent" | "value" } | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
   if (!Array.isArray(b.serviceIds) || b.serviceIds.length < 2) return null;
   const serviceIds = b.serviceIds.filter((x) => typeof x === "number" && Number.isInteger(x)) as number[];
   if (serviceIds.length < 2) return null;
   const discountPercent = typeof b.discountPercent === "number" ? b.discountPercent : parseFloat(String(b.discountPercent ?? "0"));
-  if (Number.isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) return null;
+  if (Number.isNaN(discountPercent) || discountPercent < 0) return null;
+  const discountType = b.discountType === "value" ? "value" : "percent";
   const name = typeof b.name === "string" ? b.name.trim() : "";
-  return { name, serviceIds, discountPercent };
+  return { name, serviceIds, discountPercent, discountType };
 }
 
 function parseId(params: unknown): number | null {
@@ -53,6 +54,7 @@ router.post("/combo-discounts", requireAuth, async (req, res): Promise<void> => 
     name: input.name,
     serviceIds: input.serviceIds,
     discountPercent: String(input.discountPercent),
+    discountType: input.discountType,
   }).returning();
   res.status(201).json(formatCombo(created));
 });
@@ -75,6 +77,7 @@ router.patch("/combo-discounts/:id", requireAuth, async (req, res): Promise<void
       name: input.name,
       serviceIds: input.serviceIds,
       discountPercent: String(input.discountPercent),
+      discountType: input.discountType,
     })
     .where(and(eq(comboDiscountsTable.id, id), eq(comboDiscountsTable.userId, userId)))
     .returning();

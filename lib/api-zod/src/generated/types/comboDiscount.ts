@@ -5,11 +5,13 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { ComboDiscountDiscountType } from './comboDiscountDiscountType';
 
 export interface ComboDiscount {
   id: number;
   name: string;
   serviceIds: number[];
   discountPercent: number;
+  discountType: ComboDiscountDiscountType;
   createdAt?: string;
 }

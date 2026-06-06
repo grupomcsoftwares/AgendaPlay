@@ -112,7 +112,7 @@ export default function Settings() {
 
   const [comboOpen, setComboOpen] = useState(false);
   const [editingComboId, setEditingComboId] = useState<number | null>(null);
-  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10 });
+  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10, discountType: "percent" as "percent" | "value" });
 
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
@@ -246,7 +246,7 @@ export default function Settings() {
     }
     const autoName = comboForm.name.trim() ||
       comboForm.serviceIds.map((id) => services?.find((s) => s.id === id)?.name || `#${id}`).join(" + ");
-    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent };
+    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent, discountType: comboForm.discountType };
     if (editingComboId) {
       updateComboMut.mutate(
         { id: editingComboId, data: payload },
@@ -255,7 +255,7 @@ export default function Settings() {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
             setEditingComboId(null);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
             toast({ title: "Combo atualizado" });
           },
         },
@@ -267,7 +267,7 @@ export default function Settings() {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
             toast({ title: "Combo criado" });
           },
         },
@@ -773,7 +773,7 @@ export default function Settings() {
             className="gap-2 shrink-0"
             onClick={() => {
               setEditingComboId(null);
-              setComboForm({ name: "", serviceIds: [], discountPercent: 10 });
+              setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
               setComboOpen(true);
             }}
           >
@@ -798,7 +798,11 @@ export default function Settings() {
                   >
                     <div>
                       <p className="text-sm font-medium">{names}</p>
-                      <p className="text-xs text-muted-foreground">{c.discountPercent}% de desconto</p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.discountType === "value"
+                          ? `R$ ${Number(c.discountPercent).toFixed(2)} de desconto`
+                          : `${c.discountPercent}% de desconto`}
+                      </p>
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -810,6 +814,7 @@ export default function Settings() {
                             name: c.name,
                             serviceIds: c.serviceIds as number[],
                             discountPercent: c.discountPercent,
+                            discountType: (c.discountType as "percent" | "value") ?? "percent",
                           });
                           setComboOpen(true);
                         }}
@@ -869,16 +874,51 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs">Desconto (%)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="100"
-                  step="1"
-                  value={comboForm.discountPercent}
-                  onChange={(e) => setComboForm({ ...comboForm, discountPercent: Number(e.target.value) })}
-                  className="h-9"
-                />
+                <Label className="text-xs">Tipo de desconto</Label>
+                <div className="flex rounded-md overflow-hidden border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setComboForm({ ...comboForm, discountType: "percent" })}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      comboForm.discountType === "percent"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    % Porcentagem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComboForm({ ...comboForm, discountType: "value" })}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      comboForm.discountType === "value"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    R$ Valor fixo
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">
+                  {comboForm.discountType === "value" ? "Valor do desconto (R$)" : "Desconto (%)"}
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                    {comboForm.discountType === "value" ? "R$" : "%"}
+                  </span>
+                  <Input
+                    type="number"
+                    min="0.01"
+                    max={comboForm.discountType === "percent" ? "100" : undefined}
+                    step={comboForm.discountType === "value" ? "0.50" : "1"}
+                    value={comboForm.discountPercent}
+                    onChange={(e) => setComboForm({ ...comboForm, discountPercent: Number(e.target.value) })}
+                    className="h-9 pl-9"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2 justify-end">

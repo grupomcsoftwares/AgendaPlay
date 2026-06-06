@@ -1229,6 +1229,7 @@ export const ListComboDiscountsResponseItem = zod.object({
   "name": zod.string(),
   "serviceIds": zod.array(zod.number()),
   "discountPercent": zod.number(),
+  "discountType": zod.enum(['percent', 'value']),
   "createdAt": zod.string().optional()
 })
 export const ListComboDiscountsResponse = zod.array(ListComboDiscountsResponseItem)
@@ -1240,7 +1241,8 @@ export const ListComboDiscountsResponse = zod.array(ListComboDiscountsResponseIt
 export const CreateComboDiscountBody = zod.object({
   "name": zod.string(),
   "serviceIds": zod.array(zod.number()),
-  "discountPercent": zod.number()
+  "discountPercent": zod.number(),
+  "discountType": zod.enum(['percent', 'value'])
 })
 
 
@@ -1254,7 +1256,8 @@ export const UpdateComboDiscountParams = zod.object({
 export const UpdateComboDiscountBody = zod.object({
   "name": zod.string(),
   "serviceIds": zod.array(zod.number()),
-  "discountPercent": zod.number()
+  "discountPercent": zod.number(),
+  "discountType": zod.enum(['percent', 'value'])
 })
 
 export const UpdateComboDiscountResponse = zod.object({
@@ -1262,6 +1265,7 @@ export const UpdateComboDiscountResponse = zod.object({
   "name": zod.string(),
   "serviceIds": zod.array(zod.number()),
   "discountPercent": zod.number(),
+  "discountType": zod.enum(['percent', 'value']),
   "createdAt": zod.string().optional()
 })
 
