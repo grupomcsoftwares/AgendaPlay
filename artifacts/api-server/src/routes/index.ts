@@ -30,6 +30,10 @@ router.use(healthRouter);
 router.use(servicesRouter);
 router.use(appointmentsRouter);
 
+// Mixed public/admin routers — requireAuth applied at route level inside each file
+router.use(settingsRouter);
+router.use(barbersRouter);
+
 // Purely admin routers — always require auth
 const adminRouter = Router();
 adminRouter.use(requireAuth);
@@ -37,8 +41,6 @@ adminRouter.use(clientsRouter);
 adminRouter.use(queueRouter);
 adminRouter.use(dashboardRouter);
 adminRouter.use(financialRouter);
-adminRouter.use(settingsRouter);
-adminRouter.use(barbersRouter);
 
 router.use(adminRouter);
 

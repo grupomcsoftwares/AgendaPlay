@@ -83,7 +83,9 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/queue">
-        <Queue />
+        <ProtectedRoute>
+          <Sidebar><Queue /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/booking">
         <Booking />

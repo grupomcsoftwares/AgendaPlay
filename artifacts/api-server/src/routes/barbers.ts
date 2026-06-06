@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray, asc, and, sql } from "drizzle-orm";
 import { db, barbersTable, barberServicesTable } from "@workspace/db";
+import { requireAuth } from "../middleware/auth.js";
 
 export async function isBarberAllowedForService(
   tx: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -85,7 +86,7 @@ router.get("/barbers", async (req, res): Promise<void> => {
   res.json(await formatMany(rows));
 });
 
-router.post("/barbers", async (req, res): Promise<void> => {
+router.post("/barbers", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateBarberBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -119,7 +120,7 @@ router.get("/barbers/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.patch("/barbers/:id", async (req, res): Promise<void> => {
+router.patch("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateBarberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -154,7 +155,7 @@ router.patch("/barbers/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.delete("/barbers/:id", async (req, res): Promise<void> => {
+router.delete("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteBarberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

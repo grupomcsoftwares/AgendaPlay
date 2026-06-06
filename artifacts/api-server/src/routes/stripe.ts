@@ -77,6 +77,26 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
   }
 });
 
+router.get("/stripe/subscription-status", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.session.userId!;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) {
+    res.status(404).json({ error: "Usuário não encontrado." });
+    return;
+  }
+  const TRIAL_DAYS = 7;
+  const trialStarted = new Date(user.trialStartedAt);
+  const daysSinceTrial = Math.floor((Date.now() - trialStarted.getTime()) / (1000 * 60 * 60 * 24));
+  const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
+  res.json({
+    hasActiveSubscription: !!user.stripeSubscriptionId,
+    subscriptionId: user.stripeSubscriptionId,
+    trialDaysLeft,
+    trialExpired: trialDaysLeft === 0,
+    canAccess: trialDaysLeft > 0 || !!user.stripeSubscriptionId,
+  });
+});
+
 router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.session.userId!;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
