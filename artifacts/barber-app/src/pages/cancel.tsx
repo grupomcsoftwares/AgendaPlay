@@ -47,18 +47,18 @@ export default function CancelBooking() {
   const cancelMut = useCancelAppointmentByToken();
   const rescheduleMut = useRescheduleAppointmentByToken();
 
-  const serviceId = appointment?.serviceId ?? 0;
+  const serviceDuration = appointment?.serviceDuration ?? 0;
   const availParams = {
     ...(shopId ? { shopId } : {}),
     date: reschedDate,
-    serviceId,
+    serviceDuration,
   };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availParams,
     {
       query: {
         queryKey: getGetAvailabilityQueryKey(availParams),
-        enabled: reschedOpen && !!reschedDate && serviceId > 0,
+        enabled: reschedOpen && !!reschedDate && serviceDuration > 0,
       },
     },
   );
@@ -116,7 +116,7 @@ export default function CancelBooking() {
           setErrorMsg(data?.error ?? "Não foi possível alterar o horário. Tente outro.");
           // If the slot was taken, clear it so the user picks again.
           setReschedTime("");
-          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceId }) });
+          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceDuration }) });
         },
       },
     );
