@@ -1036,7 +1036,8 @@ export const GetSettingsResponse = zod.object({
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
-  "paymentEnableOnSite": zod.boolean().optional()
+  "paymentEnableOnSite": zod.boolean().optional(),
+  "pixKey": zod.string().nullish()
 })
 
 
@@ -1108,7 +1109,8 @@ export const UpdateSettingsBody = zod.object({
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
-  "paymentEnableOnSite": zod.boolean().optional()
+  "paymentEnableOnSite": zod.boolean().optional(),
+  "pixKey": zod.string().nullish()
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
@@ -1177,7 +1179,8 @@ export const UpdateSettingsResponse = zod.object({
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
   "paymentEnableNow": zod.boolean().optional(),
-  "paymentEnableOnSite": zod.boolean().optional()
+  "paymentEnableOnSite": zod.boolean().optional(),
+  "pixKey": zod.string().nullish()
 })
 
 

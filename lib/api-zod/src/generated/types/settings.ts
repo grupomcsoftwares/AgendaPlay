@@ -29,4 +29,6 @@ export interface Settings {
   bookingPageMessage?: string | null;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
+  /** @nullable */
+  pixKey?: string | null;
 }

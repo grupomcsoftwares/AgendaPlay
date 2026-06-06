@@ -103,6 +103,7 @@ export default function Settings() {
     weeklySchedule: defaultWeeklySchedule(),
     paymentEnableNow: false,
     paymentEnableOnSite: true,
+    pixKey: "",
   });
 
   useEffect(() => {
@@ -124,6 +125,7 @@ export default function Settings() {
         weeklySchedule: merged,
         paymentEnableNow: settings.paymentEnableNow ?? false,
         paymentEnableOnSite: settings.paymentEnableOnSite ?? true,
+        pixKey: settings.pixKey || "",
       });
     }
   }, [settings]);
@@ -171,7 +173,7 @@ export default function Settings() {
       return;
     }
     updateSettings.mutate(
-      { data: { ...formData, logoUrl: formData.logoUrl || null } },
+      { data: { ...formData, logoUrl: formData.logoUrl || null, pixKey: formData.pixKey || null } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
@@ -380,18 +382,35 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between border border-border rounded-lg p-4">
-                <div className="space-y-1 pr-4">
-                  <p className="font-semibold">Pagar agora (online)</p>
-                  <p className="text-xs text-muted-foreground">
-                    Cliente paga online no momento do agendamento
-                  </p>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between p-4">
+                  <div className="space-y-1 pr-4">
+                    <p className="font-semibold">Pagar agora (online)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Cliente paga via Pix no momento do agendamento
+                    </p>
+                  </div>
+                  <Switch
+                    data-testid="switch-payment-now"
+                    checked={formData.paymentEnableNow}
+                    onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })}
+                  />
                 </div>
-                <Switch
-                  data-testid="switch-payment-now"
-                  checked={formData.paymentEnableNow}
-                  onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })}
-                />
+                {formData.paymentEnableNow && (
+                  <div className="px-4 pb-4 border-t border-border pt-3 space-y-2 bg-muted/30">
+                    <Label className="text-xs font-medium">Chave Pix</Label>
+                    <Input
+                      data-testid="input-pix-key"
+                      value={formData.pixKey}
+                      onChange={(e) => setFormData({ ...formData, pixKey: e.target.value })}
+                      placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Esta chave será exibida para o cliente na hora de confirmar o agendamento.
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="flex items-center justify-between border border-border rounded-lg p-4">
                 <div className="space-y-1 pr-4">

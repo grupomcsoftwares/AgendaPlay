@@ -34,6 +34,7 @@ export const settingsTable = pgTable("settings", {
   bookingPageMessage: text("booking_page_message"),
   paymentEnableNow: boolean("payment_enable_now").notNull().default(false),
   paymentEnableOnSite: boolean("payment_enable_on_site").notNull().default(true),
+  pixKey: text("pix_key"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

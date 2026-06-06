@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -182,6 +183,7 @@ export default function Booking() {
 
   const paymentEnableNow = settings?.paymentEnableNow ?? false;
   const paymentEnableOnSite = settings?.paymentEnableOnSite ?? true;
+  const pixKey = settings?.pixKey ?? null;
   const enabledPayments = ([
     paymentEnableNow ? ("now" as const) : null,
     paymentEnableOnSite ? ("on_site" as const) : null,
@@ -893,6 +895,39 @@ export default function Booking() {
                   );
                 })}
               </div>
+
+              {/* PIX instructions when "pay now" is selected */}
+              {formData.paymentMethod === "now" && pixKey && (
+                <div
+                  className="rounded-2xl p-5 space-y-4"
+                  style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(38 88% 55% / 0.3)" }}
+                >
+                  <p className="text-sm font-semibold" style={{ color: AMBER }}>Pague via Pix antes de confirmar</p>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="p-2 bg-white rounded-xl">
+                      <QRCodeSVG value={pixKey} size={160} />
+                    </div>
+                    <div className="w-full space-y-1">
+                      <p className="text-xs text-muted-foreground text-center">Ou copie a chave Pix:</p>
+                      <div
+                        className="flex items-center gap-2 rounded-lg px-3 py-2"
+                        style={{ backgroundColor: "hsl(0 0% 11%)", border: "1px solid hsl(0 0% 18%)" }}
+                      >
+                        <span className="flex-1 text-sm font-mono truncate">{pixKey}</span>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard.writeText(pixKey)}
+                          className="shrink-0 p-1 rounded hover:opacity-70 transition-opacity"
+                          style={{ color: AMBER, background: "none", border: "none", cursor: "pointer" }}
+                          title="Copiar chave Pix"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="button"

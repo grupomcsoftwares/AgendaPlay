@@ -1202,6 +1202,9 @@ components:
           type: boolean
         paymentEnableOnSite:
           type: boolean
+        pixKey:
+          type: ["string", "null"]
+
 
     SettingsUpdate:
       type: object
@@ -1231,3 +1234,5 @@ components:
           type: boolean
         paymentEnableOnSite:
           type: boolean
+        pixKey:
+          type: ["string", "null"]

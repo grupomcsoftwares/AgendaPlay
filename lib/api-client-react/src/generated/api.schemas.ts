@@ -294,6 +294,8 @@ export interface Settings {
   bookingPageMessage?: string | null;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
+  /** @nullable */
+  pixKey?: string | null;
 }
 
 export interface SettingsUpdate {
@@ -317,6 +319,8 @@ export interface SettingsUpdate {
   bookingPageMessage?: string | null;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
+  /** @nullable */
+  pixKey?: string | null;
 }
 
 export type ListClientsParams = {
