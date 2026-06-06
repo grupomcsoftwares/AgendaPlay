@@ -11,7 +11,7 @@ import barbersRouter from "./barbers.js";
 import authRouter from "./auth.js";
 import stripeRouter from "./stripe.js";
 
-function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
@@ -25,11 +25,15 @@ router.use(authRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
 
+// services and appointments contain both public and admin routes;
+// requireAuth is applied at individual route level inside those files.
+router.use(servicesRouter);
+router.use(appointmentsRouter);
+
+// Purely admin routers — always require auth
 const adminRouter = Router();
 adminRouter.use(requireAuth);
 adminRouter.use(clientsRouter);
-adminRouter.use(servicesRouter);
-adminRouter.use(appointmentsRouter);
 adminRouter.use(queueRouter);
 adminRouter.use(dashboardRouter);
 adminRouter.use(financialRouter);

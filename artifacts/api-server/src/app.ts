@@ -48,7 +48,20 @@ app.post(
   },
 );
 
-app.use(cors({ origin: true, credentials: true }));
+const replitDomains = (process.env.REPLIT_DOMAINS ?? "").split(",").map((d) => `https://${d.trim()}`).filter((d) => d.length > 8);
+const allowedOrigins = new Set([...replitDomains, "http://localhost:3000", "http://localhost:5173", "http://localhost:5174"]);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin) || replitDomains.some((d) => origin.startsWith(d))) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers";
 import {
@@ -61,7 +62,7 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
-router.get("/appointments", async (req, res): Promise<void> => {
+router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
   const query = ListAppointmentsQueryParams.safeParse(req.query);
   let appointments;
   if (query.success && query.data.date) {
@@ -279,7 +280,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
   res.status(201).json(formatAppointmentWithToken(appointment));
 });
 
-router.get("/appointments/:id", async (req, res): Promise<void> => {
+router.get("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -296,7 +297,7 @@ router.get("/appointments/:id", async (req, res): Promise<void> => {
   res.json(formatAppointment(appointment));
 });
 
-router.patch("/appointments/:id", async (req, res): Promise<void> => {
+router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -326,7 +327,7 @@ router.patch("/appointments/:id", async (req, res): Promise<void> => {
   res.json(formatAppointment(appointment));
 });
 
-router.delete("/appointments/:id", async (req, res): Promise<void> => {
+router.delete("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -347,7 +348,7 @@ router.delete("/appointments/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.post("/appointments/:id/start", async (req, res): Promise<void> => {
+router.post("/appointments/:id/start", requireAuth, async (req, res): Promise<void> => {
   const params = StartAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -365,7 +366,7 @@ router.post("/appointments/:id/start", async (req, res): Promise<void> => {
   res.json(formatAppointment(appointment));
 });
 
-router.post("/appointments/:id/complete", async (req, res): Promise<void> => {
+router.post("/appointments/:id/complete", requireAuth, async (req, res): Promise<void> => {
   const params = CompleteAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -558,7 +559,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   res.json(formatAppointmentWithToken(result.appointment!));
 });
 
-router.post("/appointments/:id/cancel", async (req, res): Promise<void> => {
+router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<void> => {
   const params = CancelAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

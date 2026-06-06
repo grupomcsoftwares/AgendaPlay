@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray } from "drizzle-orm";
 import { db, servicesTable, barberServicesTable } from "@workspace/db";
+import { requireAuth } from "../middleware/auth.js";
 import {
   CreateServiceBody,
   GetServiceParams,
@@ -37,7 +38,7 @@ router.get("/services", async (_req, res): Promise<void> => {
   res.json(await withBarberIds(services));
 });
 
-router.post("/services", async (req, res): Promise<void> => {
+router.post("/services", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateServiceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -78,7 +79,7 @@ router.get("/services/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.patch("/services/reorder", async (req, res): Promise<void> => {
+router.patch("/services/reorder", requireAuth, async (req, res): Promise<void> => {
   const items = req.body as Array<{ id: number; sortOrder: number }>;
   if (!Array.isArray(items) || items.some((i) => typeof i.id !== "number" || typeof i.sortOrder !== "number")) {
     res.status(400).json({ error: "Invalid reorder payload" });
@@ -96,7 +97,7 @@ router.patch("/services/reorder", async (req, res): Promise<void> => {
   res.json(await withBarberIds(services));
 });
 
-router.patch("/services/:id", async (req, res): Promise<void> => {
+router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -135,7 +136,7 @@ router.patch("/services/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.delete("/services/:id", async (req, res): Promise<void> => {
+router.delete("/services/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
