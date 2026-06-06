@@ -824,7 +824,7 @@ export default function Booking() {
                   },
                   {
                     value: "on_site" as const,
-                    title: "Pagar no final do serviço",
+                    title: "Pagar depois",
                     desc: "Pague diretamente na barbearia",
                     Icon: Banknote,
                   },

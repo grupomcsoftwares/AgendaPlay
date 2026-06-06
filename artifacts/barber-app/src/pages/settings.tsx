@@ -392,7 +392,7 @@ export default function Settings() {
               </div>
               <div className="flex items-center justify-between border border-border rounded-lg p-4">
                 <div className="space-y-1 pr-4">
-                  <p className="font-semibold">Pagar no final do serviço</p>
+                  <p className="font-semibold">Pagar depois</p>
                   <p className="text-xs text-muted-foreground">
                     Cliente paga direto na barbearia depois do atendimento
                   </p>
