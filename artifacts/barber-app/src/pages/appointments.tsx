@@ -248,10 +248,10 @@ export default function Appointments() {
                   Agendar Horário · {format(formDate, "dd/MM/yyyy", { locale: ptBR })}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
+              <div className="space-y-4 py-4 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label>Data</Label>
-                  <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                  <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 min-w-0">
                     {dayOptions.map((d) => {
                       const selected = sameDay(d, formDate);
                       const today = sameDay(d, new Date());
