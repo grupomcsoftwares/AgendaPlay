@@ -64,12 +64,17 @@ export default function Appointments() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
+  // The booking modal can target a different day than the one shown in the list.
+  const [formDate, setFormDate] = useState<Date>(new Date());
+  const [formDatePopoverOpen, setFormDatePopoverOpen] = useState(false);
+  const formDateStr = format(formDate, "yyyy-MM-dd");
   const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
 
   // Refresh every surface that depends on appointment data so the public booking
   // page, the dashboard widgets, and the day list all stay in sync.
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: dateStr }) });
+    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: formDateStr }) });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
   };
@@ -81,10 +86,10 @@ export default function Appointments() {
 
   const availabilityServiceId = selectedService?.id ?? 0;
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
-    { date: dateStr, serviceId: availabilityServiceId },
+    { date: formDateStr, serviceId: availabilityServiceId },
     {
       query: {
-        queryKey: getGetAvailabilityQueryKey({ date: dateStr, serviceId: availabilityServiceId }),
+        queryKey: getGetAvailabilityQueryKey({ date: formDateStr, serviceId: availabilityServiceId }),
         enabled: isCreateOpen && availabilityServiceId > 0,
       },
     },
@@ -100,9 +105,15 @@ export default function Appointments() {
     }
   }, [availability, formData.time]);
 
-  // Reset form whenever the dialog closes.
+  // Reset form whenever the dialog closes, and default the booking day to the
+  // currently viewed day whenever it opens.
   useEffect(() => {
-    if (!isCreateOpen) setFormData(INITIAL_FORM);
+    if (!isCreateOpen) {
+      setFormData(INITIAL_FORM);
+    } else {
+      setFormDate(date);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateOpen]);
 
   const handleCreate = () => {
@@ -116,7 +127,7 @@ export default function Appointments() {
 
     // Fixed America/Sao_Paulo offset (UTC-3) — matches the server's TZ assumption
     // and mirrors the public booking page so admin and public bookings line up.
-    const scheduledAt = new Date(`${dateStr}T${formData.time}:00-03:00`).toISOString();
+    const scheduledAt = new Date(`${formDateStr}T${formData.time}:00-03:00`).toISOString();
 
     createAppointment.mutate(
       { data: {
@@ -139,7 +150,7 @@ export default function Appointments() {
           if (apiErr?.status === 409) {
             // Refresh slots — a concurrent booking probably grabbed this time.
             queryClient.invalidateQueries({
-              queryKey: getGetAvailabilityQueryKey({ date: dateStr, serviceId: availabilityServiceId }),
+              queryKey: getGetAvailabilityQueryKey({ date: formDateStr, serviceId: availabilityServiceId }),
             });
             toast({
               variant: "destructive",
@@ -221,10 +232,39 @@ export default function Appointments() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  Agendar Horário · {format(date, "dd/MM/yyyy", { locale: ptBR })}
+                  Agendar Horário · {format(formDate, "dd/MM/yyyy", { locale: ptBR })}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <Popover open={formDatePopoverOpen} onOpenChange={setFormDatePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start gap-2 font-normal"
+                        data-testid="button-pick-form-date"
+                      >
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                        {format(formDate, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        locale={ptBR}
+                        selected={formDate}
+                        onSelect={(d) => {
+                          if (!d) return;
+                          setFormDate(d);
+                          setFormData((prev) => ({ ...prev, time: "" }));
+                          setFormDatePopoverOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Cliente</Label>
                   <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v, clientName: v === "new" ? formData.clientName : ""})}>
