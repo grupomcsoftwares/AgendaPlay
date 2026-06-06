@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,9 +54,41 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const [, setLocation] = useLocation();
 
   // shopIdProp takes priority (used by public slug-based pages).
-  // Falls back to URL query string (?shopId=<userId>) for the admin-shared link.
+  // Falls back to URL query string (?shopId=<userId>) for the admin-fresh link.
   // Admin users arriving without shopId rely on their session cookie instead.
   const shopId = shopIdProp ?? new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+
+  // ── Existing-appointment redirect ──────────────────────────────────────────
+  // After a successful booking the token is saved to localStorage. Next time
+  // the client opens the booking link we check: if the appointment is still
+  // upcoming we send them straight to the cancel/reschedule page.
+  const storageKey = `barber_pending_token_${shopId ?? "admin"}`;
+  const [pendingToken, setPendingToken] = useState<string | null>(() =>
+    localStorage.getItem(storageKey)
+  );
+  const { data: pendingAppt, isError: pendingError } = useGetAppointmentByToken(
+    pendingToken ?? "",
+    { query: { queryKey: getGetAppointmentByTokenQueryKey(pendingToken ?? ""), enabled: !!pendingToken } }
+  );
+  useEffect(() => {
+    if (!pendingToken) return;
+    if (pendingError) {
+      localStorage.removeItem(storageKey);
+      setPendingToken(null);
+      return;
+    }
+    if (!pendingAppt) return;
+    const isActive = pendingAppt.status === "pending" || pendingAppt.status === "confirmed";
+    const isFuture = new Date(pendingAppt.scheduledAt) > new Date();
+    if (isActive && isFuture) {
+      const shopParam = shopId ? `?shopId=${shopId}` : "";
+      setLocation(`/agendamento/${pendingToken}${shopParam}`);
+    } else {
+      localStorage.removeItem(storageKey);
+      setPendingToken(null);
+    }
+  }, [pendingAppt, pendingError, pendingToken, storageKey, shopId, setLocation]);
+  // ──────────────────────────────────────────────────────────────────────────
 
   const { data: services } = useListServices(
     shopId ? { shopId } : undefined,
@@ -127,6 +159,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       }},
       {
         onSuccess: (created) => {
+          if (created?.cancelToken) {
+            localStorage.setItem(storageKey, created.cancelToken);
+          }
           setConfirmed(true);
           window.setTimeout(() => {
             if (created?.cancelToken) {

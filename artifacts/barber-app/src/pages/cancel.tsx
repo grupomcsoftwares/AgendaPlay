@@ -129,6 +129,7 @@ export default function CancelBooking() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
+          localStorage.removeItem(`barber_pending_token_${shopId ?? "admin"}`);
           setConfirming(false);
         },
         onError: (err: unknown) => {
