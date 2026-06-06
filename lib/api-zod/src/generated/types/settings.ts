@@ -11,6 +11,11 @@ export interface Settings {
   id: number;
   barbershopName: string;
   ownerName: string;
+  /**
+     * @maxLength 3000000
+     * @nullable
+     */
+  logoUrl?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */

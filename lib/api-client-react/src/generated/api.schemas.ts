@@ -271,6 +271,11 @@ export interface Settings {
   id: number;
   barbershopName: string;
   ownerName: string;
+  /**
+     * @maxLength 3000000
+     * @nullable
+     */
+  logoUrl?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */
@@ -289,6 +294,11 @@ export interface Settings {
 export interface SettingsUpdate {
   barbershopName?: string;
   ownerName?: string;
+  /**
+     * @maxLength 3000000
+     * @nullable
+     */
+  logoUrl?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */

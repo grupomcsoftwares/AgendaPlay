@@ -24,6 +24,7 @@ export const settingsTable = pgTable("settings", {
   id: serial("id").primaryKey(),
   barbershopName: text("barbershop_name").notNull().default("Minha Barbearia"),
   ownerName: text("owner_name").notNull().default("Proprietário"),
+  logoUrl: text("logo_url"),
   phone: text("phone"),
   address: text("address"),
   openTime: text("open_time"),

@@ -1150,6 +1150,9 @@ components:
           type: string
         ownerName:
           type: string
+        logoUrl:
+          type: ["string", "null"]
+          maxLength: 3000000
         phone:
           type: ["string", "null"]
         address:
@@ -1176,6 +1179,9 @@ components:
           type: string
         ownerName:
           type: string
+        logoUrl:
+          type: ["string", "null"]
+          maxLength: 3000000
         phone:
           type: ["string", "null"]
         address:

@@ -954,10 +954,15 @@ export const DeleteBarberParams = zod.object({
 /**
  * @summary Get barbershop settings
  */
+export const getSettingsResponseLogoUrlMax = 3000000;
+
+
+
 export const GetSettingsResponse = zod.object({
   "id": zod.number(),
   "barbershopName": zod.string(),
   "ownerName": zod.string(),
+  "logoUrl": zod.string().max(getSettingsResponseLogoUrlMax).nullish(),
   "phone": zod.string().nullish(),
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),
@@ -1022,9 +1027,14 @@ export const GetSettingsResponse = zod.object({
 /**
  * @summary Update barbershop settings
  */
+export const updateSettingsBodyLogoUrlMax = 3000000;
+
+
+
 export const UpdateSettingsBody = zod.object({
   "barbershopName": zod.string().optional(),
   "ownerName": zod.string().optional(),
+  "logoUrl": zod.string().max(updateSettingsBodyLogoUrlMax).nullish(),
   "phone": zod.string().nullish(),
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),
@@ -1085,10 +1095,15 @@ export const UpdateSettingsBody = zod.object({
   "paymentEnableOnSite": zod.boolean().optional()
 })
 
+export const updateSettingsResponseLogoUrlMax = 3000000;
+
+
+
 export const UpdateSettingsResponse = zod.object({
   "id": zod.number(),
   "barbershopName": zod.string(),
   "ownerName": zod.string(),
+  "logoUrl": zod.string().max(updateSettingsResponseLogoUrlMax).nullish(),
   "phone": zod.string().nullish(),
   "address": zod.string().nullish(),
   "openTime": zod.string().nullish(),

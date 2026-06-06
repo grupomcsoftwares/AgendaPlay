@@ -1,0 +1,1 @@
+- [Barbershop logo storage](logo-storage.md) — shop logo is a resized PNG data URL in settings.logoUrl, not object storage; migrate if assets grow.

@@ -203,7 +203,7 @@ export default function Booking() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center space-y-4">
           <div
-            className="mx-auto rounded-full flex items-center justify-center"
+            className="mx-auto rounded-full flex items-center justify-center overflow-hidden"
             style={{
               width: 88,
               height: 88,
@@ -212,7 +212,16 @@ export default function Booking() {
               color: AMBER,
             }}
           >
-            <Scissors className="w-9 h-9" />
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt={settings?.barbershopName || "Logo"}
+                className="w-full h-full object-cover"
+                data-testid="img-shop-logo"
+              />
+            ) : (
+              <Scissors className="w-9 h-9" />
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save } from "lucide-react";
+import { Save, Upload, Trash2, Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,15 +51,49 @@ const defaultWeeklySchedule = (): WeeklySchedule => ({
   sunday: defaultDay(true),
 });
 
+// Resize/compress the chosen image entirely in the browser and return a PNG
+// data URL. Keeps the stored logo small (max 256px) since it lives in settings.
+function resizeImageToDataUrl(file: File, max = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Não foi possível processar a imagem"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("Imagem inválida"));
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Settings() {
   const { data: settings, isLoading } = useGetSettings({ query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoProcessing, setLogoProcessing] = useState(false);
+
   const [formData, setFormData] = useState({
     barbershopName: "",
     ownerName: "",
+    logoUrl: "",
     phone: "",
     address: "",
     bookingPageMessage: "",
@@ -80,6 +114,7 @@ export default function Settings() {
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
+        logoUrl: settings.logoUrl || "",
         phone: settings.phone || "",
         address: settings.address || "",
         bookingPageMessage: settings.bookingPageMessage || "",
@@ -100,6 +135,29 @@ export default function Settings() {
     }));
   };
 
+  const handleLogoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+    setLogoProcessing(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      setFormData((prev) => ({ ...prev, logoUrl: dataUrl }));
+    } catch (err) {
+      toast({
+        title: "Não foi possível carregar a imagem",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setLogoProcessing(false);
+    }
+  };
+
   const handleSave = () => {
     if (!formData.paymentEnableNow && !formData.paymentEnableOnSite) {
       toast({
@@ -110,7 +168,7 @@ export default function Settings() {
       return;
     }
     updateSettings.mutate(
-      { data: formData },
+      { data: { ...formData, logoUrl: formData.logoUrl || null } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
@@ -143,6 +201,63 @@ export default function Settings() {
             <CardDescription>Dados principais da barbearia</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Logo da Barbearia</Label>
+              <div className="flex items-center gap-4">
+                <div
+                  className="rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-muted"
+                  style={{ width: 72, height: 72, border: "2px solid hsl(38 88% 55%)" }}
+                  data-testid="logo-preview"
+                >
+                  {formData.logoUrl ? (
+                    <img
+                      src={formData.logoUrl}
+                      alt="Logo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Scissors className="w-7 h-7" style={{ color: "hsl(38 88% 55%)" }} />
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogoSelect}
+                    data-testid="input-logo-file"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    disabled={logoProcessing}
+                    onClick={() => fileInputRef.current?.click()}
+                    data-testid="button-upload-logo"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {logoProcessing ? "Processando..." : formData.logoUrl ? "Trocar logo" : "Enviar logo"}
+                  </Button>
+                  {formData.logoUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-2 text-destructive hover:text-destructive"
+                      onClick={() => setFormData({ ...formData, logoUrl: "" })}
+                      data-testid="button-remove-logo"
+                    >
+                      <Trash2 className="h-4 w-4" /> Remover
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Aparece no topo da página de agendamento. Use uma imagem quadrada para melhor resultado.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label>Nome da Barbearia</Label>
               <Input 
