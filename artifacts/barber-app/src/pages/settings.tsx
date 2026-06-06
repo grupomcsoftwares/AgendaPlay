@@ -92,6 +92,7 @@ export default function Settings() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoProcessing, setLogoProcessing] = useState(false);
+  const initializedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     barbershopName: "",
@@ -107,7 +108,8 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !initializedRef.current) {
+      initializedRef.current = true;
       const incoming = (settings.weeklySchedule as WeeklySchedule | null | undefined) ?? null;
       const merged = defaultWeeklySchedule();
       if (incoming) {
@@ -175,8 +177,8 @@ export default function Settings() {
     updateSettings.mutate(
       { data: { ...formData, logoUrl: formData.logoUrl || null, pixKey: formData.pixKey || null } },
       {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+        onSuccess: (saved) => {
+          queryClient.setQueryData(getGetSettingsQueryKey(), saved);
           toast({ title: "Configurações salvas com sucesso" });
         }
       }
@@ -402,7 +404,7 @@ export default function Settings() {
                     <Input
                       data-testid="input-pix-key"
                       value={formData.pixKey}
-                      onChange={(e) => setFormData({ ...formData, pixKey: e.target.value })}
+                      onChange={(e) => { const v = e.target.value; setFormData((prev) => ({ ...prev, pixKey: v })); }}
                       placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
                       className="text-sm"
                     />

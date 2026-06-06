@@ -36,9 +36,11 @@ router.get("/settings", async (req, res): Promise<void> => {
 router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
   const parsed = UpdateSettingsBody.safeParse(req.body);
   if (!parsed.success) {
+    req.log.warn({ error: parsed.error.message, body: req.body }, "settings validation failed");
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  req.log.info({ pixKey: parsed.data.pixKey, paymentEnableNow: parsed.data.paymentEnableNow }, "PATCH settings parsed");
   const userId = req.session.userId!;
   await getOrCreateSettings(userId);
   const [updated] = await db
