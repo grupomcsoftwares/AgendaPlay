@@ -49,7 +49,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
             <span className="font-semibold text-base tracking-tight" style={{ color: "hsl(var(--sidebar-foreground))" }}>
-              BarberApp
+              {barbershopName}
             </span>
           </div>
         </div>

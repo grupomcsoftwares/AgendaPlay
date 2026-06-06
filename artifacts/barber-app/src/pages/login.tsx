@@ -1,9 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Scissors, Mail, Lock } from "lucide-react";
+import { useGetSettings } from "@workspace/api-client-react";
 
 export default function Login() {
   const [, setLocation] = useLocation();
+  const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -20,7 +22,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <Link href="/" className="flex items-center justify-center gap-3" data-testid="link-home">
           <Scissors className="w-8 h-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
-          <span className="text-2xl font-bold">BarberApp</span>
+          <span className="text-2xl font-bold">{settings?.barbershopName || "Barbearia"}</span>
         </Link>
 
         <div className="text-center space-y-2">

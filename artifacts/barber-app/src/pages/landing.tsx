@@ -1,7 +1,9 @@
 import { Link } from "wouter";
 import { Scissors } from "lucide-react";
+import { useGetSettings } from "@workspace/api-client-react";
 
 export default function Landing() {
+  const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center px-4 py-12 relative"
@@ -27,7 +29,7 @@ export default function Landing() {
             className="w-10 h-10 sm:w-12 sm:h-12"
             style={{ color: "hsl(var(--sidebar-primary))" }}
           />
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">BarberApp</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
 
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
@@ -39,7 +41,7 @@ export default function Landing() {
           style={{ color: "hsl(0 0% 65%)" }}
         >
           Agendamentos, controle de receita e um link de reserva moderno para seus
-          clientes. A ferramenta premium para barbeiros modernos.
+          clientes.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
