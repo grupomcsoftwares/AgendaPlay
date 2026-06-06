@@ -222,6 +222,13 @@ export default function Appointments() {
     }
   };
 
+  const getPaymentBadge = (method: string) => {
+    if (method === 'now') {
+      return <Badge variant="outline" className="text-violet-400 border-violet-400/20 bg-violet-400/10 gap-1"><span>Pix</span><span className="text-[10px] opacity-70">online</span></Badge>;
+    }
+    return <Badge variant="outline" className="text-muted-foreground border-border gap-1">Na barbearia</Badge>;
+  };
+
   return (
     <div className="flex-1 p-8 bg-background overflow-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -468,6 +475,7 @@ export default function Appointments() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
                 <TableHead>Profissional</TableHead>
+                <TableHead>Pagamento</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -481,6 +489,7 @@ export default function Appointments() {
                   <TableCell className="font-medium">{apt.clientName}</TableCell>
                   <TableCell>{apt.serviceName}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
+                  <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
                   <TableCell>{getStatusBadge(apt.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
