@@ -964,6 +964,23 @@ export const DeleteBarberParams = zod.object({
 
 
 /**
+ * @summary Update the barber's custom booking URL slug
+ */
+export const updateUserSlugBodySlugMin = 3;
+export const updateUserSlugBodySlugMax = 80;
+
+
+
+export const UpdateUserSlugBody = zod.object({
+  "slug": zod.string().min(updateUserSlugBodySlugMin).max(updateUserSlugBodySlugMax)
+})
+
+export const UpdateUserSlugResponse = zod.object({
+  "slug": zod.string()
+})
+
+
+/**
  * @summary Get barbershop settings
  */
 export const GetSettingsQueryParams = zod.object({

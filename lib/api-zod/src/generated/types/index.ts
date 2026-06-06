@@ -40,4 +40,6 @@ export * from './serviceInput';
 export * from './serviceUpdate';
 export * from './settings';
 export * from './settingsUpdate';
+export * from './slugUpdate';
+export * from './userSlugResponse';
 export * from './weeklySchedule';

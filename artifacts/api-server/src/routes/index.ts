@@ -9,6 +9,7 @@ import financialRouter from "./financial.js";
 import settingsRouter from "./settings.js";
 import barbersRouter from "./barbers.js";
 import authRouter from "./auth.js";
+import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
 import shopRouter from "./shop.js";
 
@@ -23,6 +24,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 const router: IRouter = Router();
 
 router.use(authRouter);
+router.use(usersRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
 router.use(shopRouter);

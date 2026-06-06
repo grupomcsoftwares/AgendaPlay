@@ -298,6 +298,18 @@ export interface Settings {
   pixKey?: string | null;
 }
 
+export interface SlugUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 80
+     */
+  slug: string;
+}
+
+export interface UserSlugResponse {
+  slug: string;
+}
+
 export interface SettingsUpdate {
   barbershopName?: string;
   ownerName?: string;

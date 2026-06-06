@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey } from "@workspace/api-client-react";
+import { useGetSettings, useUpdateSettings, useUpdateUserSlug, getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,13 +82,27 @@ function resizeImageToDataUrl(file: File, max = 256): Promise<string> {
   });
 }
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+
+function validateSlug(value: string): string | null {
+  if (value.length < 3) return "Mínimo de 3 caracteres";
+  if (value.length > 80) return "Máximo de 80 caracteres";
+  if (!SLUG_RE.test(value)) return "Use apenas letras minúsculas, números e hífens. Não pode começar ou terminar com hífen.";
+  return null;
+}
+
 export default function Settings() {
   const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
+  const updateSlug = useUpdateUserSlug();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [copied, setCopied] = useState(false);
+
+  const [slugValue, setSlugValue] = useState(user?.slug ?? "");
+  const [slugEditMode, setSlugEditMode] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoProcessing, setLogoProcessing] = useState(false);
@@ -163,6 +177,35 @@ export default function Settings() {
     } finally {
       setLogoProcessing(false);
     }
+  };
+
+  const handleSlugChange = (val: string) => {
+    setSlugValue(val);
+    setSlugError(validateSlug(val));
+  };
+
+  const handleSlugSave = () => {
+    const err = validateSlug(slugValue);
+    if (err) {
+      setSlugError(err);
+      return;
+    }
+    updateSlug.mutate(
+      { data: { slug: slugValue } },
+      {
+        onSuccess: () => {
+          setSlugEditMode(false);
+          setSlugError(null);
+          refresh();
+          toast({ title: "Endereço atualizado com sucesso" });
+        },
+        onError: (e: unknown) => {
+          const msg = e instanceof Error ? e.message : "Erro ao salvar endereço";
+          setSlugError(msg);
+          toast({ title: msg, variant: "destructive" });
+        },
+      }
+    );
   };
 
   const handleSave = () => {
@@ -442,37 +485,103 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-4">
               {user && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="flex items-center gap-2">
-                    <Link className="h-4 w-4" /> Link de Agendamento
+                    <Link className="h-4 w-4" /> Endereço Personalizado
                   </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      readOnly
-                      value={user.slug
-                        ? `${window.location.origin}/b/${user.slug}`
-                        : `${window.location.origin}/booking?shopId=${user.id}`}
-                      className="font-mono text-xs bg-muted"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        const link = user.slug
-                          ? `${window.location.origin}/b/${user.slug}`
-                          : `${window.location.origin}/booking?shopId=${user.id}`;
-                        navigator.clipboard.writeText(link);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                    >
-                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Compartilhe este link com seus clientes para que eles possam agendar diretamente.
-                  </p>
+
+                  {slugEditMode ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-md">
+                        <span className="shrink-0">{window.location.origin}/b/</span>
+                        <span className="text-foreground font-semibold">{slugValue || "..."}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          data-testid="input-slug"
+                          value={slugValue}
+                          onChange={e => handleSlugChange(e.target.value.toLowerCase())}
+                          placeholder="minha-barbearia"
+                          className={`font-mono text-sm ${slugError ? "border-destructive" : ""}`}
+                          autoFocus
+                        />
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          disabled={updateSlug.isPending || !!slugError || slugValue === (user.slug ?? "")}
+                          onClick={handleSlugSave}
+                          data-testid="button-save-slug"
+                        >
+                          {updateSlug.isPending ? "Salvando..." : "Salvar"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSlugValue(user.slug ?? "");
+                            setSlugEditMode(false);
+                            setSlugError(null);
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                      {slugError && (
+                        <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>{slugError}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        Use letras minúsculas, números e hífens. Mínimo 3, máximo 80 caracteres.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          readOnly
+                          value={user.slug
+                            ? `${window.location.origin}/b/${user.slug}`
+                            : `${window.location.origin}/booking?shopId=${user.id}`}
+                          className="font-mono text-xs bg-muted"
+                          data-testid="display-booking-url"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Editar endereço"
+                          onClick={() => {
+                            setSlugValue(user.slug ?? "");
+                            setSlugEditMode(true);
+                            setSlugError(null);
+                          }}
+                          data-testid="button-edit-slug"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Copiar link"
+                          onClick={() => {
+                            const link = user.slug
+                              ? `${window.location.origin}/b/${user.slug}`
+                              : `${window.location.origin}/booking?shopId=${user.id}`;
+                            navigator.clipboard.writeText(link);
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                          }}
+                        >
+                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Compartilhe este link com seus clientes. Clique em <Pencil className="inline h-3 w-3" /> para personalizar o endereço.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               <div className="space-y-2">

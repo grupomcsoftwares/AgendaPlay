@@ -686,6 +686,27 @@ paths:
         "204":
           description: Deleted
 
+  /users/slug:
+    patch:
+      operationId: updateUserSlug
+      tags: [settings]
+      summary: Update the barber's custom booking URL slug
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlugUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSlugResponse"
+        "409":
+          description: Slug already taken
+
   /settings:
     get:
       operationId: getSettings
@@ -1205,6 +1226,22 @@ components:
         pixKey:
           type: ["string", "null"]
 
+
+    SlugUpdate:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 80
+
+    UserSlugResponse:
+      type: object
+      required: [slug]
+      properties:
+        slug:
+          type: string
 
     SettingsUpdate:
       type: object

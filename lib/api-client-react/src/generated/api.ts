@@ -47,7 +47,9 @@ import type {
   ServiceInput,
   ServiceUpdate,
   Settings,
-  SettingsUpdate
+  SettingsUpdate,
+  SlugUpdate,
+  UserSlugResponse
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2595,6 +2597,77 @@ export const useDeleteBarber = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteBarberMutationOptions(options));
+    }
+
+export const getUpdateUserSlugUrl = () => {
+
+
+
+
+  return `/api/users/slug`
+}
+
+/**
+ * @summary Update the barber's custom booking URL slug
+ */
+export const updateUserSlug = async (slugUpdate: SlugUpdate, options?: RequestInit): Promise<UserSlugResponse> => {
+
+  return customFetch<UserSlugResponse>(getUpdateUserSlugUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      slugUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateUserSlugMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserSlug>>, TError,{data: BodyType<SlugUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUserSlug>>, TError,{data: BodyType<SlugUpdate>}, TContext> => {
+
+const mutationKey = ['updateUserSlug'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUserSlug>>, {data: BodyType<SlugUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateUserSlug(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserSlugMutationResult = NonNullable<Awaited<ReturnType<typeof updateUserSlug>>>
+    export type UpdateUserSlugMutationBody = BodyType<SlugUpdate>
+    export type UpdateUserSlugMutationError = ErrorType<void>
+
+    /**
+ * @summary Update the barber's custom booking URL slug
+ */
+export const useUpdateUserSlug = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUserSlug>>, TError,{data: BodyType<SlugUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUserSlug>>,
+        TError,
+        {data: BodyType<SlugUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserSlugMutationOptions(options));
     }
 
 export const getGetSettingsUrl = (params?: GetSettingsParams,) => {
