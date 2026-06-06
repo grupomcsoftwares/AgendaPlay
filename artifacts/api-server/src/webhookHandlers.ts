@@ -1,19 +1,41 @@
-import { getStripeSync } from './stripeClient.js';
+import { getStripeSync, getUncachableStripeClient } from './stripeClient.js';
 import { db } from '@workspace/db';
 import { usersTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 import { logger } from './lib/logger.js';
 
-type StripeEventPayload = {
+type StripeSubscriptionEvent = {
   type: string;
   data: {
     object: {
       id: string;
       customer: string;
       status?: string;
+      items?: {
+        data: Array<{
+          price: {
+            id: string;
+            product: string;
+          };
+        }>;
+      };
     };
   };
 };
+
+async function getMaxBarbersForProduct(productId: string): Promise<number | null> {
+  try {
+    const stripe = await getUncachableStripeClient();
+    const product = await stripe.products.retrieve(productId);
+    const raw = product.metadata?.maxBarbers;
+    if (raw === undefined || raw === null) return null;
+    const parsed = parseInt(raw, 10);
+    if (Number.isNaN(parsed)) return null;
+    return parsed === 0 ? null : parsed;
+  } catch {
+    return null;
+  }
+}
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -28,9 +50,9 @@ export class WebhookHandlers {
     const sync = await getStripeSync();
     await sync.processWebhook(payload, signature);
 
-    let event: StripeEventPayload;
+    let event: StripeSubscriptionEvent;
     try {
-      event = JSON.parse(payload.toString()) as StripeEventPayload;
+      event = JSON.parse(payload.toString()) as StripeSubscriptionEvent;
     } catch {
       logger.warn('Stripe webhook: failed to parse event payload');
       return;
@@ -48,22 +70,27 @@ export class WebhookHandlers {
       if (!subscriptionId) return;
 
       if (status === 'active' || status === 'trialing') {
+        const priceItem = obj?.items?.data?.[0];
+        const stripePriceId = priceItem?.price?.id ?? null;
+        const productId = priceItem?.price?.product ?? null;
+        const maxBarbers = productId ? await getMaxBarbersForProduct(productId) : null;
+
         await db
           .update(usersTable)
-          .set({ stripeSubscriptionId: subscriptionId })
+          .set({ stripeSubscriptionId: subscriptionId, stripePriceId, maxBarbers })
           .where(eq(usersTable.stripeCustomerId, customerId));
-        logger.info({ customerId, subscriptionId, type }, 'User subscription activated via webhook');
+        logger.info({ customerId, subscriptionId, stripePriceId, maxBarbers, type }, 'User subscription activated via webhook');
       } else if (status === 'canceled' || status === 'unpaid' || status === 'past_due') {
         await db
           .update(usersTable)
-          .set({ stripeSubscriptionId: null })
+          .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null })
           .where(eq(usersTable.stripeCustomerId, customerId));
         logger.info({ customerId, type, status }, 'User subscription cleared via webhook');
       }
     } else if (type === 'customer.subscription.deleted') {
       await db
         .update(usersTable)
-        .set({ stripeSubscriptionId: null })
+        .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null })
         .where(eq(usersTable.stripeCustomerId, customerId));
       logger.info({ customerId, type }, 'User subscription deleted via webhook');
     }

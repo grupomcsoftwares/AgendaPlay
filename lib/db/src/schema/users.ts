@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,6 +11,8 @@ export const usersTable = pgTable("users", {
   trialStartedAt: timestamp("trial_started_at", { withTimezone: true }).notNull().defaultNow(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  stripePriceId: text("stripe_price_id"),
+  maxBarbers: integer("max_barbers"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -20,6 +22,8 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   trialStartedAt: true,
   stripeCustomerId: true,
   stripeSubscriptionId: true,
+  stripePriceId: true,
+  maxBarbers: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

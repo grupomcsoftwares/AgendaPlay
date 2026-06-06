@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray, asc, and, sql } from "drizzle-orm";
-import { db, barbersTable, barberServicesTable } from "@workspace/db";
+import { db, barbersTable, barberServicesTable, usersTable } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 
 export async function isBarberAllowedForService(
@@ -92,6 +92,28 @@ router.post("/barbers", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+
+  const userId = req.session.userId!;
+  const [currentUser] = await db.select({ maxBarbers: usersTable.maxBarbers })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+
+  if (currentUser?.maxBarbers != null) {
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(barbersTable)
+      .where(eq(barbersTable.active, true));
+    const activeCount = countResult?.count ?? 0;
+    if (activeCount >= currentUser.maxBarbers) {
+      res.status(403).json({
+        error: `Seu plano permite até ${currentUser.maxBarbers} profissional(is). Faça upgrade para adicionar mais.`,
+        code: "BARBER_LIMIT_REACHED",
+        maxBarbers: currentUser.maxBarbers,
+      });
+      return;
+    }
+  }
+
   const { serviceIds, ...rest } = parsed.data;
   const created = await db.transaction(async (tx) => {
     const [b] = await tx.insert(barbersTable).values(rest).returning();

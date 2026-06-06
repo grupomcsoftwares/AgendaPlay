@@ -15,7 +15,7 @@ const router: IRouter = Router();
 
 const TRIAL_DAYS = 7;
 
-function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null }) {
+function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; maxBarbers?: number | null }) {
   const trialStarted = new Date(user.trialStartedAt);
   const now = new Date();
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -28,6 +28,7 @@ function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: st
     trialExpired,
     hasActiveSubscription: !!user.stripeSubscriptionId,
     canAccess: !trialExpired || !!user.stripeSubscriptionId,
+    maxBarbers: user.maxBarbers ?? null,
   };
 }
 

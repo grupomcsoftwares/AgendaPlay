@@ -62,6 +62,7 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
         p.id as product_id,
         p.name as product_name,
         p.description as product_description,
+        p.metadata as product_metadata,
         pr.id as price_id,
         pr.unit_amount,
         pr.currency,
@@ -71,7 +72,13 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
       WHERE p.active = true
       ORDER BY pr.unit_amount ASC
     `);
-    res.json({ data: result.rows });
+    const rows = (result.rows as Array<Record<string, unknown>>).map((r) => {
+      const meta = r.product_metadata as Record<string, string> | null;
+      const rawMax = meta?.maxBarbers;
+      const maxBarbers = rawMax !== undefined ? (parseInt(rawMax, 10) || null) : null;
+      return { ...r, maxBarbers };
+    });
+    res.json({ data: rows });
   } catch {
     res.json({ data: [] });
   }
@@ -91,6 +98,8 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
   res.json({
     hasActiveSubscription: !!user.stripeSubscriptionId,
     subscriptionId: user.stripeSubscriptionId,
+    stripePriceId: user.stripePriceId,
+    maxBarbers: user.maxBarbers,
     trialDaysLeft,
     trialExpired: trialDaysLeft === 0,
     canAccess: trialDaysLeft > 0 || !!user.stripeSubscriptionId,
@@ -115,8 +124,24 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
 
     if (subscriptions.data.length > 0) {
       const sub = subscriptions.data[0];
-      await db.update(usersTable).set({ stripeSubscriptionId: sub.id }).where(eq(usersTable.id, userId));
-      res.json({ hasSubscription: true, subscriptionId: sub.id });
+      const priceItem = sub.items?.data?.[0];
+      const stripePriceId = priceItem?.price?.id ?? null;
+      const productId = typeof priceItem?.price?.product === "string" ? priceItem.price.product : null;
+
+      let maxBarbers: number | null = null;
+      if (productId) {
+        try {
+          const product = await stripe.products.retrieve(productId);
+          const raw = product.metadata?.maxBarbers;
+          if (raw !== undefined && raw !== null) {
+            const parsed = parseInt(raw, 10);
+            maxBarbers = (!Number.isNaN(parsed) && parsed > 0) ? parsed : null;
+          }
+        } catch { /* ignore */ }
+      }
+
+      await db.update(usersTable).set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers }).where(eq(usersTable.id, userId));
+      res.json({ hasSubscription: true, subscriptionId: sub.id, stripePriceId, maxBarbers });
     } else {
       res.json({ hasSubscription: false });
     }

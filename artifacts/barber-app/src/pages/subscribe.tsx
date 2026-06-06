@@ -1,16 +1,39 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Scissors, CheckCircle, Clock, Zap } from "lucide-react";
+import { Scissors, CheckCircle, Clock, Zap, Users } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+type Plan = {
+  price_id: string;
+  product_name: string;
+  unit_amount: number;
+  currency: string;
+  recurring: { interval: string } | null;
+  maxBarbers: number | null;
+};
+
+const FALLBACK_PLANS: Plan[] = [
+  { price_id: "", product_name: "1 Profissional", unit_amount: 2490, currency: "brl", recurring: { interval: "month" }, maxBarbers: 1 },
+  { price_id: "", product_name: "2 Profissionais", unit_amount: 4990, currency: "brl", recurring: { interval: "month" }, maxBarbers: 2 },
+  { price_id: "", product_name: "3 Profissionais", unit_amount: 7490, currency: "brl", recurring: { interval: "month" }, maxBarbers: 3 },
+  { price_id: "", product_name: "Ilimitado", unit_amount: 9990, currency: "brl", recurring: { interval: "month" }, maxBarbers: null },
+];
+
+const PLAN_DESCRIPTIONS: Record<number, string> = {
+  2490: "Ideal para barbearia solo",
+  4990: "Para duplas de barbeiros",
+  7490: "Para equipes de até 3",
+  9990: "Para equipes grandes, sem limite",
+};
+
 export default function Subscribe() {
   const { user, refresh } = useAuth();
   const [, setLocation] = useLocation();
-  const [loading, setLoading] = useState(false);
+  const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [plans, setPlans] = useState<Array<{ price_id: string; product_name: string; unit_amount: number; currency: string; recurring: { interval: string } | null }>>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
 
   const params = new URLSearchParams(window.location.search);
@@ -38,13 +61,14 @@ export default function Subscribe() {
     fetch(`${BASE}/api/stripe/plans`)
       .then((r) => r.json())
       .then((data) => {
-        if (Array.isArray(data.data)) setPlans(data.data);
+        if (Array.isArray(data.data) && data.data.length > 0) setPlans(data.data as Plan[]);
       })
       .catch(() => {});
   }, []);
 
   const handleSubscribe = async (priceId: string) => {
-    setLoading(true);
+    if (!priceId) return;
+    setLoadingPriceId(priceId);
     setError("");
     try {
       const res = await fetch(`${BASE}/api/stripe/checkout`, {
@@ -54,15 +78,15 @@ export default function Subscribe() {
         body: JSON.stringify({ priceId }),
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Erro ao criar sessão de pagamento.");
+        const err = await res.json() as { error?: string };
+        throw new Error(err.error ?? "Erro ao criar sessão de pagamento.");
       }
-      const { url } = await res.json();
+      const { url } = await res.json() as { url: string };
       if (url) window.location.href = url;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao processar pagamento.");
     } finally {
-      setLoading(false);
+      setLoadingPriceId(null);
     }
   };
 
@@ -73,11 +97,17 @@ export default function Subscribe() {
     }).format(amount / 100);
   };
 
+  const displayPlans = plans.length > 0 ? plans : FALLBACK_PLANS;
+  const stripeReady = plans.length > 0;
+
   if (checkingSubscription) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "hsl(0 0% 4%)" }}>
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-2 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: "hsl(var(--sidebar-primary))", borderTopColor: "transparent" }} />
+          <div
+            className="w-12 h-12 border-2 border-t-transparent rounded-full animate-spin mx-auto"
+            style={{ borderColor: "hsl(var(--sidebar-primary))", borderTopColor: "transparent" }}
+          />
           <p style={{ color: "hsl(0 0% 60%)" }}>Confirmando assinatura...</p>
         </div>
       </div>
@@ -89,7 +119,8 @@ export default function Subscribe() {
       className="min-h-screen w-full flex items-center justify-center px-4 py-12"
       style={{ backgroundColor: "hsl(0 0% 4%)" }}
     >
-      <div className="max-w-lg w-full space-y-8">
+      <div className="max-w-2xl w-full space-y-8">
+        {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-3">
             <Scissors className="w-8 h-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
@@ -100,91 +131,106 @@ export default function Subscribe() {
             style={{ backgroundColor: "hsl(0 60% 20%)", color: "hsl(0 80% 70%)" }}
           >
             <Clock className="w-4 h-4" />
-            {user?.trialExpired
-              ? "Período de teste encerrado"
-              : `${user?.trialDaysLeft} ${user?.trialDaysLeft === 1 ? "dia" : "dias"} restantes no teste`}
+            {!user
+              ? "Faça login para assinar"
+              : user.trialExpired
+                ? "Período de teste encerrado"
+                : `${user.trialDaysLeft} ${user.trialDaysLeft === 1 ? "dia" : "dias"} restante${user.trialDaysLeft === 1 ? "" : "s"} no teste`}
           </div>
-          <h1 className="text-2xl font-bold">Continue usando o BarberApp</h1>
+          <h1 className="text-2xl font-bold">Escolha seu plano</h1>
           <p className="text-sm" style={{ color: "hsl(0 0% 60%)" }}>
-            Assine para ter acesso completo e ilimitado ao painel da sua barbearia.
+            Selecione conforme o número de profissionais da sua barbearia.
           </p>
         </div>
 
-        <div className="space-y-3">
+        {/* Benefits */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {[
             "Agendamentos ilimitados",
             "Painel de fila em tempo real",
             "Relatórios financeiros",
-            "Página de agendamento personalizada",
-            "Gestão de barbeiros e serviços",
+            "Gestão de clientes",
+            "Personalização completa",
+            "Suporte prioritário",
           ].map((benefit) => (
-            <div key={benefit} className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(var(--sidebar-primary))" }} />
-              <span className="text-sm" style={{ color: "hsl(0 0% 80%)" }}>{benefit}</span>
+            <div key={benefit} className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "hsl(var(--sidebar-primary))" }} />
+              <span className="text-xs" style={{ color: "hsl(0 0% 70%)" }}>{benefit}</span>
             </div>
           ))}
         </div>
 
-        <div className="space-y-3">
-          {plans.length > 0 ? (
-            plans.map((plan) => (
+        {/* Plans Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {displayPlans.map((plan, i) => {
+            const isPopular = plan.unit_amount === 4990;
+            const isLoading = loadingPriceId === plan.price_id;
+            const barberLabel = plan.maxBarbers == null || plan.maxBarbers === 0
+              ? "Profissionais ilimitados"
+              : `Até ${plan.maxBarbers} ${plan.maxBarbers === 1 ? "profissional" : "profissionais"}`;
+            const desc = PLAN_DESCRIPTIONS[plan.unit_amount] ?? "";
+
+            return (
               <div
-                key={plan.price_id}
-                className="rounded-2xl p-5"
-                style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(var(--sidebar-primary) / 0.4)" }}
+                key={plan.price_id || i}
+                className="relative rounded-2xl p-5 flex flex-col gap-3"
+                style={{
+                  backgroundColor: isPopular ? "hsl(var(--sidebar-primary) / 0.08)" : "hsl(0 0% 7%)",
+                  border: isPopular
+                    ? "2px solid hsl(var(--sidebar-primary))"
+                    : "1px solid hsl(0 0% 14%)",
+                }}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="font-semibold text-lg">{plan.product_name}</p>
-                    <p className="text-sm" style={{ color: "hsl(0 0% 55%)" }}>
-                      {plan.recurring?.interval === "month" ? "Mensal" : plan.recurring?.interval === "year" ? "Anual" : ""}
-                    </p>
+                {isPopular && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold"
+                    style={{ backgroundColor: "hsl(var(--sidebar-primary))", color: "hsl(var(--sidebar-primary-foreground))" }}
+                  >
+                    Mais popular
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{formatPrice(plan.unit_amount, plan.currency)}</p>
-                    <p className="text-xs" style={{ color: "hsl(0 0% 55%)" }}>
-                      /{plan.recurring?.interval === "month" ? "mês" : plan.recurring?.interval === "year" ? "ano" : "período"}
-                    </p>
+                )}
+
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="w-4 h-4" style={{ color: "hsl(var(--sidebar-primary))" }} />
+                    <span className="text-xs font-medium" style={{ color: "hsl(var(--sidebar-primary))" }}>
+                      {barberLabel}
+                    </span>
                   </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold">{formatPrice(plan.unit_amount, plan.currency)}</span>
+                    <span className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>/mês</span>
+                  </div>
+                  {desc && (
+                    <p className="text-xs mt-1" style={{ color: "hsl(0 0% 50%)" }}>{desc}</p>
+                  )}
                 </div>
+
                 <button
                   onClick={() => handleSubscribe(plan.price_id)}
-                  disabled={loading}
-                  className="w-full rounded-xl font-semibold transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+                  disabled={isLoading || !stripeReady}
+                  className="w-full rounded-xl font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                   style={{
-                    height: 48,
-                    backgroundColor: "hsl(var(--sidebar-primary))",
-                    color: "hsl(var(--sidebar-primary-foreground))",
+                    height: 42,
+                    backgroundColor: isPopular ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 14%)",
+                    color: isPopular ? "hsl(var(--sidebar-primary-foreground))" : "hsl(0 0% 90%)",
                     border: "none",
-                    cursor: loading ? "not-allowed" : "pointer",
+                    cursor: (isLoading || !stripeReady) ? "not-allowed" : "pointer",
                   }}
                 >
-                  <Zap className="w-4 h-4" />
-                  {loading ? "Redirecionando..." : "Assinar agora"}
+                  <Zap className="w-3.5 h-3.5" />
+                  {isLoading ? "Redirecionando..." : stripeReady ? "Assinar agora" : "Em breve"}
                 </button>
               </div>
-            ))
-          ) : (
-            <div
-              className="rounded-2xl p-5"
-              style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(var(--sidebar-primary) / 0.4)" }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="font-semibold text-lg">Plano Pro BarberApp</p>
-                  <p className="text-sm" style={{ color: "hsl(0 0% 55%)" }}>Mensal</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold">R$ 49,90</p>
-                  <p className="text-xs" style={{ color: "hsl(0 0% 55%)" }}>/mês</p>
-                </div>
-              </div>
-              <p className="text-sm text-center" style={{ color: "hsl(0 0% 55%)" }}>
-                Pagamentos em configuração. Entre em contato para assinar.
-              </p>
-            </div>
-          )}
+            );
+          })}
         </div>
+
+        {!stripeReady && (
+          <p className="text-xs text-center" style={{ color: "hsl(0 0% 40%)" }}>
+            Pagamentos em configuração. Entre em contato para assinar.
+          </p>
+        )}
 
         {error && (
           <p className="text-sm text-red-400 text-center">{error}</p>
