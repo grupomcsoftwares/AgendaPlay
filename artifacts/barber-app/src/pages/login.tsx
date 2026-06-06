@@ -1,17 +1,28 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Scissors, Mail, Lock } from "lucide-react";
-import { useGetSettings } from "@workspace/api-client-react";
+import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { data: settings } = useGetSettings({ query: { queryKey: ["settings"] } });
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLocation("/dashboard");
+    setError("");
+    setLoading(true);
+    try {
+      await login(email, password);
+      setLocation("/dashboard");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao fazer login.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -20,10 +31,10 @@ export default function Login() {
       style={{ backgroundColor: "hsl(0 0% 4%)" }}
     >
       <div className="max-w-md w-full space-y-8">
-        <Link href="/" className="flex items-center justify-center gap-3" data-testid="link-home">
+        <div className="flex items-center justify-center gap-3">
           <Scissors className="w-8 h-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
-          <span className="text-2xl font-bold">{settings?.barbershopName || "Barbearia"}</span>
-        </Link>
+          <span className="text-2xl font-bold">BarberApp</span>
+        </div>
 
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Entrar na sua conta</h1>
@@ -92,24 +103,29 @@ export default function Login() {
             </div>
           </div>
 
+          {error && (
+            <p className="text-sm text-red-400 text-center">{error}</p>
+          )}
+
           <button
             type="submit"
+            disabled={loading}
             data-testid="button-login-submit"
-            className="w-full rounded-xl font-semibold transition-opacity hover:opacity-90"
+            className="w-full rounded-xl font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{
               height: 48,
               backgroundColor: "hsl(var(--sidebar-primary))",
               color: "hsl(var(--sidebar-primary-foreground))",
               border: "none",
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            Entrar no painel
+            {loading ? "Entrando..." : "Entrar no painel"}
           </button>
 
           <p className="text-center text-sm pt-2" style={{ color: "hsl(0 0% 55%)" }}>
             Não tem conta?{" "}
-            <Link href="/" className="font-semibold" style={{ color: "hsl(var(--sidebar-primary))" }}>
+            <Link href="/register" className="font-semibold" style={{ color: "hsl(var(--sidebar-primary))" }}>
               Criar barbearia
             </Link>
           </p>

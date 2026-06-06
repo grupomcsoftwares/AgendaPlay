@@ -4,3 +4,4 @@ export * from "./appointments";
 export * from "./queue";
 export * from "./settings";
 export * from "./barbers";
+export * from "./users";

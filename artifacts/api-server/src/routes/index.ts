@@ -1,16 +1,20 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
-import clientsRouter from "./clients";
-import servicesRouter from "./services";
-import appointmentsRouter from "./appointments";
-import queueRouter from "./queue";
-import dashboardRouter from "./dashboard";
-import financialRouter from "./financial";
-import settingsRouter from "./settings";
-import barbersRouter from "./barbers";
+import healthRouter from "./health.js";
+import clientsRouter from "./clients.js";
+import servicesRouter from "./services.js";
+import appointmentsRouter from "./appointments.js";
+import queueRouter from "./queue.js";
+import dashboardRouter from "./dashboard.js";
+import financialRouter from "./financial.js";
+import settingsRouter from "./settings.js";
+import barbersRouter from "./barbers.js";
+import authRouter from "./auth.js";
+import stripeRouter from "./stripe.js";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
+router.use(stripeRouter);
 router.use(healthRouter);
 router.use(clientsRouter);
 router.use(servicesRouter);

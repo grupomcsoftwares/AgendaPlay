@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { Sidebar } from "./components/layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
 import Dashboard from "./pages/dashboard";
 import Services from "./pages/services";
 import Barbers from "./pages/barbers";
@@ -16,6 +18,8 @@ import Booking from "./pages/booking";
 import CancelBooking from "./pages/cancel";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
+import Register from "./pages/register";
+import Subscribe from "./pages/subscribe";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -39,28 +43,44 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/subscribe" component={Subscribe} />
       <Route path="/dashboard">
-        <Sidebar>
-          <Dashboard />
-        </Sidebar>
+        <ProtectedRoute>
+          <Sidebar>
+            <Dashboard />
+          </Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/appointments">
-        <Sidebar><Appointments /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Appointments /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/clients">
-        <Sidebar><Clients /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Clients /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/services">
-        <Sidebar><Services /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Services /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/barbers">
-        <Sidebar><Barbers /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Barbers /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/financial">
-        <Sidebar><Financial /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Financial /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/settings">
-        <Sidebar><Settings /></Sidebar>
+        <ProtectedRoute>
+          <Sidebar><Settings /></Sidebar>
+        </ProtectedRoute>
       </Route>
       <Route path="/queue">
         <Queue />
@@ -82,7 +102,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
+            <AuthProvider>
+              <Router />
+            </AuthProvider>
           </WouterRouter>
           <Toaster />
         </TooltipProvider>
