@@ -41,6 +41,7 @@ import type {
   ListAppointmentsParams,
   ListBarbersParams,
   ListClientsParams,
+  ListComboDiscountsParams,
   ListServicesParams,
   QueueEntry,
   QueueInput,
@@ -2827,20 +2828,27 @@ export const useUpdateSettings = <TError = ErrorType<unknown>,
       return useMutation(getUpdateSettingsMutationOptions(options));
     }
 
-export const getListComboDiscountsUrl = () => {
+export const getListComboDiscountsUrl = (params?: ListComboDiscountsParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/combo-discounts`
+  return stringifiedParams.length > 0 ? `/api/combo-discounts?${stringifiedParams}` : `/api/combo-discounts`
 }
 
 /**
  * @summary List combo discounts
  */
-export const listComboDiscounts = async ( options?: RequestInit): Promise<ComboDiscount[]> => {
+export const listComboDiscounts = async (params?: ListComboDiscountsParams, options?: RequestInit): Promise<ComboDiscount[]> => {
 
-  return customFetch<ComboDiscount[]>(getListComboDiscountsUrl(),
+  return customFetch<ComboDiscount[]>(getListComboDiscountsUrl(params),
   {
     ...options,
     method: 'GET'
@@ -2853,23 +2861,23 @@ export const listComboDiscounts = async ( options?: RequestInit): Promise<ComboD
 
 
 
-export const getListComboDiscountsQueryKey = () => {
+export const getListComboDiscountsQueryKey = (params?: ListComboDiscountsParams,) => {
     return [
-    `/api/combo-discounts`
+    `/api/combo-discounts`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListComboDiscountsQueryOptions = <TData = Awaited<ReturnType<typeof listComboDiscounts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListComboDiscountsQueryOptions = <TData = Awaited<ReturnType<typeof listComboDiscounts>>, TError = ErrorType<unknown>>(params?: ListComboDiscountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListComboDiscountsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListComboDiscountsQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComboDiscounts>>> = ({ signal }) => listComboDiscounts({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComboDiscounts>>> = ({ signal }) => listComboDiscounts(params, { signal, ...requestOptions });
 
 
 
@@ -2887,11 +2895,11 @@ export type ListComboDiscountsQueryError = ErrorType<unknown>
  */
 
 export function useListComboDiscounts<TData = Awaited<ReturnType<typeof listComboDiscounts>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListComboDiscountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComboDiscounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListComboDiscountsQueryOptions(options)
+  const queryOptions = getListComboDiscountsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

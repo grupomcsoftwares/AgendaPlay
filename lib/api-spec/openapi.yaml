@@ -464,7 +464,11 @@ paths:
             description: YYYY-MM-DD
         - name: serviceId
           in: query
-          required: true
+          schema:
+            type: integer
+        - name: serviceDuration
+          in: query
+          description: Total duration in minutes — required when serviceId is not provided (multi-service bookings)
           schema:
             type: integer
         - name: barberId
@@ -750,6 +754,12 @@ paths:
       operationId: listComboDiscounts
       tags: [combo-discounts]
       summary: List combo discounts
+      parameters:
+        - name: shopId
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: List of combo discounts

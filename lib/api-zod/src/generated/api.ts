@@ -468,7 +468,8 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
 export const GetAvailabilityQueryParams = zod.object({
   "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)'),
   "date": zod.coerce.string(),
-  "serviceId": zod.coerce.number(),
+  "serviceId": zod.coerce.number().optional(),
+  "serviceDuration": zod.coerce.number().optional().describe('Total duration in minutes — required when serviceId is not provided (multi-service bookings)'),
   "barberId": zod.coerce.number().optional().describe('Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.')
 })
 
@@ -1224,6 +1225,10 @@ export const UpdateSettingsResponse = zod.object({
 /**
  * @summary List combo discounts
  */
+export const ListComboDiscountsQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional()
+})
+
 export const ListComboDiscountsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),

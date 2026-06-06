@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
   const [formData, setFormData] = useState<{
-    serviceId: string;
+    serviceIds: number[];
     barberId: string;
     date: Date;
     time: string;
@@ -89,7 +89,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     notes: string;
     paymentMethod: "now" | "on_site";
   }>({
-    serviceId: "",
+    serviceIds: [],
     barberId: "",
     date: new Date(),
     time: "",
@@ -100,8 +100,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   });
 
   const handleBook = () => {
-    const service = services?.find(s => s.id.toString() === formData.serviceId);
-    if (!service) return;
+    if (selectedServices.length === 0) return;
     const barber = formData.barberId
       ? barbers?.find(b => b.id.toString() === formData.barberId)
       : undefined;
@@ -112,14 +111,15 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     // Fixed America/Sao_Paulo offset (UTC-3, no DST) — matches server's TZ assumption.
     const scheduledAt = new Date(`${y}-${m}-${d}T${formData.time}:00-03:00`).toISOString();
 
+    const combinedName = selectedServices.map(s => s.name).join(" + ");
+
     createAppointment.mutate(
       { data: {
         ...(shopId ? { shopId } : {}),
         clientName: formData.name,
-        serviceId: service.id,
-        serviceName: service.name,
-        servicePrice: service.price,
-        serviceDuration: service.durationMinutes,
+        serviceName: combinedName,
+        servicePrice: totalPrice,
+        serviceDuration: totalDuration,
         ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
         paymentMethod: formData.paymentMethod,
@@ -139,10 +139,54 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     );
   };
 
-  const selectedService = services?.find(s => s.id.toString() === formData.serviceId);
   const selectedBarber = formData.barberId
     ? barbers?.find(b => b.id.toString() === formData.barberId)
     : undefined;
+
+  const comboParams = shopId ? { shopId } : {};
+  const { data: comboDiscounts } = useListComboDiscounts(
+    comboParams,
+    { query: { queryKey: getListComboDiscountsQueryKey(comboParams) } }
+  );
+
+  // Services this barber can perform (empty serviceIds = all services).
+  const eligibleServicesAll = React.useMemo(() => {
+    if (!services) return [];
+    if (!selectedBarber) return services;
+    if (selectedBarber.serviceIds.length === 0) return services;
+    return services.filter(s => selectedBarber.serviceIds.includes(s.id));
+  }, [services, selectedBarber]);
+
+  const selectedServices = React.useMemo(
+    () => eligibleServicesAll.filter(s => formData.serviceIds.includes(s.id)),
+    [eligibleServicesAll, formData.serviceIds]
+  );
+
+  const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
+  const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
+
+  const appliedCombo = React.useMemo(() => {
+    if (!comboDiscounts || selectedServices.length < 2) return null;
+    const selectedIds = formData.serviceIds;
+    const matches = comboDiscounts.filter(c =>
+      (c.serviceIds as number[]).length >= 2 &&
+      (c.serviceIds as number[]).every(id => selectedIds.includes(id))
+    );
+    if (matches.length === 0) return null;
+    // Pick the combo with highest discount value
+    return matches.sort((a, b) => {
+      const va = a.discountType === "value" ? a.discountPercent : (totalPriceRaw * a.discountPercent) / 100;
+      const vb = b.discountType === "value" ? b.discountPercent : (totalPriceRaw * b.discountPercent) / 100;
+      return vb - va;
+    })[0];
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw]);
+
+  const discountAmount = appliedCombo
+    ? appliedCombo.discountType === "value"
+      ? Number(appliedCombo.discountPercent)
+      : (totalPriceRaw * Number(appliedCombo.discountPercent)) / 100
+    : 0;
+  const totalPrice = Math.max(0, totalPriceRaw - discountAmount);
 
   // Backend already filters to active barbers via activeOnly=true.
   const activeBarbers = barbers ?? [];
@@ -164,21 +208,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     setFormData(prev => (prev.barberId === onlyId ? prev : { ...prev, barberId: onlyId }));
   }, [barbers]);
 
-  // Services this barber can perform (empty serviceIds = all services).
-  const eligibleServices = React.useMemo(() => {
-    if (!services) return [];
-    if (!selectedBarber) return services;
-    if (selectedBarber.serviceIds.length === 0) return services;
-    return services.filter(s => selectedBarber.serviceIds.includes(s.id));
-  }, [services, selectedBarber]);
-
   const handleBarberPick = (barberId: number) => {
-    setFormData(prev => ({ ...prev, barberId: barberId.toString(), serviceId: "", time: "" }));
+    setFormData(prev => ({ ...prev, barberId: barberId.toString(), serviceIds: [], time: "" }));
     setPickingBarber(false);
   };
 
-  const handleServicePick = (serviceId: number) => {
-    setFormData(prev => ({ ...prev, serviceId: serviceId.toString(), time: "" }));
+  const handleToggleService = (serviceId: number) => {
+    setFormData(prev => {
+      const ids = prev.serviceIds.includes(serviceId)
+        ? prev.serviceIds.filter(id => id !== serviceId)
+        : [...prev.serviceIds, serviceId];
+      return { ...prev, serviceIds: ids, time: "" };
+    });
+  };
+
+  const handleServicesConfirm = () => {
+    if (formData.serviceIds.length === 0) return;
     setStep(2);
   };
 
@@ -198,17 +243,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   }, [enabledPayments.join(","), formData.paymentMethod]);
 
   const dateKey = `${formData.date.getFullYear()}-${(formData.date.getMonth()+1).toString().padStart(2,"0")}-${formData.date.getDate().toString().padStart(2,"0")}`;
-  const availabilityServiceId = selectedService?.id ?? 0;
   const availabilityBarberId = formData.barberId ? parseInt(formData.barberId, 10) : undefined;
   const availabilityParams = {
     ...(shopId ? { shopId } : {}),
     date: dateKey,
-    serviceId: availabilityServiceId,
+    serviceDuration: totalDuration,
     ...(availabilityBarberId ? { barberId: availabilityBarberId } : {}),
   };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availabilityParams,
-    { query: { queryKey: getGetAvailabilityQueryKey(availabilityParams), enabled: step === 2 && availabilityServiceId > 0 && !pickingBarber } }
+    { query: { queryKey: getGetAvailabilityQueryKey(availabilityParams), enabled: step === 2 && totalDuration > 0 && !pickingBarber } }
   );
 
   // Clear selected time if it's no longer available after a refresh.
@@ -345,26 +389,26 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               </div>
             )}
             <div className="space-y-1">
-              <h2 className="text-xl font-bold">Escolha um serviço</h2>
-              <p className="text-sm text-muted-foreground">Selecione o serviço que deseja</p>
+              <h2 className="text-xl font-bold">Escolha os serviços</h2>
+              <p className="text-sm text-muted-foreground">Selecione um ou mais serviços</p>
             </div>
             <div className="space-y-3">
-              {eligibleServices.map((service) => {
-                const isSelected = formData.serviceId === service.id.toString();
+              {eligibleServicesAll.map((service) => {
+                const isSelected = formData.serviceIds.includes(service.id);
                 return (
                   <button
                     key={service.id}
                     type="button"
                     data-testid={`button-service-${service.id}`}
-                    onClick={() => handleServicePick(service.id)}
+                    onClick={() => handleToggleService(service.id)}
                     className="w-full text-left rounded-2xl p-4 transition-all"
                     style={{
-                      backgroundColor: "hsl(0 0% 7%)",
-                      border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                      backgroundColor: isSelected ? "hsl(0 0% 10%)" : "hsl(0 0% 7%)",
+                      border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
                       cursor: "pointer",
                     }}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
                       <div
                         className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                         style={{
@@ -405,15 +449,80 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                           </span>
                         </div>
                       </div>
-                      <ChevronRight
-                        className="w-5 h-5 flex-shrink-0 mt-1"
-                        style={{ color: "hsl(0 0% 40%)" }}
-                      />
+                      <div
+                        className="rounded-full flex items-center justify-center shrink-0 mt-1"
+                        style={{
+                          width: 22,
+                          height: 22,
+                          border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 25%)"}`,
+                          backgroundColor: isSelected ? AMBER : "transparent",
+                          color: "hsl(0 0% 10%)",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
+
+            {formData.serviceIds.length > 0 && (
+              <div
+                className="rounded-2xl p-4 space-y-2"
+                style={{ backgroundColor: "hsl(0 0% 9%)", border: `1px solid ${AMBER}4D` }}
+              >
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {formData.serviceIds.length} serviço{formData.serviceIds.length > 1 ? "s" : ""}
+                  </span>
+                  <span style={{ color: AMBER, fontWeight: 600 }}>
+                    {totalDuration} min · R$ {totalPriceRaw.toFixed(2).replace(".", ",")}
+                  </span>
+                </div>
+                {appliedCombo && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      🎉 Desconto combo
+                    </span>
+                    <span className="font-semibold" style={{ color: "hsl(142 71% 45%)" }}>
+                      {appliedCombo.discountType === "value"
+                        ? `- R$ ${Number(appliedCombo.discountPercent).toFixed(2).replace(".", ",")}`
+                        : `- ${appliedCombo.discountPercent}%`}
+                    </span>
+                  </div>
+                )}
+                {appliedCombo && (
+                  <div className="flex items-center justify-between font-semibold pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
+                    <span>Total</span>
+                    <span style={{ color: AMBER }}>
+                      R$ {totalPrice.toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              data-testid="button-confirm-services"
+              disabled={formData.serviceIds.length === 0}
+              onClick={handleServicesConfirm}
+              className="w-full rounded-xl text-center font-semibold transition-opacity"
+              style={{
+                height: 52,
+                backgroundColor: AMBER_DEEP,
+                color: "hsl(0 0% 100%)",
+                border: "none",
+                cursor: formData.serviceIds.length === 0 ? "not-allowed" : "pointer",
+                opacity: formData.serviceIds.length === 0 ? 0.45 : 1,
+              }}
+            >
+              {formData.serviceIds.length === 0
+                ? "Selecione ao menos um serviço"
+                : `Continuar — ${formData.serviceIds.length} serviço${formData.serviceIds.length > 1 ? "s" : ""} selecionado${formData.serviceIds.length > 1 ? "s" : ""}`}
+            </button>
           </div>
         )}
 
@@ -432,41 +541,35 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 Voltar
               </button>
 
-              {selectedService && (
+              {selectedServices.length > 0 && (
                 <div
-                  className="rounded-xl p-3 flex items-center gap-3"
+                  className="rounded-xl p-3 space-y-1"
                   style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                 >
-                  <div
-                    className="rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
-                    style={{
-                      width: 40,
-                      height: 40,
-                      backgroundColor: selectedService.imageUrl ? "hsl(0 0% 10%)" : AMBER_SOFT,
-                      color: AMBER,
-                    }}
-                  >
-                    {selectedService.imageUrl ? (
-                      <img
-                        src={selectedService.imageUrl}
-                        alt={selectedService.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Scissors className="w-5 h-5" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">{selectedService.name}</p>
-                    <div className="flex items-center gap-3 text-xs mt-0.5">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        {selectedService.durationMinutes} min
+                  {selectedServices.map(sv => (
+                    <div key={sv.id} className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5">
+                        <Scissors className="w-3 h-3" style={{ color: AMBER }} />
+                        <span className="font-medium">{sv.name}</span>
                       </span>
-                      <span style={{ color: AMBER, fontWeight: 600 }}>
-                        R$ {selectedService.price.toFixed(2).replace(".", ",")}
+                      <span className="text-muted-foreground">{sv.durationMinutes} min · R$ {sv.price.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  ))}
+                  {appliedCombo && (
+                    <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
+                      <span className="text-muted-foreground">🎉 Desconto combo</span>
+                      <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>
+                        {appliedCombo.discountType === "value"
+                          ? `- R$ ${Number(appliedCombo.discountPercent).toFixed(2).replace(".", ",")}`
+                          : `- ${appliedCombo.discountPercent}%`}
                       </span>
                     </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
+                    <span className="text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> Total</span>
+                    <span style={{ color: AMBER, fontWeight: 700 }}>
+                      {totalDuration} min · R$ {totalPrice.toFixed(2).replace(".", ",")}
+                    </span>
                   </div>
                 </div>
               )}
@@ -681,7 +784,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               <CardHeader className="bg-muted/50 border-b border-border">
                 <CardTitle>3. Seus Dados</CardTitle>
                 <CardDescription>
-                  {selectedService?.name} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
+                  {selectedServices.map(s => s.name).join(" + ")} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
@@ -803,15 +906,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 </p>
               </div>
 
-              {selectedService && (
+              {selectedServices.length > 0 && (
                 <div
                   className="rounded-xl p-4 space-y-2"
                   style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                 >
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Serviço</span>
-                    <span className="font-semibold">{selectedService.name}</span>
-                  </div>
+                  {selectedServices.map(sv => (
+                    <div key={sv.id} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{sv.name}</span>
+                      <span className="font-semibold">R$ {sv.price.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  ))}
+                  {appliedCombo && (
+                    <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
+                      <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
+                      <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
                   {selectedBarber && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Profissional</span>
@@ -830,7 +941,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   >
                     <span className="font-semibold">Total</span>
                     <span className="text-xl font-bold" style={{ color: AMBER }}>
-                      R$ {selectedService.price.toFixed(2).replace(".", ",")}
+                      R$ {totalPrice.toFixed(2).replace(".", ",")}
                     </span>
                   </div>
                 </div>

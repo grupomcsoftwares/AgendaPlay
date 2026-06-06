@@ -104,7 +104,7 @@ export default function Settings() {
   const { user, refresh } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const { data: combos } = useListComboDiscounts({ query: { queryKey: getListComboDiscountsQueryKey() } });
+  const { data: combos } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const createCombo = useCreateComboDiscount();
   const updateComboMut = useUpdateComboDiscount();

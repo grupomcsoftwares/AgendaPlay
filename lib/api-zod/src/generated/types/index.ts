@@ -33,6 +33,7 @@ export * from './healthStatus';
 export * from './listAppointmentsParams';
 export * from './listBarbersParams';
 export * from './listClientsParams';
+export * from './listComboDiscountsParams';
 export * from './listServicesParams';
 export * from './queueEntry';
 export * from './queueInput';

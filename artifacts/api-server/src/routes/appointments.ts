@@ -108,19 +108,27 @@ router.get("/availability", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { date, serviceId, barberId } = parsed.data;
+  const { date, serviceId, serviceDuration: serviceDurationParam, barberId } = parsed.data;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
     res.status(400).json({ error: "Invalid date format (expected YYYY-MM-DD)" });
     return;
   }
 
-  const [service] = await db.select().from(servicesTable)
-    .where(and(eq(servicesTable.id, serviceId), eq(servicesTable.userId, shopId)));
-  if (!service) {
-    res.status(404).json({ error: "Service not found" });
+  let duration: number;
+  if (typeof serviceDurationParam === "number" && serviceDurationParam > 0) {
+    duration = serviceDurationParam;
+  } else if (typeof serviceId === "number") {
+    const [service] = await db.select().from(servicesTable)
+      .where(and(eq(servicesTable.id, serviceId), eq(servicesTable.userId, shopId)));
+    if (!service) {
+      res.status(404).json({ error: "Service not found" });
+      return;
+    }
+    duration = service.durationMinutes;
+  } else {
+    res.status(400).json({ error: "serviceId ou serviceDuration obrigatório" });
     return;
   }
-  const duration = service.durationMinutes;
   const barberFilter = typeof barberId === "number" ? barberId : null;
 
   const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);

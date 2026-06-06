@@ -422,7 +422,11 @@ shopId?: string;
  * YYYY-MM-DD
  */
 date: string;
-serviceId: number;
+serviceId?: number;
+/**
+ * Total duration in minutes — required when serviceId is not provided (multi-service bookings)
+ */
+serviceDuration?: number;
 /**
  * Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
  */
@@ -454,6 +458,10 @@ export type GetSettingsParams = {
 /**
  * Shop owner user ID (required for public booking page)
  */
+shopId?: string;
+};
+
+export type ListComboDiscountsParams = {
 shopId?: string;
 };
 

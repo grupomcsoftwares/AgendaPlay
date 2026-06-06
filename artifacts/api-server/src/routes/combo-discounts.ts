@@ -1,7 +1,13 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, comboDiscountsTable } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
+
+function resolveShop(req: Request): string | null {
+  if (req.session?.userId) return req.session.userId;
+  const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
+  return shopId || null;
+}
 
 const router: IRouter = Router();
 
@@ -33,12 +39,18 @@ function formatCombo(c: typeof comboDiscountsTable.$inferSelect) {
   };
 }
 
-router.get("/combo-discounts", requireAuth, async (req, res): Promise<void> => {
-  const userId = req.session.userId!;
+router.get("/combo-discounts", async (req, res): Promise<void> => {
+  // Supports public access via ?shopId= (for the public booking page)
+  // and authenticated access for the admin panel.
+  const shopId = resolveShop(req);
+  if (!shopId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const rows = await db
     .select()
     .from(comboDiscountsTable)
-    .where(eq(comboDiscountsTable.userId, userId));
+    .where(eq(comboDiscountsTable.userId, shopId));
   res.json(rows.map(formatCombo));
 });
 
