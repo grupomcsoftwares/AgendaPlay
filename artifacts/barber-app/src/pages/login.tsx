@@ -33,7 +33,7 @@ export default function Login() {
     >
       <div className="max-w-md w-full space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <img src={logoUrl} alt="Agenda Play" style={{ width: 56, height: 56, borderRadius: 8, objectFit: "contain" }} />
+          <img src={logoUrl} alt="Agenda Play" style={{ width: 140, height: 140, borderRadius: 12, objectFit: "contain" }} />
         </div>
 
         <div className="text-center space-y-2">
