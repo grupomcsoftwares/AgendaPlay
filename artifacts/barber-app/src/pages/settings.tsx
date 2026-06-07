@@ -743,6 +743,12 @@ export default function Settings() {
 
                   {slugEditMode ? (
                     <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+                        <span className="shrink-0 text-base leading-none">⚠️</span>
+                        <span>
+                          Ao alterar o endereço, links anteriores compartilhados com clientes irão parar de funcionar.
+                        </span>
+                      </div>
                       <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-md">
                         <span className="shrink-0">{window.location.origin}/b/</span>
                         <span className="text-foreground font-semibold">{slugValue || "..."}</span>
