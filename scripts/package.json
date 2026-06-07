@@ -6,6 +6,7 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-subscription": "tsx ./src/seed-subscription.ts",
+    "backfill-slugs": "tsx ./src/backfill-slugs.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
@@ -13,6 +14,8 @@
     "tsx": "catalog:"
   },
   "dependencies": {
+    "@workspace/db": "workspace:*",
+    "drizzle-orm": "catalog:",
     "stripe": "^22.2.0"
   }
 }

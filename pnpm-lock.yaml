@@ -806,6 +806,12 @@ importers:
 
   scripts:
     dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../lib/db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
       stripe:
         specifier: ^22.2.0
         version: 22.2.0(@types/node@25.6.2)
