@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
 import { Mail, Lock } from "lucide-react";
-import logoUrl from "../assets/agenda-play-logo-v2-nobg.png";
+import logoUrl from "../assets/agenda-play-logo-v2.png";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
@@ -33,7 +33,7 @@ export default function Login() {
     >
       <div className="max-w-md w-full space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <img src={logoUrl} alt="Agenda Play" style={{ width: 36, height: 36, objectFit: "contain" }} />
+          <img src={logoUrl} alt="Agenda Play" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
           <span className="text-2xl font-bold">Agenda Play</span>
         </div>
 
