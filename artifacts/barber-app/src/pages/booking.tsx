@@ -152,13 +152,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         ...(shopId ? { shopId } : {}),
         clientName: formData.name,
         serviceName: combinedName,
-        servicePrice: totalPrice,
+        servicePrice: comboTotalPrice,
         serviceDuration: totalDuration,
         ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
         paymentMethod: formData.paymentMethod,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
         ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
+        // Send pre-loyalty price; server computes authoritative final price
       }},
       {
         onSuccess: (created) => {
