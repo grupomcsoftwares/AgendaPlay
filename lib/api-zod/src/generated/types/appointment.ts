@@ -24,6 +24,7 @@ export interface Appointment {
   scheduledAt: string;
   status: string;
   paymentMethod?: AppointmentPaymentMethod;
+  coveredByPlan?: boolean;
   /** @nullable */
   notes?: string | null;
   /** @nullable */

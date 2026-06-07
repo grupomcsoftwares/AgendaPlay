@@ -205,6 +205,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -227,6 +228,7 @@ export const CreateAppointmentBody = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional().describe('True when the client chose to use their active subscription plan for this booking'),
   "notes": zod.string().optional(),
   "loyaltyPointsRedeemed": zod.number().optional().describe('Points redeemed for a discount on this booking')
 })
@@ -252,6 +254,7 @@ export const GetAppointmentResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -288,6 +291,7 @@ export const UpdateAppointmentResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -322,6 +326,7 @@ export const StartAppointmentResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -348,6 +353,7 @@ export const CompleteAppointmentResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -374,6 +380,7 @@ export const CancelAppointmentResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -400,6 +407,7 @@ export const GetAppointmentByTokenResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -426,6 +434,7 @@ export const CancelAppointmentByTokenResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -457,6 +466,7 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -570,6 +580,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -587,6 +598,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "scheduledAt": zod.string(),
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()

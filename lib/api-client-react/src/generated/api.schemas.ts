@@ -175,6 +175,7 @@ export interface Appointment {
   scheduledAt: string;
   status: string;
   paymentMethod?: AppointmentPaymentMethod;
+  coveredByPlan?: boolean;
   /** @nullable */
   notes?: string | null;
   /** @nullable */
@@ -203,6 +204,8 @@ export interface AppointmentInput {
   serviceDuration: number;
   scheduledAt: string;
   paymentMethod?: AppointmentInputPaymentMethod;
+  /** True when the client chose to use their active subscription plan for this booking */
+  coveredByPlan?: boolean;
   notes?: string;
   /** Points redeemed for a discount on this booking */
   loyaltyPointsRedeemed?: number;

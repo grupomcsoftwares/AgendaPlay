@@ -113,6 +113,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // When true, step 1 shows the barber picker instead of the service list.
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
+  const [usePlan, setUsePlan] = useState(false);
+
   const [formData, setFormData] = useState<{
     serviceIds: number[];
     barberId: string;
@@ -156,7 +158,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         serviceDuration: totalDuration,
         ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: usePlan ? "on_site" : formData.paymentMethod,
+        coveredByPlan: usePlan,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
         ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
         // Send pre-loyalty price; server computes authoritative final price
@@ -251,9 +254,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
 
-  // Reset useLoyaltyPoints when navigating away from step 3+
+  // Reset useLoyaltyPoints and usePlan when navigating away from step 3+
   useEffect(() => {
-    if (step < 3) setUseLoyaltyPoints(false);
+    if (step < 3) {
+      setUseLoyaltyPoints(false);
+      setUsePlan(false);
+    }
   }, [step]);
 
   const appliedCombo = React.useMemo(() => {
@@ -1149,6 +1155,51 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               )}
 
               <div className="space-y-3">
+                {/* Plan option — only shown when client has active subscription */}
+                {subCheck?.active && (
+                  <button
+                    type="button"
+                    data-testid="button-payment-plan"
+                    onClick={() => setUsePlan(true)}
+                    className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
+                    style={{
+                      backgroundColor: usePlan ? "hsl(142 71% 45% / 0.12)" : "hsl(0 0% 7%)",
+                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 14%)"}`,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      className="rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 12%)",
+                        color: usePlan ? "hsl(0 0% 10%)" : "hsl(142 71% 45%)",
+                      }}
+                    >
+                      <BadgeCheck className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-base">Usar meu plano</p>
+                      <p className="text-xs mt-0.5" style={{ color: "hsl(142 71% 45%)" }}>
+                        {subCheck.planName ?? "Assinatura ativa"} · coberto pelo plano
+                      </p>
+                    </div>
+                    <div
+                      className="rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{
+                        width: 22,
+                        height: 22,
+                        border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 25%)"}`,
+                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : "transparent",
+                        color: "hsl(0 0% 10%)",
+                      }}
+                    >
+                      {usePlan && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                    </div>
+                  </button>
+                )}
+
                 {([
                   {
                     value: "now" as const,
@@ -1163,13 +1214,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     Icon: Banknote,
                   },
                 ]).filter(opt => enabledPayments.includes(opt.value)).map(({ value, title, desc, Icon }) => {
-                  const isSelected = formData.paymentMethod === value;
+                  const isSelected = !usePlan && formData.paymentMethod === value;
                   return (
                     <button
                       key={value}
                       type="button"
                       data-testid={`button-payment-${value}`}
-                      onClick={() => setFormData({ ...formData, paymentMethod: value })}
+                      onClick={() => { setUsePlan(false); setFormData({ ...formData, paymentMethod: value }); }}
                       className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                       style={{
                         backgroundColor: isSelected ? AMBER_SOFT : "hsl(0 0% 7%)",

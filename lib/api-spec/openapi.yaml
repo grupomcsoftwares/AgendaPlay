@@ -1267,6 +1267,8 @@ components:
         paymentMethod:
           type: string
           enum: [now, on_site]
+        coveredByPlan:
+          type: boolean
         notes:
           type: ["string", "null"]
         cancelToken:
@@ -1302,6 +1304,9 @@ components:
         paymentMethod:
           type: string
           enum: [now, on_site]
+        coveredByPlan:
+          type: boolean
+          description: True when the client chose to use their active subscription plan for this booking
         notes:
           type: string
         loyaltyPointsRedeemed:
