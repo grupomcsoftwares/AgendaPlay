@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import logoUrl from "../assets/agenda-play-logo-nobg.png";
+import logoUrl from "../assets/agenda-play-logo-v2-nobg.png";
 
 export default function Landing() {
   return (
@@ -26,7 +26,7 @@ export default function Landing() {
           <img
             src={logoUrl}
             alt="Agenda Play"
-            style={{ width: 120, height: 120, objectFit: "contain", filter: "contrast(3)", mixBlendMode: "lighten" }}
+            style={{ width: 180, height: 180, objectFit: "contain" }}
           />
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Agenda Play</h1>
         </div>
