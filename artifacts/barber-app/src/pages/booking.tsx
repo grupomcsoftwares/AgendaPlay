@@ -216,10 +216,18 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     })[0];
   }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw]);
 
+  // For percentage combos, apply the discount only to the services that are
+  // part of the combo — not to every selected service. A fixed-value combo
+  // always deducts the same amount regardless of extra services.
+  const comboServicesPrice = appliedCombo
+    ? selectedServices
+        .filter(s => (appliedCombo.serviceIds as number[]).includes(s.id))
+        .reduce((acc, s) => acc + s.price, 0)
+    : 0;
   const discountAmount = appliedCombo
     ? appliedCombo.discountType === "value"
       ? Number(appliedCombo.discountPercent)
-      : (totalPriceRaw * Number(appliedCombo.discountPercent)) / 100
+      : (comboServicesPrice * Number(appliedCombo.discountPercent)) / 100
     : 0;
   const totalPrice = Math.max(0, totalPriceRaw - discountAmount);
 
