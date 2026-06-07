@@ -105,6 +105,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
 
   req.session.save((err) => {
     if (err) {
+      req.log.error({ err }, "session.save failed on register");
       res.status(500).json({ error: "Erro ao salvar sessão." });
       return;
     }
@@ -149,6 +150,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
 
   req.session.save((err) => {
     if (err) {
+      req.log.error({ err }, "session.save failed on login");
       res.status(500).json({ error: "Erro ao salvar sessão." });
       return;
     }

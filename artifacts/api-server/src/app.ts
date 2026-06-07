@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import pg from "pg";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { WebhookHandlers } from "./webhookHandlers.js";
@@ -74,12 +75,28 @@ app.use(express.urlencoded({ extended: true }));
 
 const PgSession = connectPgSimple(session);
 
+const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+sessionPool.on("error", (err: Error) => logger.error({ err }, "Session pool error"));
+
+const SESSION_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS "session" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL,
+  CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+) WITH (OIDS=FALSE);
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+`;
+
+sessionPool.query(SESSION_TABLE_SQL).catch((err: Error) => {
+  logger.error({ err }, "Failed to create session table");
+});
+
 app.use(
   session({
     store: new PgSession({
-      conString: process.env.DATABASE_URL,
+      pool: sessionPool,
       tableName: "session",
-      createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET,
     resave: false,
