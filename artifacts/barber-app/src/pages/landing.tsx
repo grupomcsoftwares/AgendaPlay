@@ -26,7 +26,7 @@ export default function Landing() {
           <img
             src={logoUrl}
             alt="Agenda Play"
-            style={{ width: 180, height: 180, borderRadius: "50%", objectFit: "cover" }}
+            style={{ width: 220, height: 220, borderRadius: 24, objectFit: "contain" }}
           />
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Agenda Play</h1>
         </div>

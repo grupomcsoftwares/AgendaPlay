@@ -48,7 +48,7 @@ export default function Register() {
     >
       <div className="max-w-md w-full space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <img src={logoUrl} alt="Agenda Play" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
+          <img src={logoUrl} alt="Agenda Play" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "contain" }} />
           <span className="text-2xl font-bold">Agenda Play</span>
         </div>
 

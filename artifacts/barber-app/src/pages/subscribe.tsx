@@ -124,7 +124,7 @@ export default function Subscribe() {
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-3">
-            <img src={logoUrl} alt="Agenda Play" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
+            <img src={logoUrl} alt="Agenda Play" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "contain" }} />
             <span className="text-2xl font-bold">Agenda Play</span>
           </div>
           <div
