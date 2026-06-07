@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
-import { Scissors, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
+import logoUrl from "../assets/agenda-play-logo.png";
 import { useAuth } from "../context/AuthContext";
 
 export default function Login() {
@@ -32,8 +33,8 @@ export default function Login() {
     >
       <div className="max-w-md w-full space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <Scissors className="w-8 h-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
-          <span className="text-2xl font-bold">BarberApp</span>
+          <img src={logoUrl} alt="Agenda Play" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
+          <span className="text-2xl font-bold">Agenda Play</span>
         </div>
 
         <div className="text-center space-y-2">

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Scissors } from "lucide-react";
+import logoUrl from "../assets/agenda-play-logo.png";
 
 export default function Landing() {
   return (
@@ -22,12 +22,14 @@ export default function Landing() {
       />
 
       <div className="relative max-w-2xl w-full text-center space-y-8">
-        <div className="flex items-center justify-center gap-3">
-          <Scissors
-            className="w-10 h-10 sm:w-12 sm:h-12"
-            style={{ color: "hsl(var(--sidebar-primary))" }}
+        <div className="flex flex-col items-center justify-center gap-4">
+          <img
+            src={logoUrl}
+            alt="Agenda Play"
+            className="rounded-2xl"
+            style={{ width: 120, height: 120, objectFit: "cover" }}
           />
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">BarberApp</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Agenda Play</h1>
         </div>
 
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
@@ -58,13 +60,12 @@ export default function Landing() {
           </Link>
           <Link
             href="/login"
-            data-testid="link-login"
-            className="rounded-xl px-8 py-3 font-semibold transition-colors inline-flex items-center justify-center"
+            className="rounded-xl px-8 py-3 font-semibold transition-opacity hover:opacity-90 inline-flex items-center justify-center"
             style={{
-              backgroundColor: "hsl(0 0% 9%)",
-              color: "hsl(0 0% 95%)",
+              backgroundColor: "hsl(0 0% 10%)",
+              color: "hsl(0 0% 90%)",
               border: "1px solid hsl(0 0% 18%)",
-              minWidth: 160,
+              minWidth: 140,
             }}
           >
             Entrar

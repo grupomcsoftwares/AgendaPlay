@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Scissors, CheckCircle, Clock, Zap, Users } from "lucide-react";
+import { CheckCircle, Clock, Zap, Users } from "lucide-react";
+import logoUrl from "../assets/agenda-play-logo.png";
 import { useAuth } from "../context/AuthContext";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -123,8 +124,8 @@ export default function Subscribe() {
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-3">
-            <Scissors className="w-8 h-8" style={{ color: "hsl(var(--sidebar-primary))" }} />
-            <span className="text-2xl font-bold">BarberApp</span>
+            <img src={logoUrl} alt="Agenda Play" style={{ width: 36, height: 36, borderRadius: 8, objectFit: "cover" }} />
+            <span className="text-2xl font-bold">Agenda Play</span>
           </div>
           <div
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium"
