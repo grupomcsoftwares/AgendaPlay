@@ -93,7 +93,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   req.session.userId = user.id;
   const status = getAccountStatus(user);
 
-  res.status(201).json({
+  const payload = {
     id: user.id,
     email: user.email,
     barbershopName: user.barbershopName,
@@ -101,6 +101,14 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     ...status,
+  };
+
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: "Erro ao salvar sessão." });
+      return;
+    }
+    res.status(201).json(payload);
   });
 });
 
@@ -127,7 +135,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   req.session.userId = user.id;
   const status = getAccountStatus(user);
 
-  res.json({
+  const payload = {
     id: user.id,
     email: user.email,
     barbershopName: user.barbershopName,
@@ -137,6 +145,14 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     ...status,
+  };
+
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: "Erro ao salvar sessão." });
+      return;
+    }
+    res.json(payload);
   });
 });
 
