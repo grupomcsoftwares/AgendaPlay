@@ -1212,18 +1212,7 @@ export default function Settings() {
                   className="flex items-center gap-3 rounded-lg border border-border px-4 py-3"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm">{plan.name}</span>
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded-full font-medium"
-                        style={{
-                          backgroundColor: plan.active ? "hsl(38 88% 55% / 0.15)" : "hsl(0 0% 15%)",
-                          color: plan.active ? "hsl(38 88% 55%)" : "hsl(0 0% 50%)",
-                        }}
-                      >
-                        {plan.active ? "Ativo" : "Inativo"}
-                      </span>
-                    </div>
+                    <span className="font-semibold text-sm">{plan.name}</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       R$ {plan.price.toFixed(2).replace(".", ",")}/mês
                       {plan.maxAppointmentsPerMonth
@@ -1232,6 +1221,35 @@ export default function Settings() {
                       {plan.description ? ` · ${plan.description}` : ""}
                     </p>
                   </div>
+                  {/* 1-click active toggle */}
+                  <button
+                    type="button"
+                    title={plan.active ? "Desativar plano" : "Ativar plano"}
+                    disabled={updatePlanMut.isPending}
+                    onClick={() =>
+                      updatePlanMut.mutate(
+                        { id: plan.id, data: { active: !plan.active } },
+                        { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() }) }
+                      )
+                    }
+                    className="shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                    style={{
+                      backgroundColor: plan.active ? "hsl(38 88% 55% / 0.15)" : "hsl(0 0% 15%)",
+                      color: plan.active ? "hsl(38 88% 55%)" : "hsl(0 0% 50%)",
+                      border: `1px solid ${plan.active ? "hsl(38 88% 55% / 0.4)" : "hsl(0 0% 22%)"}`,
+                      cursor: updatePlanMut.isPending ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <span
+                      className="inline-block rounded-full"
+                      style={{
+                        width: 7,
+                        height: 7,
+                        backgroundColor: plan.active ? "hsl(38 88% 55%)" : "hsl(0 0% 45%)",
+                      }}
+                    />
+                    {plan.active ? "Ativo" : "Inativo"}
+                  </button>
                   <Button
                     size="sm"
                     variant="ghost"
