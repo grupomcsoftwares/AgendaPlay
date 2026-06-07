@@ -28,7 +28,6 @@ export default function Landing() {
             alt="Agenda Play"
             style={{ width: 220, height: 220, borderRadius: 24, objectFit: "contain" }}
           />
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Agenda Play</h1>
         </div>
 
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight leading-tight">
