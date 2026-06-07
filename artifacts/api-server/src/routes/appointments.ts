@@ -246,55 +246,55 @@ router.post("/appointments", async (req, res): Promise<void> => {
     parsed.data.barberName = undefined;
   }
 
-  // ── Loyalty redemption: server-side authoritative validation ──────────────
-  // Client sends the pre-loyalty service price; server computes the final price.
+  // ── Loyalty: setup, fast-path validation, authoritative discount ─────────
   const loyaltyPointsRedeemed = parsed.data.loyaltyPointsRedeemed ?? 0;
-  let loyaltyDiscount = 0;
-  let loyaltyPhone: string | null = null;
+
+  // Extract phone from notes once — used for both redemption and earning.
+  const notesStr = parsed.data.notes ?? "";
+  const phoneMatch = notesStr.match(/Tel:\s*([^\s.]+)/);
+  const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
+
+  // Load loyalty config if there is a phone (needed for earning even without redemption).
   let loyaltyConfig: LoyaltyConfig | null = null;
+  if (loyaltyPhone) {
+    const [settingsRow] = await db
+      .select({ lc: settingsTable.loyaltyConfig })
+      .from(settingsTable)
+      .where(eq(settingsTable.userId, shopId))
+      .limit(1);
+    loyaltyConfig = (settingsRow?.lc ?? null) as LoyaltyConfig | null;
+  }
 
+  // Fast-path redemption validation (UX error before entering transaction).
+  let loyaltyDiscount = 0;
   if (loyaltyPointsRedeemed > 0) {
-    // Extract phone from notes (format: "Tel: XXXXX...")
-    const notesStr = parsed.data.notes ?? "";
-    const phoneMatch = notesStr.match(/Tel:\s*([^\s.]+)/);
-    loyaltyPhone = (phoneMatch?.[1] ?? "").replace(/\D/g, "");
-
     if (!loyaltyPhone) {
       res.status(400).json({ error: "Telefone necessário para resgate de pontos" });
       return;
     }
-
-    // Load and validate loyalty config
-    const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);
-    loyaltyConfig = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
-
     if (!loyaltyConfig?.enabled || !loyaltyConfig.pointsPerRedemptionUnit) {
       res.status(400).json({ error: "Programa de fidelidade não está ativo" });
       return;
     }
-
-    // Validate client has sufficient points
     const [balanceRow] = await db
       .select({ points: loyaltyPointsTable.points })
       .from(loyaltyPointsTable)
       .where(and(eq(loyaltyPointsTable.userId, shopId), eq(loyaltyPointsTable.clientPhone, loyaltyPhone)))
       .limit(1);
-    const currentPoints = balanceRow?.points ?? 0;
-
-    if (loyaltyPointsRedeemed > currentPoints) {
+    if ((balanceRow?.points ?? 0) < loyaltyPointsRedeemed) {
       res.status(400).json({ error: "Pontos insuficientes para resgate" });
       return;
     }
-
-    // Authoritative discount (integer R$)
+    // Authoritative discount: integer R$ (server-computed, not from client)
     loyaltyDiscount = Math.floor(loyaltyPointsRedeemed / loyaltyConfig.pointsPerRedemptionUnit);
   }
 
-  // Server-authoritative final price (client sends pre-loyalty price)
+  // Final price is server-authoritative. Client sends the pre-loyalty price.
   const finalServicePrice = Math.max(0, parsed.data.servicePrice - loyaltyDiscount);
   // ─────────────────────────────────────────────────────────────────────────
 
   let conflict = false;
+  let redeemConflict = false;
   const appointment = await db.transaction(async (tx) => {
     let hash = 0;
     for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
@@ -321,18 +321,26 @@ router.post("/appointments", async (req, res): Promise<void> => {
       }
     }
 
-    // Atomically deduct loyalty points inside the same transaction
+    // Atomic conditional deduction — the single definitive check, concurrency-safe.
+    // Uses a conditional UPDATE (points >= redeemed) instead of GREATEST(), so a
+    // concurrent booking that already spent the same points returns 0 rows and we fail.
     if (loyaltyPointsRedeemed > 0 && loyaltyPhone) {
-      await tx
-        .insert(loyaltyPointsTable)
-        .values({ userId: shopId, clientPhone: loyaltyPhone, points: 0 })
-        .onConflictDoUpdate({
-          target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-          set: {
-            points: sql`GREATEST(0, ${loyaltyPointsTable.points} - ${loyaltyPointsRedeemed})`,
-            updatedAt: new Date(),
-          },
-        });
+      const deducted = await tx
+        .update(loyaltyPointsTable)
+        .set({
+          points: sql`${loyaltyPointsTable.points} - ${loyaltyPointsRedeemed}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(loyaltyPointsTable.userId, shopId),
+          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
+          gte(loyaltyPointsTable.points, loyaltyPointsRedeemed),
+        ))
+        .returning({ points: loyaltyPointsTable.points });
+      if (deducted.length === 0) {
+        redeemConflict = true;
+        return null;
+      }
     }
 
     const [created] = await tx.insert(appointmentsTable).values({
@@ -362,48 +370,33 @@ router.post("/appointments", async (req, res): Promise<void> => {
       position: nextPosition,
       status: "waiting",
     });
+
+    // Credit earned points inside the same transaction (durable — if appointment
+    // creation fails the whole tx rolls back, so points are never credited on failure).
+    if (loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
+      const earned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
+      if (earned > 0) {
+        await tx
+          .insert(loyaltyPointsTable)
+          .values({ userId: shopId, clientPhone: loyaltyPhone, points: earned })
+          .onConflictDoUpdate({
+            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+            set: { points: sql`${loyaltyPointsTable.points} + ${earned}`, updatedAt: new Date() },
+          });
+      }
+    }
+
     return created;
   });
 
+  if (redeemConflict) {
+    res.status(409).json({ error: "Pontos já utilizados em outro agendamento simultâneo. Tente novamente." });
+    return;
+  }
   if (conflict || !appointment) {
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
   }
-
-  // Credit earned loyalty points asynchronously (fire-and-forget — never block response)
-  // Points earned on the final price actually paid; deduction already done above atomically.
-  void (async () => {
-    try {
-      let config = loyaltyConfig;
-      if (!config) {
-        const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);
-        config = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
-      }
-      if (!config?.enabled || !config.pointsPerReal) return;
-
-      // Extract phone (already available if loyalty was redeemed; otherwise parse from notes)
-      const phone = loyaltyPhone ?? (() => {
-        const notesStr = appointment.notes ?? "";
-        const m = notesStr.match(/Tel:\s*([^\s.]+)/);
-        return (m?.[1] ?? "").replace(/\D/g, "");
-      })();
-      if (!phone) return;
-
-      const price = parseFloat(appointment.servicePrice); // finalServicePrice stored above
-      const earned = Math.floor(price * config.pointsPerReal);
-      if (earned <= 0) return;
-
-      await db
-        .insert(loyaltyPointsTable)
-        .values({ userId: shopId, clientPhone: phone, points: earned })
-        .onConflictDoUpdate({
-          target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-          set: { points: sql`${loyaltyPointsTable.points} + ${earned}`, updatedAt: new Date() },
-        });
-    } catch {
-      // Ignore errors — loyalty credit is non-critical
-    }
-  })();
 
   res.status(201).json(formatAppointmentWithToken(appointment));
 });
