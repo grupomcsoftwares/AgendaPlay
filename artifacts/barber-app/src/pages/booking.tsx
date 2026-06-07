@@ -243,6 +243,20 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     setFormData(prev => (prev.barberId === onlyId ? prev : { ...prev, barberId: onlyId }));
   }, [barbers]);
 
+  // Sync selected service IDs whenever the eligible services list changes (e.g. after
+  // the barber loads and filters which services they can perform). This prevents
+  // formData.serviceIds from referencing services no longer in eligibleServicesAll,
+  // which would cause the count and price to be out of sync.
+  useEffect(() => {
+    if (eligibleServicesAll.length === 0) return;
+    const eligibleIds = new Set(eligibleServicesAll.map(s => s.id));
+    setFormData(prev => {
+      const filtered = prev.serviceIds.filter(id => eligibleIds.has(id));
+      if (filtered.length === prev.serviceIds.length) return prev;
+      return { ...prev, serviceIds: filtered, time: "" };
+    });
+  }, [eligibleServicesAll]);
+
   const handleBarberPick = (barberId: number) => {
     setFormData(prev => ({ ...prev, barberId: barberId.toString(), serviceIds: [], time: "" }));
     setPickingBarber(false);
@@ -258,7 +272,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   };
 
   const handleServicesConfirm = () => {
-    if (formData.serviceIds.length === 0) return;
+    if (selectedServices.length === 0) return;
     setStep(2);
   };
 
@@ -530,7 +544,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               >
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {formData.serviceIds.length} serviço{formData.serviceIds.length > 1 ? "s" : ""}
+                    {selectedServices.length} serviço{selectedServices.length > 1 ? "s" : ""}
                   </span>
                   <span style={{ color: AMBER, fontWeight: 600 }}>
                     {totalDuration} min · R$ {totalPriceRaw.toFixed(2).replace(".", ",")}
@@ -562,7 +576,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <button
               type="button"
               data-testid="button-confirm-services"
-              disabled={formData.serviceIds.length === 0}
+              disabled={selectedServices.length === 0}
               onClick={handleServicesConfirm}
               className="w-full rounded-xl text-center font-semibold transition-opacity"
               style={{
@@ -570,13 +584,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 backgroundColor: AMBER_DEEP,
                 color: "hsl(0 0% 100%)",
                 border: "none",
-                cursor: formData.serviceIds.length === 0 ? "not-allowed" : "pointer",
-                opacity: formData.serviceIds.length === 0 ? 0.45 : 1,
+                cursor: selectedServices.length === 0 ? "not-allowed" : "pointer",
+                opacity: selectedServices.length === 0 ? 0.45 : 1,
               }}
             >
-              {formData.serviceIds.length === 0
+              {selectedServices.length === 0
                 ? "Selecione ao menos um serviço"
-                : `Continuar — ${formData.serviceIds.length} serviço${formData.serviceIds.length > 1 ? "s" : ""} selecionado${formData.serviceIds.length > 1 ? "s" : ""}`}
+                : `Continuar — ${selectedServices.length} serviço${selectedServices.length > 1 ? "s" : ""} selecionado${selectedServices.length > 1 ? "s" : ""}`}
             </button>
           </div>
         )}
