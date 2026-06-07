@@ -6,9 +6,10 @@ import {
   useListLoyaltyClients, getListLoyaltyClientsQueryKey,
   useListSubscriptionPlans, useCreateSubscriptionPlan, useUpdateSubscriptionPlan, useDeleteSubscriptionPlan, getListSubscriptionPlansQueryKey,
   useListSubscriptions, useUpdateSubscription, getListSubscriptionsQueryKey,
+  useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, CreditCard, BadgeCheck, XCircle } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, CreditCard, BadgeCheck, XCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,14 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 
 type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -102,9 +111,10 @@ export default function Settings() {
   const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const updateSlug = useUpdateUserSlug();
+  const deleteAccount = useDeleteAccount();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
   const [copied, setCopied] = useState(false);
 
   const { data: combos } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
@@ -138,6 +148,10 @@ export default function Settings() {
   const [planOpen, setPlanOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
 
   const [formData, setFormData] = useState({
     barbershopName: "",
@@ -230,6 +244,25 @@ export default function Settings() {
   const handleSlugChange = (val: string) => {
     setSlugValue(val);
     setSlugError(validateSlug(val));
+  };
+
+  const handleDeleteAccount = () => {
+    if (!deleteEmail.trim() || !deletePassword) {
+      toast({ title: "Preencha email e senha", variant: "destructive" });
+      return;
+    }
+    deleteAccount.mutate(
+      { data: { email: deleteEmail.trim(), password: deletePassword } },
+      {
+        onSuccess: async () => {
+          await logout();
+        },
+        onError: (e: unknown) => {
+          const msg = e instanceof Error ? e.message : "Erro ao excluir conta";
+          toast({ title: msg, variant: "destructive" });
+        },
+      }
+    );
   };
 
   const handleSlugSave = () => {
@@ -1352,6 +1385,104 @@ export default function Settings() {
           <Save className="h-4 w-4" /> Salvar Configurações
         </Button>
       </div>
+
+      <Card className="max-w-5xl border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            Zona de Perigo
+          </CardTitle>
+          <CardDescription>
+            Ações irreversíveis que afetam sua conta e todos os dados da barbearia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <div>
+              <p className="text-sm font-medium">Excluir barbearia</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Remove permanentemente sua conta, agendamentos, serviços e todos os dados associados.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="shrink-0 ml-4"
+              onClick={() => {
+                setDeleteEmail("");
+                setDeletePassword("");
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Excluir conta
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        if (!deleteAccount.isPending) setDeleteDialogOpen(open);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Excluir barbearia
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é <strong>irreversível</strong>. Todos os seus dados serão excluídos permanentemente —
+              agendamentos, serviços, clientes, histórico financeiro e configurações.
+              Você poderá criar uma nova conta usando o mesmo e-mail após a exclusão.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-email">E-mail da conta</Label>
+              <Input
+                id="delete-email"
+                type="email"
+                placeholder="seu@email.com"
+                value={deleteEmail}
+                onChange={(e) => setDeleteEmail(e.target.value)}
+                disabled={deleteAccount.isPending}
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-password">Senha</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                placeholder="••••••••"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                disabled={deleteAccount.isPending}
+                autoComplete="current-password"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleDeleteAccount();
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteAccount.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteAccount.isPending || !deleteEmail.trim() || !deletePassword}
+            >
+              {deleteAccount.isPending ? "Excluindo..." : "Excluir permanentemente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

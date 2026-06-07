@@ -698,6 +698,23 @@ paths:
         "204":
           description: Deleted
 
+  /users/account:
+    delete:
+      operationId: deleteAccount
+      tags: [settings]
+      summary: Delete the authenticated user's account and all associated data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountDeletion"
+      responses:
+        "204":
+          description: Account deleted
+        "401":
+          description: Not authenticated or wrong credentials
+
   /users/slug:
     patch:
       operationId: updateUserSlug
@@ -1689,6 +1706,17 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
             - type: "null"
+
+    AccountDeletion:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
 
     SlugUpdate:
       type: object

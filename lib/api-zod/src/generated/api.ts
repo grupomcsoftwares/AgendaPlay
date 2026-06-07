@@ -983,6 +983,18 @@ export const DeleteBarberParams = zod.object({
 
 
 /**
+ * @summary Delete the authenticated user's account and all associated data
+ */
+
+
+
+export const DeleteAccountBody = zod.object({
+  "email": zod.string().email(),
+  "password": zod.string().min(1)
+})
+
+
+/**
  * @summary Update the barber's custom booking URL slug
  */
 export const updateUserSlugBodySlugMin = 3;

@@ -433,6 +433,12 @@ export interface Settings {
   loyaltyConfig?: LoyaltyConfig | null;
 }
 
+export interface AccountDeletion {
+  email: string;
+  /** @minLength 1 */
+  password: string;
+}
+
 export interface SlugUpdate {
   /**
      * @minLength 3
