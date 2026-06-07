@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "BarberApp"
+title = "AgendaPlay"
 version = "1.0.0"
 id = "artifacts/barber-app"
 router = "path"
