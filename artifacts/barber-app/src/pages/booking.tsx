@@ -115,6 +115,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const [pickingBarber, setPickingBarber] = useState(true);
   const [usePlan, setUsePlan] = useState(false);
 
+  const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
+
   const [formData, setFormData] = useState<{
     serviceIds: number[];
     barberId: string;
@@ -124,15 +126,33 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     phone: string;
     notes: string;
     paymentMethod: "now" | "on_site";
-  }>({
-    serviceIds: [],
-    barberId: "",
-    date: new Date(),
-    time: "",
-    name: "",
-    phone: "",
-    notes: "",
-    paymentMethod: "on_site",
+  }>(() => {
+    try {
+      const saved = localStorage.getItem(clientInfoKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { name?: string; phone?: string };
+        return {
+          serviceIds: [],
+          barberId: "",
+          date: new Date(),
+          time: "",
+          name: parsed.name ?? "",
+          phone: parsed.phone ?? "",
+          notes: "",
+          paymentMethod: "on_site",
+        };
+      }
+    } catch { /* ignore */ }
+    return {
+      serviceIds: [],
+      barberId: "",
+      date: new Date(),
+      time: "",
+      name: "",
+      phone: "",
+      notes: "",
+      paymentMethod: "on_site",
+    };
   });
 
   const handleBook = () => {
@@ -168,6 +188,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         onSuccess: (created) => {
           if (created?.cancelToken) {
             localStorage.setItem(storageKey, created.cancelToken);
+          }
+          // Persist name+phone so the client doesn't have to retype next visit
+          if (formData.name && formData.phone) {
+            try {
+              localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, phone: formData.phone }));
+            } catch { /* ignore */ }
           }
           setConfirmed(true);
           window.setTimeout(() => {

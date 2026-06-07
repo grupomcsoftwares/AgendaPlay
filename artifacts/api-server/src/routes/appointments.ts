@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import {
   ListAppointmentsQueryParams,
@@ -370,6 +370,22 @@ router.post("/appointments", async (req, res): Promise<void> => {
       position: nextPosition,
       status: "waiting",
     });
+
+    // Auto-upsert client record for history (insert only if no record with this phone exists).
+    if (loyaltyPhone && parsed.data.clientName) {
+      const [existing] = await tx
+        .select({ id: clientsTable.id })
+        .from(clientsTable)
+        .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, loyaltyPhone)))
+        .limit(1);
+      if (!existing) {
+        await tx.insert(clientsTable).values({
+          userId: shopId,
+          name: parsed.data.clientName,
+          phone: loyaltyPhone,
+        });
+      }
+    }
 
     // Credit earned points inside the same transaction (durable — if appointment
     // creation fails the whole tx rolls back, so points are never credited on failure).
