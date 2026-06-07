@@ -29,6 +29,10 @@ tags:
     description: Combo discount operations
   - name: loyalty
     description: Loyalty points operations
+  - name: subscription-plans
+    description: Subscription plan operations
+  - name: subscriptions
+    description: Client subscription operations
 
 paths:
   /healthz:
@@ -866,6 +870,163 @@ paths:
         "204":
           description: Deleted
 
+  /subscription-plans:
+    get:
+      operationId: listSubscriptionPlans
+      tags: [subscription-plans]
+      summary: List subscription plans for a shop
+      parameters:
+        - name: shopId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionPlan"
+    post:
+      operationId: createSubscriptionPlan
+      tags: [subscription-plans]
+      summary: Create a subscription plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPlan"
+
+  /subscription-plans/{id}:
+    patch:
+      operationId: updateSubscriptionPlan
+      tags: [subscription-plans]
+      summary: Update a subscription plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPlanUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPlan"
+    delete:
+      operationId: deleteSubscriptionPlan
+      tags: [subscription-plans]
+      summary: Delete a subscription plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /subscriptions:
+    get:
+      operationId: listSubscriptions
+      tags: [subscriptions]
+      summary: List all client subscriptions for the authenticated shop
+      responses:
+        "200":
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientSubscription"
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Subscribe a client to a plan (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientSubscriptionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientSubscription"
+
+  /subscriptions/{id}:
+    patch:
+      operationId: updateSubscription
+      tags: [subscriptions]
+      summary: Update subscription status (activate/cancel)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientSubscription"
+
+  /subscriptions/check:
+    get:
+      operationId: checkSubscription
+      tags: [subscriptions]
+      summary: Check if a phone number has an active subscription
+      parameters:
+        - name: shopId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionCheckResult"
+
 components:
   schemas:
     RescheduleByTokenInput:
@@ -1364,6 +1525,112 @@ components:
         discountPerUnit:
           type: number
           description: R$ value per redemption unit (always 1)
+
+    SubscriptionPlan:
+      type: object
+      required: [id, name, price, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        maxAppointmentsPerMonth:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+
+    SubscriptionPlanInput:
+      type: object
+      required: [name, price]
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        maxAppointmentsPerMonth:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+
+    SubscriptionPlanUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        maxAppointmentsPerMonth:
+          type: ["integer", "null"]
+        active:
+          type: boolean
+
+    ClientSubscription:
+      type: object
+      required: [id, planId, clientName, clientPhone, clientEmail, startDate, status]
+      properties:
+        id:
+          type: integer
+        planId:
+          type: integer
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        clientEmail:
+          type: string
+        startDate:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, cancelled]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ClientSubscriptionInput:
+      type: object
+      required: [planId, clientName, clientPhone, clientEmail]
+      properties:
+        shopId:
+          type: string
+        planId:
+          type: integer
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        clientEmail:
+          type: string
+
+    SubscriptionStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, active, cancelled]
+
+    SubscriptionCheckResult:
+      type: object
+      required: [active]
+      properties:
+        active:
+          type: boolean
+        planName:
+          type: ["string", "null"]
+        subscriptionId:
+          type: ["integer", "null"]
 
     Settings:
       type: object

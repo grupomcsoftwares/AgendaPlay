@@ -7,3 +7,5 @@ export * from "./barbers";
 export * from "./users";
 export * from "./combo-discounts";
 export * from "./loyalty-points";
+export * from "./subscription-plans";
+export * from "./client-subscriptions";

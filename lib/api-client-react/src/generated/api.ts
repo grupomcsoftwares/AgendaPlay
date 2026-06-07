@@ -27,8 +27,11 @@ import type {
   Barber,
   BarberInput,
   BarberUpdate,
+  CheckSubscriptionParams,
   Client,
   ClientInput,
+  ClientSubscription,
+  ClientSubscriptionInput,
   ClientUpdate,
   ComboDiscount,
   ComboDiscountInput,
@@ -44,6 +47,7 @@ import type {
   ListClientsParams,
   ListComboDiscountsParams,
   ListServicesParams,
+  ListSubscriptionPlansParams,
   LoyaltyBalance,
   LoyaltyClientBalance,
   QueueEntry,
@@ -55,6 +59,11 @@ import type {
   Settings,
   SettingsUpdate,
   SlugUpdate,
+  SubscriptionCheckResult,
+  SubscriptionPlan,
+  SubscriptionPlanInput,
+  SubscriptionPlanUpdate,
+  SubscriptionStatusUpdate,
   UserSlugResponse
 } from './api.schemas';
 
@@ -3288,4 +3297,605 @@ export const useDeleteComboDiscount = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getDeleteComboDiscountMutationOptions(options));
     }
+
+export const getListSubscriptionPlansUrl = (params?: ListSubscriptionPlansParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/subscription-plans?${stringifiedParams}` : `/api/subscription-plans`
+}
+
+/**
+ * @summary List subscription plans for a shop
+ */
+export const listSubscriptionPlans = async (params?: ListSubscriptionPlansParams, options?: RequestInit): Promise<SubscriptionPlan[]> => {
+
+  return customFetch<SubscriptionPlan[]>(getListSubscriptionPlansUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSubscriptionPlansQueryKey = (params?: ListSubscriptionPlansParams,) => {
+    return [
+    `/api/subscription-plans`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListSubscriptionPlansQueryOptions = <TData = Awaited<ReturnType<typeof listSubscriptionPlans>>, TError = ErrorType<unknown>>(params?: ListSubscriptionPlansParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptionPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSubscriptionPlansQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubscriptionPlans>>> = ({ signal }) => listSubscriptionPlans(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSubscriptionPlans>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSubscriptionPlansQueryResult = NonNullable<Awaited<ReturnType<typeof listSubscriptionPlans>>>
+export type ListSubscriptionPlansQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List subscription plans for a shop
+ */
+
+export function useListSubscriptionPlans<TData = Awaited<ReturnType<typeof listSubscriptionPlans>>, TError = ErrorType<unknown>>(
+ params?: ListSubscriptionPlansParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptionPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSubscriptionPlansQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateSubscriptionPlanUrl = () => {
+
+
+
+
+  return `/api/subscription-plans`
+}
+
+/**
+ * @summary Create a subscription plan
+ */
+export const createSubscriptionPlan = async (subscriptionPlanInput: SubscriptionPlanInput, options?: RequestInit): Promise<SubscriptionPlan> => {
+
+  return customFetch<SubscriptionPlan>(getCreateSubscriptionPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      subscriptionPlanInput,)
+  }
+);}
+
+
+
+
+export const getCreateSubscriptionPlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPlan>>, TError,{data: BodyType<SubscriptionPlanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPlan>>, TError,{data: BodyType<SubscriptionPlanInput>}, TContext> => {
+
+const mutationKey = ['createSubscriptionPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSubscriptionPlan>>, {data: BodyType<SubscriptionPlanInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSubscriptionPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSubscriptionPlanMutationResult = NonNullable<Awaited<ReturnType<typeof createSubscriptionPlan>>>
+    export type CreateSubscriptionPlanMutationBody = BodyType<SubscriptionPlanInput>
+    export type CreateSubscriptionPlanMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a subscription plan
+ */
+export const useCreateSubscriptionPlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscriptionPlan>>, TError,{data: BodyType<SubscriptionPlanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSubscriptionPlan>>,
+        TError,
+        {data: BodyType<SubscriptionPlanInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSubscriptionPlanMutationOptions(options));
+    }
+
+export const getUpdateSubscriptionPlanUrl = (id: number,) => {
+
+
+
+
+  return `/api/subscription-plans/${id}`
+}
+
+/**
+ * @summary Update a subscription plan
+ */
+export const updateSubscriptionPlan = async (id: number,
+    subscriptionPlanUpdate: SubscriptionPlanUpdate, options?: RequestInit): Promise<SubscriptionPlan> => {
+
+  return customFetch<SubscriptionPlan>(getUpdateSubscriptionPlanUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      subscriptionPlanUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateSubscriptionPlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscriptionPlan>>, TError,{id: number;data: BodyType<SubscriptionPlanUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSubscriptionPlan>>, TError,{id: number;data: BodyType<SubscriptionPlanUpdate>}, TContext> => {
+
+const mutationKey = ['updateSubscriptionPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSubscriptionPlan>>, {id: number;data: BodyType<SubscriptionPlanUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSubscriptionPlan(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSubscriptionPlanMutationResult = NonNullable<Awaited<ReturnType<typeof updateSubscriptionPlan>>>
+    export type UpdateSubscriptionPlanMutationBody = BodyType<SubscriptionPlanUpdate>
+    export type UpdateSubscriptionPlanMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a subscription plan
+ */
+export const useUpdateSubscriptionPlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscriptionPlan>>, TError,{id: number;data: BodyType<SubscriptionPlanUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSubscriptionPlan>>,
+        TError,
+        {id: number;data: BodyType<SubscriptionPlanUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateSubscriptionPlanMutationOptions(options));
+    }
+
+export const getDeleteSubscriptionPlanUrl = (id: number,) => {
+
+
+
+
+  return `/api/subscription-plans/${id}`
+}
+
+/**
+ * @summary Delete a subscription plan
+ */
+export const deleteSubscriptionPlan = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteSubscriptionPlanUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteSubscriptionPlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubscriptionPlan>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSubscriptionPlan>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteSubscriptionPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSubscriptionPlan>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSubscriptionPlan(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSubscriptionPlanMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSubscriptionPlan>>>
+
+    export type DeleteSubscriptionPlanMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a subscription plan
+ */
+export const useDeleteSubscriptionPlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSubscriptionPlan>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSubscriptionPlan>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteSubscriptionPlanMutationOptions(options));
+    }
+
+export const getListSubscriptionsUrl = () => {
+
+
+
+
+  return `/api/subscriptions`
+}
+
+/**
+ * @summary List all client subscriptions for the authenticated shop
+ */
+export const listSubscriptions = async ( options?: RequestInit): Promise<ClientSubscription[]> => {
+
+  return customFetch<ClientSubscription[]>(getListSubscriptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSubscriptionsQueryKey = () => {
+    return [
+    `/api/subscriptions`
+    ] as const;
+    }
+
+
+export const getListSubscriptionsQueryOptions = <TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSubscriptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSubscriptions>>> = ({ signal }) => listSubscriptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSubscriptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listSubscriptions>>>
+export type ListSubscriptionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all client subscriptions for the authenticated shop
+ */
+
+export function useListSubscriptions<TData = Awaited<ReturnType<typeof listSubscriptions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSubscriptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSubscriptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateSubscriptionUrl = () => {
+
+
+
+
+  return `/api/subscriptions`
+}
+
+/**
+ * @summary Subscribe a client to a plan (public)
+ */
+export const createSubscription = async (clientSubscriptionInput: ClientSubscriptionInput, options?: RequestInit): Promise<ClientSubscription> => {
+
+  return customFetch<ClientSubscription>(getCreateSubscriptionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      clientSubscriptionInput,)
+  }
+);}
+
+
+
+
+export const getCreateSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,{data: BodyType<ClientSubscriptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,{data: BodyType<ClientSubscriptionInput>}, TContext> => {
+
+const mutationKey = ['createSubscription'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSubscription>>, {data: BodyType<ClientSubscriptionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createSubscription(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof createSubscription>>>
+    export type CreateSubscriptionMutationBody = BodyType<ClientSubscriptionInput>
+    export type CreateSubscriptionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Subscribe a client to a plan (public)
+ */
+export const useCreateSubscription = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSubscription>>, TError,{data: BodyType<ClientSubscriptionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSubscription>>,
+        TError,
+        {data: BodyType<ClientSubscriptionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateSubscriptionMutationOptions(options));
+    }
+
+export const getUpdateSubscriptionUrl = (id: number,) => {
+
+
+
+
+  return `/api/subscriptions/${id}`
+}
+
+/**
+ * @summary Update subscription status (activate/cancel)
+ */
+export const updateSubscription = async (id: number,
+    subscriptionStatusUpdate: SubscriptionStatusUpdate, options?: RequestInit): Promise<ClientSubscription> => {
+
+  return customFetch<ClientSubscription>(getUpdateSubscriptionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      subscriptionStatusUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateSubscriptionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,{id: number;data: BodyType<SubscriptionStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,{id: number;data: BodyType<SubscriptionStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateSubscription'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSubscription>>, {id: number;data: BodyType<SubscriptionStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateSubscription(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof updateSubscription>>>
+    export type UpdateSubscriptionMutationBody = BodyType<SubscriptionStatusUpdate>
+    export type UpdateSubscriptionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update subscription status (activate/cancel)
+ */
+export const useUpdateSubscription = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSubscription>>, TError,{id: number;data: BodyType<SubscriptionStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSubscription>>,
+        TError,
+        {id: number;data: BodyType<SubscriptionStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateSubscriptionMutationOptions(options));
+    }
+
+export const getCheckSubscriptionUrl = (params: CheckSubscriptionParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/subscriptions/check?${stringifiedParams}` : `/api/subscriptions/check`
+}
+
+/**
+ * @summary Check if a phone number has an active subscription
+ */
+export const checkSubscription = async (params: CheckSubscriptionParams, options?: RequestInit): Promise<SubscriptionCheckResult> => {
+
+  return customFetch<SubscriptionCheckResult>(getCheckSubscriptionUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCheckSubscriptionQueryKey = (params?: CheckSubscriptionParams,) => {
+    return [
+    `/api/subscriptions/check`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getCheckSubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof checkSubscription>>, TError = ErrorType<unknown>>(params: CheckSubscriptionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCheckSubscriptionQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof checkSubscription>>> = ({ signal }) => checkSubscription(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof checkSubscription>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CheckSubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof checkSubscription>>>
+export type CheckSubscriptionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Check if a phone number has an active subscription
+ */
+
+export function useCheckSubscription<TData = Awaited<ReturnType<typeof checkSubscription>>, TError = ErrorType<unknown>>(
+ params: CheckSubscriptionParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof checkSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCheckSubscriptionQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 

@@ -4,9 +4,11 @@ import {
   useListComboDiscounts, useCreateComboDiscount, useUpdateComboDiscount, useDeleteComboDiscount, getListComboDiscountsQueryKey,
   useListServices, getListServicesQueryKey,
   useListLoyaltyClients, getListLoyaltyClientsQueryKey,
+  useListSubscriptionPlans, useCreateSubscriptionPlan, useUpdateSubscriptionPlan, useDeleteSubscriptionPlan, getListSubscriptionPlansQueryKey,
+  useListSubscriptions, useUpdateSubscription, getListSubscriptionsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, CreditCard, BadgeCheck, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,6 +126,18 @@ export default function Settings() {
   const initializedRef = useRef(false);
 
   const { data: loyaltyClients } = useListLoyaltyClients({ query: { queryKey: getListLoyaltyClientsQueryKey() } });
+
+  const { data: subscriptionPlans } = useListSubscriptionPlans(undefined, { query: { queryKey: getListSubscriptionPlansQueryKey() } });
+  const createPlan = useCreateSubscriptionPlan();
+  const updatePlanMut = useUpdateSubscriptionPlan();
+  const deletePlan = useDeleteSubscriptionPlan();
+
+  const { data: subscriptions } = useListSubscriptions({ query: { queryKey: getListSubscriptionsQueryKey() } });
+  const updateSubMut = useUpdateSubscription();
+
+  const [planOpen, setPlanOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", maxPerMonth: "", active: true });
 
   const [formData, setFormData] = useState({
     barbershopName: "",
@@ -290,6 +304,45 @@ export default function Settings() {
       { id },
       { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
     );
+  };
+
+  const handlePlanSave = () => {
+    const name = planForm.name.trim();
+    if (!name) { toast({ title: "Nome do plano é obrigatório", variant: "destructive" }); return; }
+    const price = parseFloat(planForm.price);
+    if (Number.isNaN(price) || price < 0) { toast({ title: "Preço inválido", variant: "destructive" }); return; }
+    const maxRaw = planForm.maxPerMonth.trim();
+    const max = maxRaw ? parseInt(maxRaw, 10) : null;
+    const payload = { name, description: planForm.description.trim() || null, price, maxAppointmentsPerMonth: max, active: planForm.active };
+    if (editingPlanId) {
+      updatePlanMut.mutate({ id: editingPlanId, data: payload }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
+          setPlanOpen(false); setEditingPlanId(null);
+          setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+          toast({ title: "Plano atualizado" });
+        },
+      });
+    } else {
+      createPlan.mutate({ data: payload }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
+          setPlanOpen(false);
+          setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+          toast({ title: "Plano criado" });
+        },
+      });
+    }
+  };
+
+  const handlePlanDelete = (id: number) => {
+    deletePlan.mutate({ id }, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() }) });
+  };
+
+  const handleSubStatus = (id: number, status: "active" | "cancelled") => {
+    updateSubMut.mutate({ id, data: { status } }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListSubscriptionsQueryKey() }),
+    });
   };
 
   const handleSave = () => {
@@ -1028,6 +1081,248 @@ export default function Settings() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Assinaturas ─────────────────────────────────────────────────────── */}
+      <Card className="bg-card border-border max-w-5xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <CardTitle>Planos de Assinatura</CardTitle>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => {
+                setEditingPlanId(null);
+                setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+                setPlanOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Novo Plano
+            </Button>
+          </div>
+          <CardDescription>
+            Crie planos mensais para clientes fiéis. Exibidos na página de agendamento.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Plan form */}
+          {planOpen && (
+            <div
+              className="rounded-xl p-4 space-y-4 border"
+              style={{ backgroundColor: "hsl(0 0% 7%)", borderColor: "hsl(38 88% 55% / 0.35)" }}
+            >
+              <p className="font-semibold text-sm">{editingPlanId ? "Editar plano" : "Novo plano"}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nome do plano *</Label>
+                  <Input
+                    value={planForm.name}
+                    onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                    placeholder="Ex: Plano Mensal Básico"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Preço mensal (R$) *</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={planForm.price}
+                    onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
+                    placeholder="49.90"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Máx. cortes/mês (vazio = ilimitado)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={planForm.maxPerMonth}
+                    onChange={(e) => setPlanForm({ ...planForm, maxPerMonth: e.target.value })}
+                    placeholder="4"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Descrição / benefícios</Label>
+                  <Input
+                    value={planForm.description}
+                    onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                    placeholder="Ex: 4 cortes por mês, prioridade na agenda"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPlanForm({ ...planForm, active: !planForm.active })}
+                    className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none"
+                    style={{ backgroundColor: planForm.active ? "hsl(38 88% 55%)" : "hsl(0 0% 20%)" }}
+                  >
+                    <span
+                      className="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform"
+                      style={{ transform: planForm.active ? "translateX(1.125rem)" : "translateX(0.2rem)" }}
+                    />
+                  </button>
+                  <span className="text-xs text-muted-foreground">Ativo (visível no agendamento)</span>
+                </div>
+                <div className="flex-1" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setPlanOpen(false); setEditingPlanId(null); }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handlePlanSave}
+                  disabled={createPlan.isPending || updatePlanMut.isPending}
+                >
+                  {editingPlanId ? "Salvar" : "Criar"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Plans list */}
+          {!subscriptionPlans || subscriptionPlans.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+              <CreditCard className="h-8 w-8 mb-2 opacity-20" />
+              <p className="text-sm">Nenhum plano criado ainda</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {subscriptionPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="flex items-center gap-3 rounded-lg border border-border px-4 py-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm">{plan.name}</span>
+                      <span
+                        className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                        style={{
+                          backgroundColor: plan.active ? "hsl(38 88% 55% / 0.15)" : "hsl(0 0% 15%)",
+                          color: plan.active ? "hsl(38 88% 55%)" : "hsl(0 0% 50%)",
+                        }}
+                      >
+                        {plan.active ? "Ativo" : "Inativo"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      R$ {plan.price.toFixed(2).replace(".", ",")}/mês
+                      {plan.maxAppointmentsPerMonth
+                        ? ` · até ${plan.maxAppointmentsPerMonth} cortes`
+                        : " · cortes ilimitados"}
+                      {plan.description ? ` · ${plan.description}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 h-7 w-7 p-0"
+                    onClick={() => {
+                      setEditingPlanId(plan.id);
+                      setPlanForm({
+                        name: plan.name,
+                        description: plan.description ?? "",
+                        price: String(plan.price),
+                        maxPerMonth: plan.maxAppointmentsPerMonth ? String(plan.maxAppointmentsPerMonth) : "",
+                        active: plan.active,
+                      });
+                      setPlanOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="shrink-0 h-7 w-7 p-0 text-destructive hover:text-destructive"
+                    onClick={() => handlePlanDelete(plan.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Subscriber list */}
+          {subscriptions && subscriptions.length > 0 && (
+            <div className="space-y-2 pt-4 border-t border-border">
+              <p className="text-sm font-semibold">Assinantes</p>
+              <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                {subscriptions.map((sub) => {
+                  const plan = subscriptionPlans?.find((p) => p.id === sub.planId);
+                  return (
+                    <div
+                      key={sub.id}
+                      className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{sub.clientName}</span>
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0"
+                            style={{
+                              backgroundColor: sub.status === "active"
+                                ? "hsl(142 71% 45% / 0.15)"
+                                : sub.status === "pending"
+                                  ? "hsl(38 88% 55% / 0.15)"
+                                  : "hsl(0 0% 15%)",
+                              color: sub.status === "active"
+                                ? "hsl(142 71% 45%)"
+                                : sub.status === "pending"
+                                  ? "hsl(38 88% 55%)"
+                                  : "hsl(0 0% 50%)",
+                            }}
+                          >
+                            {sub.status === "active" ? "Ativo" : sub.status === "pending" ? "Pendente" : "Cancelado"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {sub.clientPhone} · {plan?.name ?? `Plano #${sub.planId}`}
+                        </p>
+                      </div>
+                      {sub.status !== "active" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 h-7 gap-1 text-xs text-green-500 hover:text-green-400"
+                          onClick={() => handleSubStatus(sub.id, "active")}
+                        >
+                          <BadgeCheck className="h-3.5 w-3.5" /> Ativar
+                        </Button>
+                      )}
+                      {sub.status !== "cancelled" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 h-7 gap-1 text-xs text-destructive hover:text-destructive"
+                          onClick={() => handleSubStatus(sub.id, "cancelled")}
+                        >
+                          <XCircle className="h-3.5 w-3.5" /> Cancelar
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

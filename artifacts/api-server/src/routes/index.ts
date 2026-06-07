@@ -10,6 +10,7 @@ import settingsRouter from "./settings.js";
 import barbersRouter from "./barbers.js";
 import comboDiscountsRouter from "./combo-discounts.js";
 import loyaltyRouter from "./loyalty.js";
+import subscriptionsRouter from "./subscriptions.js";
 import authRouter from "./auth.js";
 import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
@@ -41,6 +42,7 @@ router.use(settingsRouter);
 router.use(barbersRouter);
 router.use(comboDiscountsRouter);
 router.use(loyaltyRouter);
+router.use(subscriptionsRouter);
 
 // Purely admin routers — always require auth
 const adminRouter = Router();

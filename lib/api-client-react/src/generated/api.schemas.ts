@@ -311,6 +311,88 @@ export interface LoyaltyBalance {
   discountPerUnit: number;
 }
 
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  price: number;
+  /** @nullable */
+  maxAppointmentsPerMonth?: number | null;
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface SubscriptionPlanInput {
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  price: number;
+  /** @nullable */
+  maxAppointmentsPerMonth?: number | null;
+  active?: boolean;
+}
+
+export interface SubscriptionPlanUpdate {
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  price?: number;
+  /** @nullable */
+  maxAppointmentsPerMonth?: number | null;
+  active?: boolean;
+}
+
+export type ClientSubscriptionStatus = typeof ClientSubscriptionStatus[keyof typeof ClientSubscriptionStatus];
+
+
+export const ClientSubscriptionStatus = {
+  pending: 'pending',
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ClientSubscription {
+  id: number;
+  planId: number;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  startDate: string;
+  status: ClientSubscriptionStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ClientSubscriptionInput {
+  shopId?: string;
+  planId: number;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+}
+
+export type SubscriptionStatusUpdateStatus = typeof SubscriptionStatusUpdateStatus[keyof typeof SubscriptionStatusUpdateStatus];
+
+
+export const SubscriptionStatusUpdateStatus = {
+  pending: 'pending',
+  active: 'active',
+  cancelled: 'cancelled',
+} as const;
+
+export interface SubscriptionStatusUpdate {
+  status: SubscriptionStatusUpdateStatus;
+}
+
+export interface SubscriptionCheckResult {
+  active: boolean;
+  /** @nullable */
+  planName?: string | null;
+  /** @nullable */
+  subscriptionId?: number | null;
+}
+
 export interface Settings {
   id: number;
   barbershopName: string;
@@ -497,5 +579,14 @@ phone: string;
 
 export type ListComboDiscountsParams = {
 shopId?: string;
+};
+
+export type ListSubscriptionPlansParams = {
+shopId?: string;
+};
+
+export type CheckSubscriptionParams = {
+shopId?: string;
+phone: string;
 };
 

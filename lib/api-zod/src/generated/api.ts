@@ -1326,3 +1326,136 @@ export const DeleteComboDiscountParams = zod.object({
 })
 
 
+/**
+ * @summary List subscription plans for a shop
+ */
+export const ListSubscriptionPlansQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional()
+})
+
+export const ListSubscriptionPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "maxAppointmentsPerMonth": zod.number().nullish(),
+  "active": zod.boolean(),
+  "createdAt": zod.string().optional()
+})
+export const ListSubscriptionPlansResponse = zod.array(ListSubscriptionPlansResponseItem)
+
+
+/**
+ * @summary Create a subscription plan
+ */
+export const CreateSubscriptionPlanBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "maxAppointmentsPerMonth": zod.number().nullish(),
+  "active": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Update a subscription plan
+ */
+export const UpdateSubscriptionPlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSubscriptionPlanBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "price": zod.number().optional(),
+  "maxAppointmentsPerMonth": zod.number().nullish(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateSubscriptionPlanResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "price": zod.number(),
+  "maxAppointmentsPerMonth": zod.number().nullish(),
+  "active": zod.boolean(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a subscription plan
+ */
+export const DeleteSubscriptionPlanParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary List all client subscriptions for the authenticated shop
+ */
+export const ListSubscriptionsResponseItem = zod.object({
+  "id": zod.number(),
+  "planId": zod.number(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "clientEmail": zod.string(),
+  "startDate": zod.string(),
+  "status": zod.enum(['pending', 'active', 'cancelled']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+export const ListSubscriptionsResponse = zod.array(ListSubscriptionsResponseItem)
+
+
+/**
+ * @summary Subscribe a client to a plan (public)
+ */
+export const CreateSubscriptionBody = zod.object({
+  "shopId": zod.string().optional(),
+  "planId": zod.number(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "clientEmail": zod.string()
+})
+
+
+/**
+ * @summary Update subscription status (activate/cancel)
+ */
+export const UpdateSubscriptionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSubscriptionBody = zod.object({
+  "status": zod.enum(['pending', 'active', 'cancelled'])
+})
+
+export const UpdateSubscriptionResponse = zod.object({
+  "id": zod.number(),
+  "planId": zod.number(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "clientEmail": zod.string(),
+  "startDate": zod.string(),
+  "status": zod.enum(['pending', 'active', 'cancelled']),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Check if a phone number has an active subscription
+ */
+export const CheckSubscriptionQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional(),
+  "phone": zod.coerce.string()
+})
+
+export const CheckSubscriptionResponse = zod.object({
+  "active": zod.boolean(),
+  "planName": zod.string().nullish(),
+  "subscriptionId": zod.number().nullish()
+})
+
+
