@@ -204,6 +204,8 @@ export interface AppointmentInput {
   scheduledAt: string;
   paymentMethod?: AppointmentInputPaymentMethod;
   notes?: string;
+  /** Points redeemed for a discount on this booking */
+  loyaltyPointsRedeemed?: number;
 }
 
 export interface AppointmentUpdate {
@@ -287,6 +289,28 @@ export interface FinancialSummary {
   revenueByDay: RevenueByDay[];
 }
 
+export interface LoyaltyConfig {
+  enabled: boolean;
+  /** Points earned per R$1 spent */
+  pointsPerReal: number;
+  /** Points needed to redeem R$1 discount */
+  pointsPerRedemptionUnit: number;
+}
+
+export interface LoyaltyClientBalance {
+  clientPhone: string;
+  points: number;
+}
+
+export interface LoyaltyBalance {
+  enabled: boolean;
+  points: number;
+  pointsPerReal: number;
+  pointsPerRedemptionUnit: number;
+  /** R$ value per redemption unit (always 1) */
+  discountPerUnit: number;
+}
+
 export interface Settings {
   id: number;
   barbershopName: string;
@@ -321,6 +345,7 @@ export interface Settings {
   slotIntervalMinutes?: number;
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
+  loyaltyConfig?: LoyaltyConfig | null;
 }
 
 export interface SlugUpdate {
@@ -363,6 +388,7 @@ export interface SettingsUpdate {
   minCancelMinutes?: number;
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
+  loyaltyConfig?: LoyaltyConfig | null;
 }
 
 export type ComboDiscountDiscountType = typeof ComboDiscountDiscountType[keyof typeof ComboDiscountDiscountType];
@@ -459,6 +485,14 @@ export type GetSettingsParams = {
  * Shop owner user ID (required for public booking page)
  */
 shopId?: string;
+};
+
+export type GetLoyaltyBalanceParams = {
+/**
+ * Shop owner user ID
+ */
+shopId?: string;
+phone: string;
 };
 
 export type ListComboDiscountsParams = {

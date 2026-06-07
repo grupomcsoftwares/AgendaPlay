@@ -6,3 +6,4 @@ export * from "./settings";
 export * from "./barbers";
 export * from "./users";
 export * from "./combo-discounts";
+export * from "./loyalty-points";

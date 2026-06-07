@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   );
   const createAppointment = useCreateAppointment();
 
+  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+
   const [step, setStep] = useState(1);
   // Plays a celebratory check animation after a successful booking before
   // navigating to the confirmation page.
@@ -155,7 +157,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
         paymentMethod: formData.paymentMethod,
-        notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes
+        notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
+        ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
       }},
       {
         onSuccess: (created) => {
@@ -184,6 +187,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     { query: { queryKey: getListComboDiscountsQueryKey(comboParams) } }
   );
 
+  const normalizedPhone = formData.phone.replace(/\D/g, "");
+  const loyaltyQueryParams = { ...(shopId ? { shopId } : {}), phone: normalizedPhone };
+  const { data: loyaltyBalance } = useGetLoyaltyBalance(
+    loyaltyQueryParams,
+    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 3 && normalizedPhone.length >= 8 } }
+  );
+
   // Services this barber can perform (empty serviceIds = all services).
   const eligibleServicesAll = React.useMemo(() => {
     if (!services) return [];
@@ -199,6 +209,11 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
   const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
+
+  // Reset useLoyaltyPoints when navigating away from step 3+
+  useEffect(() => {
+    if (step < 3) setUseLoyaltyPoints(false);
+  }, [step]);
 
   const appliedCombo = React.useMemo(() => {
     if (!comboDiscounts || selectedServices.length < 2) return null;
@@ -229,7 +244,17 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       ? Number(appliedCombo.discountPercent)
       : (comboServicesPrice * Number(appliedCombo.discountPercent)) / 100
     : 0;
-  const totalPrice = Math.max(0, totalPriceRaw - discountAmount);
+  const comboTotalPrice = Math.max(0, totalPriceRaw - discountAmount);
+
+  // Loyalty discount
+  const loyaltyAvailableDiscount = loyaltyBalance?.enabled && loyaltyBalance.pointsPerRedemptionUnit > 0
+    ? Math.floor(loyaltyBalance.points / loyaltyBalance.pointsPerRedemptionUnit)
+    : 0;
+  const loyaltyDiscountAmount = useLoyaltyPoints ? Math.min(loyaltyAvailableDiscount, comboTotalPrice) : 0;
+  const loyaltyPointsToSpend = useLoyaltyPoints && loyaltyBalance?.pointsPerRedemptionUnit
+    ? loyaltyDiscountAmount * loyaltyBalance.pointsPerRedemptionUnit
+    : 0;
+  const totalPrice = Math.max(0, comboTotalPrice - loyaltyDiscountAmount);
 
   // Backend already filters to active barbers via activeOnly=true.
   const activeBarbers = barbers ?? [];
@@ -916,6 +941,40 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   </div>
                 </div>
 
+                {loyaltyBalance?.enabled && loyaltyBalance.points > 0 && loyaltyAvailableDiscount > 0 && (
+                  <div
+                    className="rounded-xl p-4 space-y-3"
+                    style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: `1px solid ${AMBER}4D` }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: "1.2rem" }}>⭐</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">Programa de Fidelidade</p>
+                        <p className="text-xs" style={{ color: "hsl(0 0% 65%)" }}>
+                          Você tem <strong style={{ color: AMBER }}>{loyaltyBalance.points} pontos</strong>
+                          {" "}(= R$ {loyaltyAvailableDiscount.toFixed(2).replace(".", ",")} de desconto)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="button-toggle-loyalty"
+                      onClick={() => setUseLoyaltyPoints(v => !v)}
+                      className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
+                      style={{
+                        backgroundColor: useLoyaltyPoints ? AMBER : "hsl(0 0% 11%)",
+                        color: useLoyaltyPoints ? "hsl(0 0% 10%)" : "hsl(0 0% 75%)",
+                        border: `1px solid ${useLoyaltyPoints ? AMBER : "hsl(0 0% 18%)"}`,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {useLoyaltyPoints
+                        ? `✓ Usando ${loyaltyPointsToSpend} pontos — R$ ${loyaltyDiscountAmount.toFixed(2).replace(".", ",")} de desconto`
+                        : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, comboTotalPrice).toFixed(2).replace(".", ",")} de desconto)`}
+                    </button>
+                  </div>
+                )}
+
                 <div
                   className="pt-2 border-t"
                   style={{ borderColor: "hsl(0 0% 12%)" }}
@@ -998,6 +1057,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
                       <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
                       <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
+                    </div>
+                  )}
+                  {useLoyaltyPoints && loyaltyDiscountAmount > 0 && (
+                    <div className="flex items-center justify-between text-sm" style={{ color: AMBER }}>
+                      <span>⭐ Pontos de fidelidade ({loyaltyPointsToSpend} pts)</span>
+                      <span className="font-semibold">- R$ {loyaltyDiscountAmount.toFixed(2).replace(".", ",")}</span>
                     </div>
                   )}
                   {selectedBarber && (

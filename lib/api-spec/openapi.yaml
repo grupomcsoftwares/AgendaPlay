@@ -27,6 +27,8 @@ tags:
     description: Barber operations
   - name: combo-discounts
     description: Combo discount operations
+  - name: loyalty
+    description: Loyalty points operations
 
 paths:
   /healthz:
@@ -749,6 +751,45 @@ paths:
               schema:
                 $ref: "#/components/schemas/Settings"
 
+  /loyalty/clients:
+    get:
+      operationId: listLoyaltyClients
+      tags: [loyalty]
+      summary: List all clients with loyalty points for the authenticated shop
+      responses:
+        "200":
+          description: List of clients with points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LoyaltyClientBalance"
+
+  /loyalty/balance:
+    get:
+      operationId: getLoyaltyBalance
+      tags: [loyalty]
+      summary: Get loyalty points balance for a client phone
+      parameters:
+        - name: shopId
+          in: query
+          description: Shop owner user ID
+          schema:
+            type: string
+        - name: phone
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Loyalty balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoyaltyBalance"
+
   /combo-discounts:
     get:
       operationId: listComboDiscounts
@@ -1102,6 +1143,9 @@ components:
           enum: [now, on_site]
         notes:
           type: string
+        loyaltyPointsRedeemed:
+          type: integer
+          description: Points redeemed for a discount on this booking
 
     AppointmentUpdate:
       type: object
@@ -1283,6 +1327,44 @@ components:
         sunday:
           $ref: "#/components/schemas/DaySchedule"
 
+    LoyaltyConfig:
+      type: object
+      required: [enabled, pointsPerReal, pointsPerRedemptionUnit]
+      properties:
+        enabled:
+          type: boolean
+        pointsPerReal:
+          type: number
+          description: Points earned per R$1 spent
+        pointsPerRedemptionUnit:
+          type: number
+          description: Points needed to redeem R$1 discount
+
+    LoyaltyClientBalance:
+      type: object
+      required: [clientPhone, points]
+      properties:
+        clientPhone:
+          type: string
+        points:
+          type: integer
+
+    LoyaltyBalance:
+      type: object
+      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, discountPerUnit]
+      properties:
+        enabled:
+          type: boolean
+        points:
+          type: integer
+        pointsPerReal:
+          type: number
+        pointsPerRedemptionUnit:
+          type: number
+        discountPerUnit:
+          type: number
+          description: R$ value per redemption unit (always 1)
+
     Settings:
       type: object
       required: [id, barbershopName, ownerName]
@@ -1331,6 +1413,10 @@ components:
         smartSlots:
           type: boolean
           description: When true, slot step equals service duration for tighter scheduling.
+        loyaltyConfig:
+          oneOf:
+            - $ref: "#/components/schemas/LoyaltyConfig"
+            - type: "null"
 
     SlugUpdate:
       type: object
@@ -1388,6 +1474,10 @@ components:
           type: integer
         smartSlots:
           type: boolean
+        loyaltyConfig:
+          oneOf:
+            - $ref: "#/components/schemas/LoyaltyConfig"
+            - type: "null"
 
     ComboDiscount:
       type: object

@@ -227,7 +227,8 @@ export const CreateAppointmentBody = zod.object({
   "serviceDuration": zod.number(),
   "scheduledAt": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "loyaltyPointsRedeemed": zod.number().optional().describe('Points redeemed for a discount on this booking')
 })
 
 
@@ -1065,7 +1066,12 @@ export const GetSettingsResponse = zod.object({
   "minAdvanceMinutes": zod.number().optional().describe('Minimum minutes of advance notice required to book a slot.'),
   "minCancelMinutes": zod.number().optional().describe('Minimum minutes before the appointment that cancellation is allowed.'),
   "slotIntervalMinutes": zod.number().optional().describe('Time slot grid interval in minutes (10, 15, 30, 60).'),
-  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.')
+  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.'),
+  "loyaltyConfig": zod.union([zod.object({
+  "enabled": zod.boolean(),
+  "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+}),zod.null()]).optional()
 })
 
 
@@ -1143,7 +1149,12 @@ export const UpdateSettingsBody = zod.object({
   "minAdvanceMinutes": zod.number().optional(),
   "minCancelMinutes": zod.number().optional(),
   "slotIntervalMinutes": zod.number().optional(),
-  "smartSlots": zod.boolean().optional()
+  "smartSlots": zod.boolean().optional(),
+  "loyaltyConfig": zod.union([zod.object({
+  "enabled": zod.boolean(),
+  "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+}),zod.null()]).optional()
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
@@ -1218,7 +1229,39 @@ export const UpdateSettingsResponse = zod.object({
   "minAdvanceMinutes": zod.number().optional().describe('Minimum minutes of advance notice required to book a slot.'),
   "minCancelMinutes": zod.number().optional().describe('Minimum minutes before the appointment that cancellation is allowed.'),
   "slotIntervalMinutes": zod.number().optional().describe('Time slot grid interval in minutes (10, 15, 30, 60).'),
-  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.')
+  "smartSlots": zod.boolean().optional().describe('When true, slot step equals service duration for tighter scheduling.'),
+  "loyaltyConfig": zod.union([zod.object({
+  "enabled": zod.boolean(),
+  "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+}),zod.null()]).optional()
+})
+
+
+/**
+ * @summary List all clients with loyalty points for the authenticated shop
+ */
+export const ListLoyaltyClientsResponseItem = zod.object({
+  "clientPhone": zod.string(),
+  "points": zod.number()
+})
+export const ListLoyaltyClientsResponse = zod.array(ListLoyaltyClientsResponseItem)
+
+
+/**
+ * @summary Get loyalty points balance for a client phone
+ */
+export const GetLoyaltyBalanceQueryParams = zod.object({
+  "shopId": zod.coerce.string().optional().describe('Shop owner user ID'),
+  "phone": zod.coerce.string()
+})
+
+export const GetLoyaltyBalanceResponse = zod.object({
+  "enabled": zod.boolean(),
+  "points": zod.number(),
+  "pointsPerReal": zod.number(),
+  "pointsPerRedemptionUnit": zod.number(),
+  "discountPerUnit": zod.number().describe('R$ value per redemption unit (always 1)')
 })
 
 

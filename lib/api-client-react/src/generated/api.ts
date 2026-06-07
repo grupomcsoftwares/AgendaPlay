@@ -36,6 +36,7 @@ import type {
   FinancialSummary,
   GetAvailabilityParams,
   GetFinancialSummaryParams,
+  GetLoyaltyBalanceParams,
   GetSettingsParams,
   HealthStatus,
   ListAppointmentsParams,
@@ -43,6 +44,8 @@ import type {
   ListClientsParams,
   ListComboDiscountsParams,
   ListServicesParams,
+  LoyaltyBalance,
+  LoyaltyClientBalance,
   QueueEntry,
   QueueInput,
   RescheduleByTokenInput,
@@ -2827,6 +2830,167 @@ export const useUpdateSettings = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateSettingsMutationOptions(options));
     }
+
+export const getListLoyaltyClientsUrl = () => {
+
+
+
+
+  return `/api/loyalty/clients`
+}
+
+/**
+ * @summary List all clients with loyalty points for the authenticated shop
+ */
+export const listLoyaltyClients = async ( options?: RequestInit): Promise<LoyaltyClientBalance[]> => {
+
+  return customFetch<LoyaltyClientBalance[]>(getListLoyaltyClientsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListLoyaltyClientsQueryKey = () => {
+    return [
+    `/api/loyalty/clients`
+    ] as const;
+    }
+
+
+export const getListLoyaltyClientsQueryOptions = <TData = Awaited<ReturnType<typeof listLoyaltyClients>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLoyaltyClients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListLoyaltyClientsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listLoyaltyClients>>> = ({ signal }) => listLoyaltyClients({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listLoyaltyClients>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListLoyaltyClientsQueryResult = NonNullable<Awaited<ReturnType<typeof listLoyaltyClients>>>
+export type ListLoyaltyClientsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all clients with loyalty points for the authenticated shop
+ */
+
+export function useListLoyaltyClients<TData = Awaited<ReturnType<typeof listLoyaltyClients>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listLoyaltyClients>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListLoyaltyClientsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetLoyaltyBalanceUrl = (params: GetLoyaltyBalanceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/loyalty/balance?${stringifiedParams}` : `/api/loyalty/balance`
+}
+
+/**
+ * @summary Get loyalty points balance for a client phone
+ */
+export const getLoyaltyBalance = async (params: GetLoyaltyBalanceParams, options?: RequestInit): Promise<LoyaltyBalance> => {
+
+  return customFetch<LoyaltyBalance>(getGetLoyaltyBalanceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLoyaltyBalanceQueryKey = (params?: GetLoyaltyBalanceParams,) => {
+    return [
+    `/api/loyalty/balance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLoyaltyBalanceQueryOptions = <TData = Awaited<ReturnType<typeof getLoyaltyBalance>>, TError = ErrorType<unknown>>(params: GetLoyaltyBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLoyaltyBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLoyaltyBalanceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLoyaltyBalance>>> = ({ signal }) => getLoyaltyBalance(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLoyaltyBalance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLoyaltyBalanceQueryResult = NonNullable<Awaited<ReturnType<typeof getLoyaltyBalance>>>
+export type GetLoyaltyBalanceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get loyalty points balance for a client phone
+ */
+
+export function useGetLoyaltyBalance<TData = Awaited<ReturnType<typeof getLoyaltyBalance>>, TError = ErrorType<unknown>>(
+ params: GetLoyaltyBalanceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLoyaltyBalance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLoyaltyBalanceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListComboDiscountsUrl = (params?: ListComboDiscountsParams,) => {
   const normalizedParams = new URLSearchParams();

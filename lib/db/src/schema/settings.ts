@@ -2,6 +2,12 @@ import { pgTable, serial, text, timestamp, jsonb, boolean, integer } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export type LoyaltyConfig = {
+  enabled: boolean;
+  pointsPerReal: number;
+  pointsPerRedemptionUnit: number;
+};
+
 export type DaySchedule = {
   closed: boolean;
   open: string;
@@ -40,6 +46,7 @@ export const settingsTable = pgTable("settings", {
   minCancelMinutes: integer("min_cancel_minutes").notNull().default(0),
   slotIntervalMinutes: integer("slot_interval_minutes").notNull().default(15),
   smartSlots: boolean("smart_slots").notNull().default(false),
+  loyaltyConfig: jsonb("loyalty_config").$type<LoyaltyConfig>(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

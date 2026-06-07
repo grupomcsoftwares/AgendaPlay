@@ -21,4 +21,6 @@ export interface AppointmentInput {
   scheduledAt: string;
   paymentMethod?: AppointmentInputPaymentMethod;
   notes?: string;
+  /** Points redeemed for a discount on this booking */
+  loyaltyPointsRedeemed?: number;
 }

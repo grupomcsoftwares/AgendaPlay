@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { LoyaltyConfig } from './loyaltyConfig';
 import type { WeeklySchedule } from './weeklySchedule';
 
 export interface SettingsUpdate {
@@ -35,4 +36,5 @@ export interface SettingsUpdate {
   minCancelMinutes?: number;
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
+  loyaltyConfig?: LoyaltyConfig | null;
 }

@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import {
   ListAppointmentsQueryParams,
@@ -307,6 +307,54 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
   }
+
+  // Credit/deduct loyalty points asynchronously (fire-and-forget — never block the booking response)
+  const loyaltyPointsRedeemed = parsed.data.loyaltyPointsRedeemed ?? 0;
+  void (async () => {
+    try {
+      const [settings] = await db.select().from(settingsTable).where(eq(settingsTable.userId, shopId)).limit(1);
+      const loyaltyConfig = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
+      if (!loyaltyConfig?.enabled) return;
+
+      // Extract phone from notes field (format: "Tel: XXXXX...")
+      const notesStr = appointment.notes ?? "";
+      const phoneMatch = notesStr.match(/Tel:\s*([^\s.]+)/);
+      const rawPhone = phoneMatch?.[1] ?? "";
+      const phone = rawPhone.replace(/\D/g, "");
+      if (!phone) return;
+
+      // Deduct redeemed points first (if any)
+      if (loyaltyPointsRedeemed > 0) {
+        await db
+          .insert(loyaltyPointsTable)
+          .values({ userId: shopId, clientPhone: phone, points: 0 })
+          .onConflictDoUpdate({
+            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+            set: {
+              points: sql`GREATEST(0, ${loyaltyPointsTable.points} - ${loyaltyPointsRedeemed})`,
+              updatedAt: new Date(),
+            },
+          });
+      }
+
+      // Credit earned points for this booking
+      if (!loyaltyConfig.pointsPerReal) return;
+      const price = parseFloat(appointment.servicePrice);
+      const earned = Math.floor(price * loyaltyConfig.pointsPerReal);
+      if (earned <= 0) return;
+
+      await db
+        .insert(loyaltyPointsTable)
+        .values({ userId: shopId, clientPhone: phone, points: earned })
+        .onConflictDoUpdate({
+          target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+          set: { points: sql`${loyaltyPointsTable.points} + ${earned}`, updatedAt: new Date() },
+        });
+    } catch {
+      // Ignore errors — loyalty is non-critical
+    }
+  })();
+
   res.status(201).json(formatAppointmentWithToken(appointment));
 });
 

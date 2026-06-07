@@ -3,9 +3,10 @@ import {
   useGetSettings, useUpdateSettings, useUpdateUserSlug, getGetSettingsQueryKey,
   useListComboDiscounts, useCreateComboDiscount, useUpdateComboDiscount, useDeleteComboDiscount, getListComboDiscountsQueryKey,
   useListServices, getListServicesQueryKey,
+  useListLoyaltyClients, getListLoyaltyClientsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -122,6 +123,8 @@ export default function Settings() {
   const [logoProcessing, setLogoProcessing] = useState(false);
   const initializedRef = useRef(false);
 
+  const { data: loyaltyClients } = useListLoyaltyClients({ query: { queryKey: getListLoyaltyClientsQueryKey() } });
+
   const [formData, setFormData] = useState({
     barbershopName: "",
     ownerName: "",
@@ -138,6 +141,9 @@ export default function Settings() {
     minCancelMinutes: 0,
     slotIntervalMinutes: 15,
     smartSlots: false,
+    loyaltyEnabled: false,
+    loyaltyPointsPerReal: 10,
+    loyaltyPointsPerRedemptionUnit: 100,
   });
 
   useEffect(() => {
@@ -150,6 +156,7 @@ export default function Settings() {
           if (incoming[key]) merged[key] = { ...merged[key], ...incoming[key] };
         }
       }
+      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number } | null | undefined;
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
@@ -166,6 +173,9 @@ export default function Settings() {
         minCancelMinutes: settings.minCancelMinutes ?? 0,
         slotIntervalMinutes: settings.slotIntervalMinutes ?? 15,
         smartSlots: settings.smartSlots ?? false,
+        loyaltyEnabled: lc?.enabled ?? false,
+        loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
+        loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
       });
     }
   }, [settings]);
@@ -292,7 +302,16 @@ export default function Settings() {
       return;
     }
     updateSettings.mutate(
-      { data: { ...formData, logoUrl: formData.logoUrl || null, pixKey: formData.pixKey || null } },
+      { data: {
+        ...formData,
+        logoUrl: formData.logoUrl || null,
+        pixKey: formData.pixKey || null,
+        loyaltyConfig: {
+          enabled: formData.loyaltyEnabled,
+          pointsPerReal: formData.loyaltyPointsPerReal,
+          pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
+        },
+      } },
       {
         onSuccess: (saved) => {
           queryClient.setQueryData(getGetSettingsQueryKey(), saved);
@@ -915,6 +934,100 @@ export default function Settings() {
                 >
                   {createCombo.isPending || updateComboMut.isPending ? "Salvando..." : "Salvar combo"}
                 </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Loyalty / Fidelidade */}
+      <Card className="bg-card border-border max-w-5xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Gift className="h-5 w-5" />
+            Programa de Fidelidade
+          </CardTitle>
+          <CardDescription>
+            Clientes acumulam pontos a cada agendamento e podem trocar por desconto nas próximas visitas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* enable toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Ativar programa de fidelidade</p>
+              <p className="text-xs text-muted-foreground">Habilita acúmulo e resgate de pontos no agendamento</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, loyaltyEnabled: !formData.loyaltyEnabled })}
+              className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+              style={{ backgroundColor: formData.loyaltyEnabled ? "hsl(38 88% 55%)" : "hsl(0 0% 20%)" }}
+            >
+              <span
+                className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                style={{ transform: formData.loyaltyEnabled ? "translateX(1.375rem)" : "translateX(0.25rem)" }}
+              />
+            </button>
+          </div>
+
+          {formData.loyaltyEnabled && (
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pontos por R$ 1,00 gasto</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.loyaltyPointsPerReal}
+                    onChange={(e) => setFormData({ ...formData, loyaltyPointsPerReal: Number(e.target.value) })}
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground">Ex: 10 → cliente ganha 10 pts por R$1</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pontos para R$ 1,00 de desconto</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={formData.loyaltyPointsPerRedemptionUnit}
+                    onChange={(e) => setFormData({ ...formData, loyaltyPointsPerRedemptionUnit: Number(e.target.value) })}
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground">Ex: 100 → 100 pts = R$1 de desconto</p>
+                </div>
+              </div>
+
+              <div
+                className="rounded-lg px-4 py-3 text-sm"
+                style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: "1px solid hsl(38 88% 55% / 0.2)" }}
+              >
+                Em um serviço de R$50: cliente acumula{" "}
+                <strong>{(formData.loyaltyPointsPerReal * 50).toLocaleString("pt-BR")} pts</strong>. Com{" "}
+                <strong>{formData.loyaltyPointsPerRedemptionUnit} pts</strong> ele ganha{" "}
+                <strong>R$ 1,00</strong> de desconto.
+              </div>
+            </div>
+          )}
+
+          {/* Clients list */}
+          {loyaltyClients && loyaltyClients.length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-sm font-semibold">Extrato de clientes</p>
+              <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                {loyaltyClients.map((c) => (
+                  <div
+                    key={c.clientPhone}
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <span className="text-muted-foreground">{c.clientPhone}</span>
+                    <span className="font-semibold tabular-nums">
+                      {c.points.toLocaleString("pt-BR")} pts
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
