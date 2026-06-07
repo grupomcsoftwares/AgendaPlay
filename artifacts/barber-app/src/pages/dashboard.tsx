@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+
   const { data: summary, isLoading } = useGetDashboardSummary({
     query: {
       queryKey: getGetDashboardSummaryQueryKey(),
-      // Live sync: dashboard reflects new bookings, cancellations and queue
-      // transitions every 5s without manual refresh.
       refetchInterval: 5000,
       refetchOnWindowFocus: true,
     },
@@ -17,6 +20,41 @@ export default function Dashboard() {
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const bookingUrl = user?.slug
+    ? `${window.location.origin}/b/${user.slug}`
+    : null;
+
+  const handleCopy = () => {
+    if (!bookingUrl) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(bookingUrl).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        fallbackCopy(bookingUrl);
+      });
+    } else {
+      fallbackCopy(bookingUrl);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+    } finally {
+      document.body.removeChild(el);
+    }
   };
 
   if (isLoading) {
@@ -33,6 +71,43 @@ export default function Dashboard() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8 space-y-5 md:space-y-8 bg-background">
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
+
+      {bookingUrl && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <Link className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-primary">Seu link de agendamento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="flex-1 text-sm font-mono text-foreground bg-background border border-border rounded-md px-3 py-2 truncate select-all">
+                {bookingUrl}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 gap-1.5"
+                onClick={handleCopy}
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-500" />
+                    <span className="text-green-500">Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    <span>Copiar</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Compartilhe este link com seus clientes para que eles possam agendar online.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="bg-card border-border">
