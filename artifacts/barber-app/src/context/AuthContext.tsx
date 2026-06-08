@@ -38,11 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
-      } else {
+      } else if (res.status === 401) {
         setUser(null);
       }
+      // on network errors or other non-401 failures, keep current state
     } catch {
-      setUser(null);
+      // network error — keep current user state (don't force logout)
     }
   }, []);
 

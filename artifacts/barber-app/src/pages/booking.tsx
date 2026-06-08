@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
 import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useListSubscriptionPlans, getListSubscriptionPlansQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useCreateSubscription } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ function StepIndicator({ current, labels }: { current: number; labels: readonly 
 
 export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}) {
   const [, setLocation] = useLocation();
+  const { user: adminUser } = useAuth();
 
   // shopIdProp takes priority (used by public slug-based pages).
   // Falls back to URL query string (?shopId=<userId>) for the admin-fresh link.
@@ -80,7 +82,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     if (!pendingAppt) return;
     const isActive = pendingAppt.status === "pending" || pendingAppt.status === "confirmed";
     const isFuture = new Date(pendingAppt.scheduledAt) > new Date();
-    if (isActive && isFuture) {
+    if (isActive && isFuture && !adminUser) {
       const shopParam = shopId ? `?shopId=${shopId}` : "";
       setLocation(`/agendamento/${pendingToken}${shopParam}`);
     } else {
@@ -186,7 +188,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       }},
       {
         onSuccess: (created) => {
-          if (created?.cancelToken) {
+          if (created?.cancelToken && !adminUser) {
             localStorage.setItem(storageKey, created.cancelToken);
           }
           // Persist name+phone so the client doesn't have to retype next visit
@@ -197,7 +199,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           }
           setConfirmed(true);
           window.setTimeout(() => {
-            if (created?.cancelToken) {
+            if (adminUser) {
+              setLocation("/appointments");
+            } else if (created?.cancelToken) {
               const shopParam = shopId ? `&shopId=${shopId}` : "";
               setLocation(`/agendamento/${created.cancelToken}?novo=1${shopParam}`);
             }

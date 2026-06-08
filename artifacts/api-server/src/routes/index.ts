@@ -15,6 +15,7 @@ import authRouter from "./auth.js";
 import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
 import shopRouter from "./shop.js";
+import pushRouter from "./push.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
@@ -28,6 +29,7 @@ const router: IRouter = Router();
 
 router.use(authRouter);
 router.use(usersRouter);
+router.use(pushRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
 router.use(shopRouter);

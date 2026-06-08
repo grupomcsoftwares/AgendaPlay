@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { playServiceStart, playServiceEnd, playAlert15 } from "@/lib/sounds";
 import {
   useListQueue,
   useAddToQueue,
@@ -163,6 +164,11 @@ export default function Queue() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({ clientName: "", serviceId: "" });
 
+  const currentEntry = queue?.find((q) => q.status === "in_progress") ?? null;
+  const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
+
+  const prevEntryId = useRef<number | null>(null);
+
   useEffect(() => {
     const id = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
@@ -170,8 +176,31 @@ export default function Queue() {
     return () => clearInterval(id);
   }, [queryClient]);
 
-  const currentEntry = queue?.find((q) => q.status === "in_progress") ?? null;
-  const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
+  // Sounds: play when service starts or ends
+  useEffect(() => {
+    const newId = currentEntry?.id ?? null;
+    if (prevEntryId.current !== newId) {
+      if (newId !== null && prevEntryId.current === null) {
+        playServiceStart();
+      } else if (newId === null && prevEntryId.current !== null) {
+        playServiceEnd();
+      }
+      prevEntryId.current = newId;
+    }
+  }, [currentEntry?.id]);
+
+  // Alert: play sound when next appointment is ~15 min away
+  useEffect(() => {
+    const id = setInterval(() => {
+      const upcoming = waitingQueue.find(e => e.scheduledAt != null);
+      if (!upcoming?.scheduledAt) return;
+      const diff = new Date(upcoming.scheduledAt).getTime() - Date.now();
+      if (diff > 14 * 60_000 && diff < 15 * 60_000) {
+        playAlert15();
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [waitingQueue]);
   const nextEntry = waitingQueue[0] ?? null;
   const upcomingBooked = waitingQueue.find(
     (q) => q.scheduledAt !== null && q.scheduledAt !== undefined && new Date(q.scheduledAt) > new Date(),

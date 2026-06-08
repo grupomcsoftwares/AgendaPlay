@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { playNewAppointment } from "@/lib/sounds";
 import {
   useListAppointments,
   useCreateAppointment,
@@ -227,6 +228,7 @@ export default function Appointments() {
           invalidate();
           setIsCreateOpen(false);
           toast({ title: "Agendamento criado" });
+          playNewAppointment();
         },
         onError: (err) => {
           const apiErr = err as ApiError<{ error?: string }>;

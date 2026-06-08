@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useSearch } from "wouter";
 import {
   useGetAppointmentByToken,
@@ -11,7 +11,7 @@ import {
   getGetSettingsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const AMBER = "hsl(38 88% 55%)";
@@ -33,10 +33,60 @@ export default function CancelBooking() {
   const [confirming, setConfirming] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reschedOpen, setReschedOpen] = useState(false);
+  const [pushState, setPushState] = useState<"unknown" | "denied" | "subscribed" | "idle">("unknown");
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
   const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
   const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
   const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushState("denied");
+      return;
+    }
+    if (Notification.permission === "denied") { setPushState("denied"); return; }
+    navigator.serviceWorker.register("/sw.js").then((reg) => {
+      return reg.pushManager.getSubscription().then((sub) => {
+        setPushState(sub ? "subscribed" : "idle");
+      });
+    }).catch(() => setPushState("denied"));
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setPushState("denied"); return; }
+      const keyRes = await fetch(`${BASE}/api/push/vapid-public-key`);
+      const { key } = await keyRes.json();
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      });
+      const json = sub.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+      await fetch(`${BASE}/api/push/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cancelToken: token,
+          scheduledAt: appointment?.scheduledAt ?? "",
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        }),
+      });
+      setPushState("subscribed");
+    } catch { setPushState("idle"); }
+  };
+
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+  }
   const { data: settings } = useGetSettings(
     shopId ? { shopId } : undefined,
     { query: { queryKey: getGetSettingsQueryKey(shopId ? { shopId } : undefined) } }
@@ -156,21 +206,46 @@ export default function CancelBooking() {
         </div>
 
         {isNew && !cancelled && !locked && (
-          <div
-            className="rounded-xl p-4 flex items-start gap-3"
-            data-testid="banner-new-booking"
-            style={{ backgroundColor: "hsl(142 70% 45% / 0.12)", border: "1px solid hsl(142 70% 45% / 0.4)" }}
-          >
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "hsl(142 70% 55%)" }} />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold" style={{ color: "hsl(142 70% 75%)" }}>
-                Agendamento confirmado!
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Salve esta página nos favoritos para mudar o horário ou cancelar depois.
-              </p>
+          <>
+            <div
+              className="rounded-xl p-4 flex items-start gap-3"
+              data-testid="banner-new-booking"
+              style={{ backgroundColor: "hsl(142 70% 45% / 0.12)", border: "1px solid hsl(142 70% 45% / 0.4)" }}
+            >
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "hsl(142 70% 55%)" }} />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold" style={{ color: "hsl(142 70% 75%)" }}>
+                  Agendamento confirmado!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Salve esta página nos favoritos para mudar o horário ou cancelar depois.
+                </p>
+              </div>
             </div>
-          </div>
+            {pushState === "idle" && (
+              <button
+                type="button"
+                onClick={handleEnableNotifications}
+                className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm font-semibold"
+                style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.5)", color: AMBER, cursor: "pointer" }}
+              >
+                <Bell className="w-4 h-4" />
+                Ativar lembrete 15 min antes
+              </button>
+            )}
+            {pushState === "subscribed" && (
+              <div className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm" style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: "1px solid hsl(38 88% 55% / 0.3)", color: "hsl(38 88% 65%)" }}>
+                <Bell className="w-4 h-4" />
+                Lembrete ativado — você receberá uma notificação 15 min antes.
+              </div>
+            )}
+            {pushState === "denied" && (
+              <div className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 20%)", color: "hsl(0 0% 55%)" }}>
+                <BellOff className="w-4 h-4" />
+                Notificações não disponíveis neste dispositivo.
+              </div>
+            )}
+          </>
         )}
 
         <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
