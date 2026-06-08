@@ -409,283 +409,201 @@ export default function Settings() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-64 w-full max-w-2xl" />
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-48 w-full max-w-5xl" />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 p-4 md:p-8 bg-background overflow-auto space-y-6">
+    <div className="flex-1 p-4 md:p-6 bg-background overflow-auto space-y-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground mt-1">Gerencie as informações da barbearia.</p>
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Configurações</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Gerencie as informações da barbearia.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+      {/* ── Row 1: Info + Horário ─────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
+        {/* Informações Gerais */}
         <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle>Informações Gerais</CardTitle>
-            <CardDescription>Dados principais da barbearia</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Informações Gerais</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Logo da Barbearia</Label>
-              <div className="flex items-center gap-4">
-                <div
-                  className="rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-muted"
-                  style={{ width: 72, height: 72, border: "2px solid hsl(38 88% 55%)" }}
-                  data-testid="logo-preview"
-                >
-                  {formData.logoUrl ? (
-                    <img
-                      src={formData.logoUrl}
-                      alt="Logo"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Scissors className="w-7 h-7" style={{ color: "hsl(38 88% 55%)" }} />
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoSelect}
-                    data-testid="input-logo-file"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    disabled={logoProcessing}
-                    onClick={() => fileInputRef.current?.click()}
-                    data-testid="button-upload-logo"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {logoProcessing ? "Processando..." : formData.logoUrl ? "Trocar logo" : "Enviar logo"}
-                  </Button>
-                  {formData.logoUrl && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="gap-2 text-destructive hover:text-destructive"
-                      onClick={() => setFormData({ ...formData, logoUrl: "" })}
-                      data-testid="button-remove-logo"
-                    >
-                      <Trash2 className="h-4 w-4" /> Remover
-                    </Button>
-                  )}
-                </div>
+          <CardContent className="space-y-3">
+            {/* Logo row */}
+            <div className="flex items-center gap-3">
+              <div
+                className="rounded-full flex items-center justify-center overflow-hidden shrink-0 bg-muted"
+                style={{ width: 56, height: 56, border: "2px solid hsl(38 88% 55%)" }}
+                data-testid="logo-preview"
+              >
+                {formData.logoUrl ? (
+                  <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Scissors className="w-5 h-5" style={{ color: "hsl(38 88% 55%)" }} />
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Aparece no topo da página de agendamento. Use uma imagem quadrada para melhor resultado.
-              </p>
+              <div className="flex gap-2">
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} data-testid="input-logo-file" />
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 h-8 text-xs" disabled={logoProcessing} onClick={() => fileInputRef.current?.click()} data-testid="button-upload-logo">
+                  <Upload className="h-3.5 w-3.5" />
+                  {logoProcessing ? "Processando…" : formData.logoUrl ? "Trocar" : "Enviar logo"}
+                </Button>
+                {formData.logoUrl && (
+                  <Button type="button" variant="ghost" size="sm" className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive" onClick={() => setFormData({ ...formData, logoUrl: "" })} data-testid="button-remove-logo">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Nome da Barbearia</Label>
-              <Input 
-                value={formData.barbershopName} 
-                onChange={e => setFormData({...formData, barbershopName: e.target.value})} 
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome da Barbearia</Label>
+                <Input className="h-8 text-sm" value={formData.barbershopName} onChange={e => setFormData({...formData, barbershopName: e.target.value})} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Proprietário</Label>
+                <Input className="h-8 text-sm" value={formData.ownerName} onChange={e => setFormData({...formData, ownerName: e.target.value})} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Nome do Proprietário</Label>
-              <Input 
-                value={formData.ownerName} 
-                onChange={e => setFormData({...formData, ownerName: e.target.value})} 
-              />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Telefone</Label>
+                <Input className="h-8 text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Endereço</Label>
+                <Input className="h-8 text-sm" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Telefone de Contato</Label>
-              <Input 
-                value={formData.phone} 
-                onChange={e => setFormData({...formData, phone: e.target.value})} 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Endereço</Label>
-              <Textarea 
-                value={formData.address} 
-                onChange={e => setFormData({...formData, address: e.target.value})} 
-              />
+
+            {/* Booking link */}
+            {user && (
+              <div className="space-y-2 pt-1 border-t border-border">
+                <Label className="text-xs flex items-center gap-1.5"><Link className="h-3.5 w-3.5" /> Link de Agendamento</Label>
+                {slugEditMode ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+                      <span>⚠️</span><span>Links antigos deixarão de funcionar ao trocar.</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Input data-testid="input-slug" value={slugValue} onChange={e => handleSlugChange(e.target.value.toLowerCase())} placeholder="minha-barbearia" className={`font-mono text-xs h-8 ${slugError ? "border-destructive" : ""}`} autoFocus />
+                      <Button type="button" size="sm" className="h-8 text-xs" disabled={updateSlug.isPending || !!slugError || slugValue === (user.slug ?? "")} onClick={handleSlugSave} data-testid="button-save-slug">
+                        {updateSlug.isPending ? "…" : "Salvar"}
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSlugValue(user.slug ?? ""); setSlugEditMode(false); setSlugError(null); }}>
+                        Cancelar
+                      </Button>
+                    </div>
+                    {slugError && <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>{slugError}</p>}
+                  </div>
+                ) : (
+                  <div className="flex gap-1.5">
+                    <Input readOnly value={user.slug ? `${window.location.origin}/b/${user.slug}` : `${window.location.origin}/booking?shopId=${user.id}`} className="font-mono text-xs bg-muted h-8" data-testid="display-booking-url" />
+                    <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Editar" onClick={() => { setSlugValue(user.slug ?? ""); setSlugEditMode(true); setSlugError(null); }} data-testid="button-edit-slug"><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Copiar" onClick={() => { const l = user.slug ? `${window.location.origin}/b/${user.slug}` : `${window.location.origin}/booking?shopId=${user.id}`; navigator.clipboard.writeText(l); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                      {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1">
+              <Label className="text-xs">Mensagem de Boas-vindas</Label>
+              <Textarea value={formData.bookingPageMessage} onChange={e => setFormData({...formData, bookingPageMessage: e.target.value})} placeholder="Olá! Seja bem-vindo…" rows={2} className="text-sm resize-none" />
             </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Horário de Funcionamento</CardTitle>
-              <CardDescription>Defina os horários e o intervalo de almoço para cada dia da semana</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {DAYS.map(({ key, label }) => {
-                const day = formData.weeklySchedule[key];
-                return (
-                  <div
-                    key={key}
-                    className="border border-border rounded-lg p-4 space-y-3"
-                    data-testid={`schedule-day-${key}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">{label}</span>
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor={`closed-${key}`} className="text-xs text-muted-foreground">
-                          {day.closed ? "Fechado" : "Aberto"}
-                        </Label>
-                        <Switch
-                          id={`closed-${key}`}
-                          data-testid={`switch-open-${key}`}
-                          checked={!day.closed}
-                          onCheckedChange={(v) => updateDay(key, { closed: !v })}
-                        />
-                      </div>
+        {/* Horário de Funcionamento — compact rows */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Horário de Funcionamento</CardTitle>
+            <CardDescription className="text-xs">Abertura — Fechamento &nbsp;·&nbsp; ☕ Início — Fim almoço</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-0">
+            {DAYS.map(({ key, label }) => {
+              const day = formData.weeklySchedule[key];
+              return (
+                <div key={key} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0" data-testid={`schedule-day-${key}`}>
+                  <Switch id={`closed-${key}`} data-testid={`switch-open-${key}`} checked={!day.closed} onCheckedChange={(v) => updateDay(key, { closed: !v })} className="shrink-0 scale-90" />
+                  <span className={`text-sm w-24 shrink-0 ${day.closed ? "text-muted-foreground" : ""}`}>{label}</span>
+                  {day.closed ? (
+                    <span className="text-xs text-muted-foreground italic">Fechado</span>
+                  ) : (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
+                      <span className="text-muted-foreground text-xs">–</span>
+                      <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
+                      <span className="text-muted-foreground text-xs mx-0.5">☕</span>
+                      <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
+                      <span className="text-muted-foreground text-xs">–</span>
+                      <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
                     </div>
-
-                    {!day.closed && (
-                      <>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Abertura</Label>
-                            <Input
-                              type="time"
-                              data-testid={`input-open-${key}`}
-                              value={day.open}
-                              onChange={(e) => updateDay(key, { open: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Fechamento</Label>
-                            <Input
-                              type="time"
-                              data-testid={`input-close-${key}`}
-                              value={day.close}
-                              onChange={(e) => updateDay(key, { close: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Início do almoço</Label>
-                            <Input
-                              type="time"
-                              data-testid={`input-lunch-start-${key}`}
-                              value={day.lunchStart}
-                              onChange={(e) => updateDay(key, { lunchStart: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Fim do almoço</Label>
-                            <Input
-                              type="time"
-                              data-testid={`input-lunch-end-${key}`}
-                              value={day.lunchEnd}
-                              onChange={(e) => updateDay(key, { lunchEnd: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Formas de Pagamento</CardTitle>
-              <CardDescription>
-                Escolha quais opções os clientes verão na hora de agendar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border border-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between p-4">
-                  <div className="space-y-1 pr-4">
-                    <p className="font-semibold">Pagar agora (online)</p>
-                    <p className="text-xs text-muted-foreground">
-                      Cliente paga via Pix no momento do agendamento
-                    </p>
-                  </div>
-                  <Switch
-                    data-testid="switch-payment-now"
-                    checked={formData.paymentEnableNow}
-                    onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })}
-                  />
+                  )}
                 </div>
-                {formData.paymentEnableNow && (
-                  <div className="px-4 pb-4 border-t border-border pt-3 space-y-2 bg-muted/30">
-                    <Label className="text-xs font-medium">Chave Pix</Label>
-                    <Input
-                      data-testid="input-pix-key"
-                      value={formData.pixKey}
-                      onChange={(e) => { const v = e.target.value; setFormData((prev) => ({ ...prev, pixKey: v })); }}
-                      placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-                      className="text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Esta chave será exibida para o cliente na hora de confirmar o agendamento.
-                    </p>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center justify-between border border-border rounded-lg p-4">
-                <div className="space-y-1 pr-4">
-                  <p className="font-semibold">Pagar depois</p>
-                  <p className="text-xs text-muted-foreground">
-                    Cliente paga direto na barbearia depois do atendimento
-                  </p>
-                </div>
-                <Switch
-                  data-testid="switch-payment-on-site"
-                  checked={formData.paymentEnableOnSite}
-                  onCheckedChange={(v) => setFormData({ ...formData, paymentEnableOnSite: v })}
-                />
-              </div>
-              {!formData.paymentEnableNow && !formData.paymentEnableOnSite && (
-                <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>
-                  Pelo menos uma forma de pagamento precisa estar ativa.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
 
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Regras de Agendamento</CardTitle>
-              <CardDescription>Configure o comportamento da agenda online</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Período máximo para agendar</Label>
-                <select
-                  value={formData.maxBookingDays}
-                  onChange={(e) => setFormData({ ...formData, maxBookingDays: Number(e.target.value) })}
-                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
-                >
+      {/* ── Row 2: Pagamento + Regras (side by side) ──────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-5xl">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Formas de Pagamento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Pagar agora (Pix)</p>
+                <p className="text-xs text-muted-foreground">Cliente paga no momento do agendamento</p>
+              </div>
+              <Switch data-testid="switch-payment-now" checked={formData.paymentEnableNow} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })} />
+            </div>
+            {formData.paymentEnableNow && (
+              <div className="space-y-1.5 px-1">
+                <Label className="text-xs">Chave Pix</Label>
+                <Input data-testid="input-pix-key" value={formData.pixKey} onChange={(e) => setFormData((prev) => ({ ...prev, pixKey: e.target.value }))} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" className="h-8 text-sm" />
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Pagar depois</p>
+                <p className="text-xs text-muted-foreground">Cliente paga na barbearia</p>
+              </div>
+              <Switch data-testid="switch-payment-on-site" checked={formData.paymentEnableOnSite} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableOnSite: v })} />
+            </div>
+            {!formData.paymentEnableNow && !formData.paymentEnableOnSite && (
+              <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>Pelo menos uma forma de pagamento precisa estar ativa.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Regras de Agendamento</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Janela máxima para agendar</Label>
+                <select value={formData.maxBookingDays} onChange={(e) => setFormData({ ...formData, maxBookingDays: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
                   <option value={7}>7 dias</option>
                   <option value={15}>15 dias</option>
                   <option value={30}>30 dias</option>
                   <option value={60}>60 dias</option>
                   <option value={90}>90 dias</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Até quantos dias no futuro o cliente pode agendar.</p>
               </div>
-
-              <div className="space-y-2">
-                <Label>Antecedência mínima para agendar</Label>
-                <select
-                  value={formData.minAdvanceMinutes}
-                  onChange={(e) => setFormData({ ...formData, minAdvanceMinutes: Number(e.target.value) })}
-                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
-                >
+              <div className="space-y-1">
+                <Label className="text-xs">Antecedência mínima para agendar</Label>
+                <select value={formData.minAdvanceMinutes} onChange={(e) => setFormData({ ...formData, minAdvanceMinutes: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
                   <option value={0}>Sem restrição</option>
                   <option value={30}>30 minutos</option>
                   <option value={60}>1 hora</option>
@@ -694,186 +612,51 @@ export default function Settings() {
                   <option value={480}>8 horas</option>
                   <option value={1440}>1 dia</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Tempo mínimo entre agora e o horário escolhido.</p>
               </div>
-
-              <div className="space-y-2">
-                <Label>Antecedência mínima para cancelar</Label>
-                <select
-                  value={formData.minCancelMinutes}
-                  onChange={(e) => setFormData({ ...formData, minCancelMinutes: Number(e.target.value) })}
-                  className="h-10 w-full rounded-md border border-input bg-muted/40 px-3 text-sm"
-                >
+              <div className="space-y-1">
+                <Label className="text-xs">Antecedência mínima para cancelar</Label>
+                <select value={formData.minCancelMinutes} onChange={(e) => setFormData({ ...formData, minCancelMinutes: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
                   <option value={0}>Sem restrição</option>
-                  <option value={30}>30 minutos antes</option>
+                  <option value={30}>30 min antes</option>
                   <option value={60}>1 hora antes</option>
                   <option value={120}>2 horas antes</option>
                   <option value={240}>4 horas antes</option>
                   <option value={1440}>1 dia antes</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Cliente não pode cancelar após este prazo.</p>
               </div>
-
-              <div className="flex items-center justify-between border border-border rounded-lg p-4">
-                <div className="space-y-1 pr-4">
-                  <p className="font-semibold">Horários inteligentes</p>
-                  <p className="text-xs text-muted-foreground">
-                    Usa a duração do serviço como intervalo, evitando horários sobrepostos
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.smartSlots}
-                  onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })}
-                />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Horários inteligentes</p>
+                <p className="text-xs text-muted-foreground">Intervalo = duração do serviço</p>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Página de Agendamento</CardTitle>
-              <CardDescription>Link público para seus clientes agendarem online</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {user && (
-                <div className="space-y-3">
-                  <Label className="flex items-center gap-2">
-                    <Link className="h-4 w-4" /> Endereço Personalizado
-                  </Label>
-
-                  {slugEditMode ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
-                        <span className="shrink-0 text-base leading-none">⚠️</span>
-                        <span>
-                          Ao alterar o endereço, links anteriores compartilhados com clientes irão parar de funcionar.
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-mono bg-muted px-3 py-2 rounded-md">
-                        <span className="shrink-0">{window.location.origin}/b/</span>
-                        <span className="text-foreground font-semibold">{slugValue || "..."}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          data-testid="input-slug"
-                          value={slugValue}
-                          onChange={e => handleSlugChange(e.target.value.toLowerCase())}
-                          placeholder="minha-barbearia"
-                          className={`font-mono text-sm ${slugError ? "border-destructive" : ""}`}
-                          autoFocus
-                        />
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          disabled={updateSlug.isPending || !!slugError || slugValue === (user.slug ?? "")}
-                          onClick={handleSlugSave}
-                          data-testid="button-save-slug"
-                        >
-                          {updateSlug.isPending ? "Salvando..." : "Salvar"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSlugValue(user.slug ?? "");
-                            setSlugEditMode(false);
-                            setSlugError(null);
-                          }}
-                        >
-                          Cancelar
-                        </Button>
-                      </div>
-                      {slugError && (
-                        <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>{slugError}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Use letras minúsculas, números e hífens. Mínimo 3, máximo 80 caracteres.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          readOnly
-                          value={user.slug
-                            ? `${window.location.origin}/b/${user.slug}`
-                            : `${window.location.origin}/booking?shopId=${user.id}`}
-                          className="font-mono text-xs bg-muted"
-                          data-testid="display-booking-url"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title="Editar endereço"
-                          onClick={() => {
-                            setSlugValue(user.slug ?? "");
-                            setSlugEditMode(true);
-                            setSlugError(null);
-                          }}
-                          data-testid="button-edit-slug"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title="Copiar link"
-                          onClick={() => {
-                            const link = user.slug
-                              ? `${window.location.origin}/b/${user.slug}`
-                              : `${window.location.origin}/booking?shopId=${user.id}`;
-                            navigator.clipboard.writeText(link);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                          }}
-                        >
-                          {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Compartilhe este link com seus clientes. Clique em <Pencil className="inline h-3 w-3" /> para personalizar o endereço.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label>Mensagem de Boas-vindas</Label>
-                <Textarea 
-                  value={formData.bookingPageMessage} 
-                  onChange={e => setFormData({...formData, bookingPageMessage: e.target.value})} 
-                  placeholder="Olá! Seja bem-vindo à nossa barbearia..."
-                  rows={4}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              <Switch checked={formData.smartSlots} onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })} />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card className="bg-card border-border max-w-5xl">
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
+      {/* ── Row 3: Combo + Fidelidade ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
           <div>
-            <CardTitle>Descontos por Combo</CardTitle>
-            <CardDescription>
-              Aplique desconto automático quando o cliente escolher 2 ou mais serviços juntos
+            <CardTitle className="text-base">Descontos por Combo</CardTitle>
+            <CardDescription className="text-xs">
+              Desconto automático ao escolher 2+ serviços juntos
             </CardDescription>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="gap-2 shrink-0"
+            className="gap-1.5 shrink-0 h-8 text-xs"
             onClick={() => {
               setEditingComboId(null);
               setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
               setComboOpen(true);
             }}
           >
-            <Plus className="h-4 w-4" /> Novo combo
+            <Plus className="h-3.5 w-3.5" /> Novo combo
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1033,14 +816,14 @@ export default function Settings() {
       </Card>
 
       {/* Loyalty / Fidelidade */}
-      <Card className="bg-card border-border max-w-5xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Gift className="h-4 w-4" />
             Programa de Fidelidade
           </CardTitle>
-          <CardDescription>
-            Clientes acumulam pontos a cada agendamento e podem trocar por desconto nas próximas visitas
+          <CardDescription className="text-xs">
+            Clientes acumulam pontos a cada visita e trocam por desconto
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -1125,31 +908,32 @@ export default function Settings() {
           )}
         </CardContent>
       </Card>
+      </div>{/* end Row 3 grid */}
 
-      {/* ── Assinaturas ─────────────────────────────────────────────────────── */}
+      {/* ── Assinaturas ────────────────────────────────────────── */}
       <Card className="bg-card border-border max-w-5xl">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <CardTitle>Planos de Assinatura</CardTitle>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => {
-                setEditingPlanId(null);
-                setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
-                setPlanOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4" /> Novo Plano
-            </Button>
+        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" />
+              Planos de Assinatura
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Planos mensais para clientes fiéis. Exibidos na página de agendamento.
+            </CardDescription>
           </div>
-          <CardDescription>
-            Crie planos mensais para clientes fiéis. Exibidos na página de agendamento.
-          </CardDescription>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 shrink-0 h-8 text-xs"
+            onClick={() => {
+              setEditingPlanId(null);
+              setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+              setPlanOpen(true);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo Plano
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Plan form */}
