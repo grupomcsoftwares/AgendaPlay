@@ -321,23 +321,26 @@ export default function Queue() {
             </div>
 
             {currentEntry ? (
-              <div className="flex flex-col items-center w-full" style={{ gap: "0.75em", padding: "1.5em" }}>
+              <div
+                className="flex flex-col items-center justify-evenly w-full"
+                style={{ gap: "0.4em", padding: "0.8em 1.5em", height: "100%", overflow: "hidden" }}
+              >
                 <div
                   className="flex items-center justify-center rounded-full"
                   style={{
-                    width: "2.9em",
-                    height: "2.9em",
+                    width: "2.5em",
+                    height: "2.5em",
                     backgroundColor: "hsl(var(--sidebar-primary) / 0.15)",
                     flexShrink: 0,
                   }}
                 >
-                  <Scissors style={{ width: "1.25em", height: "1.25em", color: "hsl(var(--sidebar-primary))" }} />
+                  <Scissors style={{ width: "1.1em", height: "1.1em", color: "hsl(var(--sidebar-primary))" }} />
                 </div>
-                <div className="text-center" style={{ overflow: "hidden" }}>
+                <div className="text-center" style={{ overflow: "hidden", flexShrink: 1 }}>
                   <h2
                     data-testid="text-current-name"
                     style={{
-                      fontSize: "8vw",
+                      fontSize: "clamp(2.5rem, 7vw, 10rem)",
                       fontWeight: 900,
                       lineHeight: 0.95,
                       letterSpacing: "-0.03em",
@@ -371,6 +374,7 @@ export default function Queue() {
                     backgroundColor: "transparent",
                     color: "hsl(0 0% 70%)",
                     cursor: "pointer",
+                    flexShrink: 0,
                   }}
                 >
                   Finalizar Atendimento
