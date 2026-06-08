@@ -40,14 +40,14 @@ type DaySchedule = {
 
 type WeeklySchedule = Record<DayKey, DaySchedule>;
 
-const DAYS: { key: DayKey; label: string }[] = [
-  { key: "monday", label: "Segunda-feira" },
-  { key: "tuesday", label: "Terça-feira" },
-  { key: "wednesday", label: "Quarta-feira" },
-  { key: "thursday", label: "Quinta-feira" },
-  { key: "friday", label: "Sexta-feira" },
-  { key: "saturday", label: "Sábado" },
-  { key: "sunday", label: "Domingo" },
+const DAYS: { key: DayKey; label: string; short: string }[] = [
+  { key: "monday",    label: "Segunda-feira", short: "Segunda" },
+  { key: "tuesday",  label: "Terça-feira",   short: "Terça"   },
+  { key: "wednesday",label: "Quarta-feira",  short: "Quarta"  },
+  { key: "thursday", label: "Quinta-feira",  short: "Quinta"  },
+  { key: "friday",   label: "Sexta-feira",   short: "Sexta"   },
+  { key: "saturday", label: "Sábado",        short: "Sábado"  },
+  { key: "sunday",   label: "Domingo",       short: "Domingo" },
 ];
 
 const defaultDay = (closed = false): DaySchedule => ({
@@ -526,23 +526,29 @@ export default function Settings() {
             <CardDescription className="text-xs">Abertura — Fechamento &nbsp;·&nbsp; ☕ Início — Fim almoço</CardDescription>
           </CardHeader>
           <CardContent className="space-y-0">
-            {DAYS.map(({ key, label }) => {
+            {DAYS.map(({ key, short }) => {
               const day = formData.weeklySchedule[key];
               return (
                 <div key={key} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0" data-testid={`schedule-day-${key}`}>
                   <Switch id={`closed-${key}`} data-testid={`switch-open-${key}`} checked={!day.closed} onCheckedChange={(v) => updateDay(key, { closed: !v })} className="shrink-0 scale-90" />
-                  <span className={`text-sm w-24 shrink-0 ${day.closed ? "text-muted-foreground" : ""}`}>{label}</span>
+                  <span className={`text-sm w-[4.5rem] shrink-0 ${day.closed ? "text-muted-foreground" : ""}`}>{short}</span>
                   {day.closed ? (
                     <span className="text-xs text-muted-foreground italic">Fechado</span>
                   ) : (
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
-                      <span className="text-muted-foreground text-xs">–</span>
-                      <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
-                      <span className="text-muted-foreground text-xs mx-0.5">☕</span>
-                      <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
-                      <span className="text-muted-foreground text-xs">–</span>
-                      <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-[86px] px-1.5" />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Abertura – Fechamento */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-[82px] px-1.5" />
+                        <span className="text-muted-foreground text-xs">–</span>
+                        <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-[82px] px-1.5" />
+                      </div>
+                      {/* Almoço */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-muted-foreground text-xs">☕</span>
+                        <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-[82px] px-1.5" />
+                        <span className="text-muted-foreground text-xs">–</span>
+                        <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-[82px] px-1.5" />
+                      </div>
                     </div>
                   )}
                 </div>
