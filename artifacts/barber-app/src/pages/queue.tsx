@@ -54,21 +54,21 @@ function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; du
   const accent = overdue ? "hsl(0 72% 55%)" : "hsl(var(--sidebar-primary))";
 
   return (
-    <div style={{ width: "100%", maxWidth: "26em" }} data-testid="service-progress">
-      <div className="flex items-center justify-between" style={{ fontSize: "0.67em", marginBottom: "0.4em" }}>
-        <span style={{ color: "hsl(0 0% 55%)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+    <div style={{ width: "100%", maxWidth: "36em" }} data-testid="service-progress">
+      <div className="flex items-center justify-between" style={{ fontSize: "0.9em", marginBottom: "0.5em" }}>
+        <span style={{ color: "hsl(0 0% 55%)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
           {overdue ? "Tempo excedido" : "Em andamento"}
         </span>
         <span
           data-testid="text-remaining-time"
-          style={{ color: accent, fontFamily: "monospace", fontWeight: 700, fontSize: "1em", letterSpacing: "0.05em" }}
+          style={{ color: accent, fontFamily: "monospace", fontWeight: 700, fontSize: "1.15em", letterSpacing: "0.05em" }}
         >
           {label}
         </span>
       </div>
       <div
         className="w-full rounded-full overflow-hidden"
-        style={{ height: "0.4em", backgroundColor: "hsl(0 0% 14%)" }}
+        style={{ height: "0.6em", backgroundColor: "hsl(0 0% 14%)" }}
       >
         <div
           style={{
@@ -76,11 +76,11 @@ function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; du
             height: "100%",
             backgroundColor: accent,
             transition: "width 0.8s linear",
-            boxShadow: overdue ? "none" : `0 0 0.6em ${accent}`,
+            boxShadow: overdue ? "none" : `0 0 0.8em ${accent}`,
           }}
         />
       </div>
-      <div className="flex items-center justify-between" style={{ marginTop: "0.3em", fontSize: "0.58em", color: "hsl(0 0% 40%)" }}>
+      <div className="flex items-center justify-between" style={{ marginTop: "0.4em", fontSize: "0.75em", color: "hsl(0 0% 40%)" }}>
         <span>
           {Math.floor(elapsedMs / 60_000)}:{Math.floor((elapsedMs % 60_000) / 1000).toString().padStart(2, "0")} decorridos
         </span>
@@ -328,19 +328,19 @@ export default function Queue() {
                 <div
                   className="flex items-center justify-center rounded-full"
                   style={{
-                    width: "2.5em",
-                    height: "2.5em",
+                    width: "3em",
+                    height: "3em",
                     backgroundColor: "hsl(var(--sidebar-primary) / 0.15)",
                     flexShrink: 0,
                   }}
                 >
-                  <Scissors style={{ width: "1.1em", height: "1.1em", color: "hsl(var(--sidebar-primary))" }} />
+                  <Scissors style={{ width: "1.4em", height: "1.4em", color: "hsl(var(--sidebar-primary))" }} />
                 </div>
                 <div className="text-center" style={{ overflow: "hidden", flexShrink: 1 }}>
                   <h2
                     data-testid="text-current-name"
                     style={{
-                      fontSize: "clamp(2.5rem, 7vw, 10rem)",
+                      fontSize: "clamp(2.5rem, 8vw, 12rem)",
                       fontWeight: 900,
                       lineHeight: 0.95,
                       letterSpacing: "-0.03em",
@@ -351,7 +351,7 @@ export default function Queue() {
                   >
                     {currentEntry.clientName}
                   </h2>
-                  <p style={{ color: "hsl(var(--sidebar-primary))", fontSize: "0.85em", fontWeight: 500, marginTop: "0.3em" }}>
+                  <p style={{ color: "hsl(var(--sidebar-primary))", fontSize: "1.1em", fontWeight: 600, marginTop: "0.4em" }}>
                     {currentEntry.serviceName}
                   </p>
                 </div>
@@ -366,9 +366,9 @@ export default function Queue() {
                   data-testid={`button-complete-${currentEntry.id}`}
                   className="transition-opacity hover:opacity-80"
                   style={{
-                    padding: "0.4em 1.2em",
-                    borderRadius: "0.3em",
-                    fontSize: "0.75em",
+                    padding: "0.5em 1.6em",
+                    borderRadius: "0.4em",
+                    fontSize: "0.9em",
                     fontWeight: 500,
                     border: "1px solid hsl(0 0% 25%)",
                     backgroundColor: "transparent",
