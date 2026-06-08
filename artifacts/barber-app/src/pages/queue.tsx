@@ -377,17 +377,21 @@ export default function Queue() {
                 </button>
               </div>
             ) : upcomingBooked && upcomingBooked.scheduledAt ? (
-              <div className="flex flex-col items-center text-center" style={{ gap: "0.8em", padding: "1.5em" }}>
-                <Clock style={{ width: "3.5em", height: "3.5em", color: "hsl(var(--sidebar-primary))", flexShrink: 0 }} />
+              <div
+                className="flex flex-col items-center justify-evenly text-center"
+                style={{ gap: "0.5em", padding: "0.8em 1.5em", width: "100%", height: "100%", overflow: "hidden" }}
+              >
+                <Clock style={{ width: "2.5em", height: "2.5em", color: "hsl(var(--sidebar-primary))", flexShrink: 0 }} />
                 <span
                   data-testid="text-waiting-next"
                   style={{
-                    fontSize: "5vw",
+                    fontSize: "clamp(2rem, 4.5vw, 6rem)",
                     fontWeight: 900,
                     lineHeight: 1,
                     letterSpacing: "-0.02em",
                     textTransform: "uppercase",
                     color: "hsl(var(--foreground))",
+                    flexShrink: 1,
                   }}
                 >
                   Aguardem um momento
@@ -395,9 +399,10 @@ export default function Queue() {
                 <span
                   style={{
                     color: "hsl(0 0% 65%)",
-                    fontSize: "1.7vw",
+                    fontSize: "clamp(0.9rem, 1.5vw, 2rem)",
                     fontWeight: 500,
                     lineHeight: 1.3,
+                    flexShrink: 1,
                   }}
                 >
                   O próximo atendimento começa às
@@ -406,11 +411,12 @@ export default function Queue() {
                   data-testid="text-waiting-next-time"
                   style={{
                     color: "hsl(var(--sidebar-primary))",
-                    fontSize: "10vw",
+                    fontSize: "clamp(3rem, 8vw, 12rem)",
                     fontWeight: 900,
                     letterSpacing: "0.04em",
                     fontFamily: "monospace",
                     lineHeight: 1,
+                    flexShrink: 1,
                   }}
                 >
                   {new Date(upcomingBooked.scheduledAt).toLocaleTimeString("pt-BR", {
