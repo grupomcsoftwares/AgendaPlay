@@ -25,7 +25,7 @@ function LiveClock() {
     return () => clearInterval(id);
   }, []);
   return (
-    <span style={{ color: "hsl(var(--sidebar-primary))", fontFamily: "monospace", fontSize: "1.5rem", fontWeight: 700, letterSpacing: "0.1em" }}>
+    <span style={{ color: "hsl(var(--sidebar-primary))", fontFamily: "monospace", fontSize: "1.25em", fontWeight: 700, letterSpacing: "0.1em" }}>
       {time.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
     </span>
   );
@@ -54,21 +54,21 @@ function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; du
   const accent = overdue ? "hsl(0 72% 55%)" : "hsl(var(--sidebar-primary))";
 
   return (
-    <div className="w-full max-w-md" data-testid="service-progress">
-      <div className="flex items-center justify-between mb-2" style={{ fontSize: "0.8rem" }}>
+    <div style={{ width: "100%", maxWidth: "26em" }} data-testid="service-progress">
+      <div className="flex items-center justify-between" style={{ fontSize: "0.67em", marginBottom: "0.4em" }}>
         <span style={{ color: "hsl(0 0% 55%)", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>
           {overdue ? "Tempo excedido" : "Em andamento"}
         </span>
         <span
           data-testid="text-remaining-time"
-          style={{ color: accent, fontFamily: "monospace", fontWeight: 700, fontSize: "0.95rem", letterSpacing: "0.05em" }}
+          style={{ color: accent, fontFamily: "monospace", fontWeight: 700, fontSize: "1em", letterSpacing: "0.05em" }}
         >
           {label}
         </span>
       </div>
       <div
         className="w-full rounded-full overflow-hidden"
-        style={{ height: 8, backgroundColor: "hsl(0 0% 14%)" }}
+        style={{ height: "0.4em", backgroundColor: "hsl(0 0% 14%)" }}
       >
         <div
           style={{
@@ -76,11 +76,11 @@ function ServiceProgress({ startedAt, durationMinutes }: { startedAt: string; du
             height: "100%",
             backgroundColor: accent,
             transition: "width 0.8s linear",
-            boxShadow: overdue ? "none" : `0 0 12px ${accent}`,
+            boxShadow: overdue ? "none" : `0 0 0.6em ${accent}`,
           }}
         />
       </div>
-      <div className="flex items-center justify-between mt-1.5" style={{ fontSize: "0.7rem", color: "hsl(0 0% 40%)" }}>
+      <div className="flex items-center justify-between" style={{ marginTop: "0.3em", fontSize: "0.58em", color: "hsl(0 0% 40%)" }}>
         <span>
           {Math.floor(elapsedMs / 60_000)}:{Math.floor((elapsedMs % 60_000) / 1000).toString().padStart(2, "0")} decorridos
         </span>
@@ -117,8 +117,8 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
       className="flex flex-col items-center"
       style={{
         backgroundColor: "hsl(0 0% 12%)",
-        borderRadius: "0.5rem",
-        padding: "0.4rem 1.25rem 0.5rem",
+        borderRadius: "0.4em",
+        padding: "0.3em 0.8em 0.4em",
         flexShrink: 0,
       }}
     >
@@ -126,11 +126,11 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
         data-testid="text-scheduled-day"
         style={{
           fontFamily: "monospace",
-          fontSize: "0.65rem",
+          fontSize: "0.54em",
           fontWeight: 700,
           letterSpacing: "0.1em",
           color: isToday ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 55%)",
-          marginBottom: 2,
+          marginBottom: "0.15em",
         }}
       >
         {label}
@@ -138,7 +138,7 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
       <span
         style={{
           fontFamily: "monospace",
-          fontSize: "2rem",
+          fontSize: "1.5em",
           fontWeight: 700,
           letterSpacing: "0.15em",
           color: "hsl(var(--foreground))",
@@ -163,7 +163,6 @@ export default function Queue() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({ clientName: "", serviceId: "" });
 
-  // Poll every 5s so auto-start/auto-complete transitions feel live.
   useEffect(() => {
     const id = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
@@ -174,8 +173,6 @@ export default function Queue() {
   const currentEntry = queue?.find((q) => q.status === "in_progress") ?? null;
   const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
   const nextEntry = waitingQueue[0] ?? null;
-  // The next booked appointment whose scheduled time is still in the future —
-  // used to show the "please wait" message in the empty chair.
   const upcomingBooked = waitingQueue.find(
     (q) => q.scheduledAt !== null && q.scheduledAt !== undefined && new Date(q.scheduledAt) > new Date(),
   ) ?? null;
@@ -228,43 +225,56 @@ export default function Queue() {
   };
 
   return (
+    /* 1em = 1vw — everything inside scales with viewport width */
     <div
       className="flex flex-col"
-      style={{ height: "100dvh", width: "100vw", overflow: "hidden", backgroundColor: "hsl(0 0% 3%)", color: "hsl(var(--foreground))" }}
+      style={{
+        fontSize: "1vw",
+        height: "100dvh",
+        width: "100vw",
+        overflow: "hidden",
+        backgroundColor: "hsl(0 0% 3%)",
+        color: "hsl(var(--foreground))",
+      }}
     >
       {/* Top bar */}
       <div
-        className="flex items-center justify-between px-6"
-        style={{ height: 52, borderBottom: "1px solid hsl(0 0% 10%)", flexShrink: 0 }}
+        className="flex items-center justify-between"
+        style={{ height: "3em", padding: "0 1.5em", borderBottom: "1px solid hsl(0 0% 10%)", flexShrink: 0 }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: "0.75em" }}>
           <Link href="/">
             <button
-              className="flex items-center gap-1 mr-3 opacity-40 hover:opacity-70 transition-opacity"
-              style={{ color: "hsl(var(--foreground))", background: "none", border: "none", cursor: "pointer" }}
+              className="flex items-center opacity-40 hover:opacity-70 transition-opacity"
+              style={{ color: "hsl(var(--foreground))", background: "none", border: "none", cursor: "pointer", marginRight: "0.75em" }}
               data-testid="button-back-queue"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft style={{ width: "0.9em", height: "0.9em" }} />
             </button>
           </Link>
-          <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
-          <span style={{ fontWeight: 700, fontSize: "1rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          <Scissors style={{ width: "1em", height: "1em", color: "hsl(var(--sidebar-primary))" }} />
+          <span style={{ fontWeight: 700, fontSize: "0.85em", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             Fila ao Vivo
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center" style={{ gap: "1.2em" }}>
           <button
             onClick={() => setIsAddOpen(true)}
             data-testid="button-add-queue"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+            className="flex items-center transition-opacity hover:opacity-80"
             style={{
+              gap: "0.4em",
+              padding: "0.3em 0.75em",
+              borderRadius: "0.3em",
+              fontSize: "0.75em",
+              fontWeight: 600,
               backgroundColor: "hsl(var(--sidebar-primary))",
               color: "hsl(var(--sidebar-primary-foreground))",
               border: "none",
               cursor: "pointer",
             }}
           >
-            <Plus className="h-4 w-4" />
+            <Plus style={{ width: "0.9em", height: "0.9em" }} />
             Adicionar
           </button>
           <LiveClock />
@@ -272,15 +282,20 @@ export default function Queue() {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-1 gap-3 p-4 overflow-hidden" style={{ minHeight: 0 }}>
+      <div
+        className="flex flex-1 overflow-hidden"
+        style={{ gap: "0.75em", padding: "0.75em", minHeight: 0 }}
+      >
         {/* Left column */}
-        <div className="flex flex-col gap-3" style={{ flex: "1 1 65%", minHeight: 0 }}>
+        <div className="flex flex-col" style={{ flex: "1 1 65%", gap: "0.75em", minHeight: 0 }}>
+
           {/* Cadeira atual */}
           <div
-            className="relative flex flex-col items-center justify-center rounded-xl overflow-hidden"
+            className="relative flex flex-col items-center justify-center overflow-hidden"
             style={{
               flex: "1 1 0%",
               minHeight: 0,
+              borderRadius: "0.6em",
               border: currentEntry
                 ? "2px solid hsl(var(--sidebar-primary))"
                 : "2px solid hsl(0 0% 14%)",
@@ -289,8 +304,14 @@ export default function Queue() {
           >
             {/* Badge */}
             <div
-              className="absolute top-4 right-4 px-3 py-1 rounded-md text-xs font-bold"
+              className="absolute"
               style={{
+                top: "0.8em",
+                right: "0.8em",
+                padding: "0.25em 0.6em",
+                borderRadius: "0.3em",
+                fontSize: "0.6em",
+                fontWeight: 700,
                 backgroundColor: "hsl(var(--sidebar-primary))",
                 color: "hsl(var(--sidebar-primary-foreground))",
                 letterSpacing: "0.08em",
@@ -300,23 +321,23 @@ export default function Queue() {
             </div>
 
             {currentEntry ? (
-              <div className="flex flex-col items-center gap-3 p-5 w-full">
+              <div className="flex flex-col items-center w-full" style={{ gap: "0.75em", padding: "1.5em" }}>
                 <div
                   className="flex items-center justify-center rounded-full"
                   style={{
-                    width: 56,
-                    height: 56,
+                    width: "2.9em",
+                    height: "2.9em",
                     backgroundColor: "hsl(var(--sidebar-primary) / 0.15)",
                     flexShrink: 0,
                   }}
                 >
-                  <Scissors className="h-6 w-6" style={{ color: "hsl(var(--sidebar-primary))" }} />
+                  <Scissors style={{ width: "1.25em", height: "1.25em", color: "hsl(var(--sidebar-primary))" }} />
                 </div>
                 <div className="text-center" style={{ overflow: "hidden" }}>
                   <h2
                     data-testid="text-current-name"
                     style={{
-                      fontSize: "clamp(3rem, 8vw, 7rem)",
+                      fontSize: "8vw",
                       fontWeight: 900,
                       lineHeight: 0.95,
                       letterSpacing: "-0.03em",
@@ -327,7 +348,7 @@ export default function Queue() {
                   >
                     {currentEntry.clientName}
                   </h2>
-                  <p className="mt-1" style={{ color: "hsl(var(--sidebar-primary))", fontSize: "1rem", fontWeight: 500 }}>
+                  <p style={{ color: "hsl(var(--sidebar-primary))", fontSize: "0.85em", fontWeight: 500, marginTop: "0.3em" }}>
                     {currentEntry.serviceName}
                   </p>
                 </div>
@@ -340,8 +361,12 @@ export default function Queue() {
                 <button
                   onClick={() => handleRemove(currentEntry.id)}
                   data-testid={`button-complete-${currentEntry.id}`}
-                  className="px-5 py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
+                  className="transition-opacity hover:opacity-80"
                   style={{
+                    padding: "0.4em 1.2em",
+                    borderRadius: "0.3em",
+                    fontSize: "0.75em",
+                    fontWeight: 500,
                     border: "1px solid hsl(0 0% 25%)",
                     backgroundColor: "transparent",
                     color: "hsl(0 0% 70%)",
@@ -352,12 +377,12 @@ export default function Queue() {
                 </button>
               </div>
             ) : upcomingBooked && upcomingBooked.scheduledAt ? (
-              <div className="flex flex-col items-center gap-4 p-6 text-center">
-                <Clock style={{ width: "3.5rem", height: "3.5rem", color: "hsl(var(--sidebar-primary))", flexShrink: 0 }} />
+              <div className="flex flex-col items-center text-center" style={{ gap: "0.8em", padding: "1.5em" }}>
+                <Clock style={{ width: "3.5em", height: "3.5em", color: "hsl(var(--sidebar-primary))", flexShrink: 0 }} />
                 <span
                   data-testid="text-waiting-next"
                   style={{
-                    fontSize: "clamp(2rem, 5vw, 4rem)",
+                    fontSize: "5vw",
                     fontWeight: 900,
                     lineHeight: 1,
                     letterSpacing: "-0.02em",
@@ -370,7 +395,7 @@ export default function Queue() {
                 <span
                   style={{
                     color: "hsl(0 0% 65%)",
-                    fontSize: "clamp(1rem, 2vw, 1.5rem)",
+                    fontSize: "1.7vw",
                     fontWeight: 500,
                     lineHeight: 1.3,
                   }}
@@ -381,7 +406,7 @@ export default function Queue() {
                   data-testid="text-waiting-next-time"
                   style={{
                     color: "hsl(var(--sidebar-primary))",
-                    fontSize: "clamp(4rem, 10vw, 8rem)",
+                    fontSize: "10vw",
                     fontWeight: 900,
                     letterSpacing: "0.04em",
                     fontFamily: "monospace",
@@ -395,21 +420,33 @@ export default function Queue() {
                 </span>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3" style={{ color: "hsl(0 0% 30%)" }}>
-                <Scissors className="h-10 w-10" />
-                <span style={{ fontSize: "1.25rem", fontWeight: 600 }}>Cadeira Disponível</span>
+              <div className="flex flex-col items-center" style={{ gap: "0.6em", color: "hsl(0 0% 30%)" }}>
+                <Scissors style={{ width: "2em", height: "2em" }} />
+                <span style={{ fontSize: "1em", fontWeight: 600 }}>Cadeira Disponível</span>
               </div>
             )}
           </div>
 
           {/* Próximo */}
           <div
-            className="relative rounded-xl p-4"
-            style={{ backgroundColor: "hsl(0 0% 6%)", border: "1px solid hsl(0 0% 12%)", flexShrink: 0, minHeight: 0 }}
+            className="relative"
+            style={{
+              borderRadius: "0.6em",
+              padding: "0.75em 1em",
+              backgroundColor: "hsl(0 0% 6%)",
+              border: "1px solid hsl(0 0% 12%)",
+              flexShrink: 0,
+            }}
           >
             <div
-              className="absolute top-4 left-5 px-2.5 py-0.5 rounded text-xs font-semibold"
+              className="absolute"
               style={{
+                top: "0.6em",
+                left: "1em",
+                padding: "0.15em 0.5em",
+                borderRadius: "0.2em",
+                fontSize: "0.55em",
+                fontWeight: 600,
                 backgroundColor: "hsl(0 0% 16%)",
                 color: "hsl(0 0% 60%)",
                 letterSpacing: "0.05em",
@@ -419,59 +456,81 @@ export default function Queue() {
             </div>
 
             {nextEntry ? (
-              <div className="flex items-center justify-between mt-6">
+              <div className="flex items-center justify-between" style={{ marginTop: "1.2em" }}>
                 <div>
-                  <h3 style={{ fontSize: "2rem", fontWeight: 800, lineHeight: 1.1 }}>{nextEntry.clientName}</h3>
-                  <p style={{ color: "hsl(0 0% 45%)", fontSize: "0.9rem", marginTop: 4 }}>
+                  <h3 style={{ fontSize: "1.5em", fontWeight: 800, lineHeight: 1.1 }}>{nextEntry.clientName}</h3>
+                  <p style={{ color: "hsl(0 0% 45%)", fontSize: "0.7em", marginTop: "0.3em" }}>
                     {nextEntry.serviceName} · {nextEntry.serviceDuration} min
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center" style={{ gap: "0.6em" }}>
                   {nextEntry.scheduledAt && <DigitalTime scheduledAt={nextEntry.scheduledAt} />}
                   {!currentEntry && (
                     <button
                       onClick={() => handleStart(nextEntry.id)}
                       data-testid={`button-start-${nextEntry.id}`}
-                      className="flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-opacity hover:opacity-80"
+                      className="flex items-center transition-opacity hover:opacity-80"
                       style={{
+                        gap: "0.4em",
+                        padding: "0.4em 0.9em",
+                        borderRadius: "0.3em",
+                        fontWeight: 600,
+                        fontSize: "0.75em",
                         backgroundColor: "hsl(var(--sidebar-primary))",
                         color: "hsl(var(--sidebar-primary-foreground))",
                         border: "none",
                         cursor: "pointer",
-                        fontSize: "0.875rem",
                       }}
                     >
-                      <Play className="h-4 w-4" />
+                      <Play style={{ width: "0.9em", height: "0.9em" }} />
                       Iniciar Agora
                     </button>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="mt-6 flex items-center" style={{ color: "hsl(0 0% 30%)", fontSize: "1rem" }}>
+              <div className="flex items-center" style={{ marginTop: "1.2em", color: "hsl(0 0% 30%)", fontSize: "0.83em" }}>
                 Nenhum cliente aguardando
               </div>
             )}
           </div>
         </div>
 
-        {/* Right column — Fila de hoje */}
+        {/* Right column — Próximos da Fila */}
         <div
-          className="flex flex-col rounded-xl overflow-hidden"
-          style={{ flex: "0 0 32%", minHeight: 0, backgroundColor: "hsl(0 0% 6%)", border: "1px solid hsl(0 0% 12%)" }}
+          className="flex flex-col overflow-hidden"
+          style={{
+            flex: "0 0 32%",
+            minHeight: 0,
+            borderRadius: "0.6em",
+            backgroundColor: "hsl(0 0% 6%)",
+            border: "1px solid hsl(0 0% 12%)",
+          }}
         >
           <div
-            className="flex items-center gap-2 px-5 py-4"
-            style={{ borderBottom: "1px solid hsl(0 0% 10%)", flexShrink: 0 }}
+            className="flex items-center"
+            style={{
+              gap: "0.4em",
+              padding: "0.6em 1em",
+              borderBottom: "1px solid hsl(0 0% 10%)",
+              flexShrink: 0,
+            }}
           >
-            <Clock className="h-4 w-4" style={{ color: "hsl(var(--sidebar-primary))" }} />
-            <span style={{ fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <Clock style={{ width: "0.8em", height: "0.8em", color: "hsl(var(--sidebar-primary))" }} />
+            <span style={{ fontWeight: 700, fontSize: "0.67em", letterSpacing: "0.1em", textTransform: "uppercase" }}>
               Próximos da Fila
             </span>
             {waitingQueue.length > 0 && (
               <span
-                className="ml-auto text-xs px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: "hsl(var(--sidebar-primary) / 0.15)", color: "hsl(var(--sidebar-primary))", fontWeight: 600 }}
+                className="ml-auto"
+                style={{
+                  fontSize: "0.6em",
+                  padding: "0.1em 0.5em",
+                  borderRadius: "9999px",
+                  backgroundColor: "hsl(var(--sidebar-primary) / 0.15)",
+                  color: "hsl(var(--sidebar-primary))",
+                  fontWeight: 600,
+                }}
               >
                 {waitingQueue.length}
               </span>
@@ -480,46 +539,53 @@ export default function Queue() {
 
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
-              <div className="p-5 space-y-3">
+              <div style={{ padding: "0.6em", display: "flex", flexDirection: "column", gap: "0.5em" }}>
                 {[1, 2].map((i) => (
-                  <div key={i} className="h-14 rounded-lg animate-pulse" style={{ backgroundColor: "hsl(0 0% 10%)" }} />
+                  <div key={i} className="animate-pulse" style={{ height: "2.5em", borderRadius: "0.4em", backgroundColor: "hsl(0 0% 10%)" }} />
                 ))}
               </div>
             ) : waitingQueue.length === 0 ? (
               <div
                 className="flex items-center justify-center h-full"
-                style={{ color: "hsl(0 0% 30%)", fontSize: "0.875rem" }}
+                style={{ color: "hsl(0 0% 30%)", fontSize: "0.73em" }}
               >
                 Nenhum cliente na fila
               </div>
             ) : (
-              <div className="p-3 space-y-2">
+              <div style={{ padding: "0.5em", display: "flex", flexDirection: "column", gap: "0.35em" }}>
                 {waitingQueue.map((entry, idx) => (
                   <div
                     key={entry.id}
                     data-testid={`queue-item-${entry.id}`}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg group"
-                    style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 13%)" }}
+                    className="flex items-center justify-between group"
+                    style={{
+                      padding: "0.5em 0.75em",
+                      borderRadius: "0.4em",
+                      backgroundColor: "hsl(0 0% 9%)",
+                      border: "1px solid hsl(0 0% 13%)",
+                    }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center" style={{ gap: "0.5em" }}>
                       <span
-                        className="flex items-center justify-center rounded-full text-xs font-bold"
+                        className="flex items-center justify-center rounded-full"
                         style={{
-                          width: 26,
-                          height: 26,
+                          width: "1.3em",
+                          height: "1.3em",
+                          fontSize: "0.83em",
                           backgroundColor: "hsl(0 0% 14%)",
                           color: "hsl(0 0% 50%)",
+                          fontWeight: 700,
                           flexShrink: 0,
                         }}
                       >
                         {idx + 1}
                       </span>
                       <div>
-                        <p style={{ fontWeight: 600, fontSize: "0.875rem" }}>{entry.clientName}</p>
-                        <p style={{ color: "hsl(0 0% 40%)", fontSize: "0.75rem" }}>{entry.serviceName}</p>
+                        <p style={{ fontWeight: 600, fontSize: "0.73em" }}>{entry.clientName}</p>
+                        <p style={{ color: "hsl(0 0% 40%)", fontSize: "0.62em" }}>{entry.serviceName}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center" style={{ gap: "0.3em" }}>
                       {entry.scheduledAt && (() => {
                         const sd = new Date(entry.scheduledAt);
                         const { label, isToday } = dayLabel(sd);
@@ -535,35 +601,49 @@ export default function Queue() {
                               fontWeight: 700,
                               letterSpacing: "0.05em",
                               backgroundColor: bg,
-                              padding: "0.25rem 0.5rem",
-                              borderRadius: "0.375rem",
-                              lineHeight: 1.15,
+                              padding: "0.2em 0.4em",
+                              borderRadius: "0.25em",
+                              lineHeight: 1.2,
                             }}
                           >
-                            <span style={{ fontSize: "0.6rem", color: accent, letterSpacing: "0.08em" }}>{label}</span>
-                            <span style={{ fontSize: "0.85rem", color: accent }}>{time}</span>
+                            <span style={{ fontSize: "0.5em", color: accent, letterSpacing: "0.08em" }}>{label}</span>
+                            <span style={{ fontSize: "0.7em", color: accent }}>{time}</span>
                           </span>
                         );
                       })()}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleStart(entry.id)}
-                        data-testid={`button-start-list-${entry.id}`}
-                        className="p-1.5 rounded hover:opacity-80"
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "hsl(var(--sidebar-primary))" }}
-                        title="Iniciar"
-                      >
-                        <Play className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleRemove(entry.id)}
-                        data-testid={`button-remove-list-${entry.id}`}
-                        className="p-1.5 rounded hover:opacity-80"
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "hsl(0 62% 50%)" }}
-                        title="Remover"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ gap: "0.15em" }}>
+                        <button
+                          onClick={() => handleStart(entry.id)}
+                          data-testid={`button-start-list-${entry.id}`}
+                          className="hover:opacity-80"
+                          style={{
+                            padding: "0.3em",
+                            borderRadius: "0.2em",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "hsl(var(--sidebar-primary))",
+                          }}
+                          title="Iniciar"
+                        >
+                          <Play style={{ width: "0.75em", height: "0.75em" }} />
+                        </button>
+                        <button
+                          onClick={() => handleRemove(entry.id)}
+                          data-testid={`button-remove-list-${entry.id}`}
+                          className="hover:opacity-80"
+                          style={{
+                            padding: "0.3em",
+                            borderRadius: "0.2em",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "hsl(0 62% 50%)",
+                          }}
+                          title="Remover"
+                        >
+                          <Trash2 style={{ width: "0.75em", height: "0.75em" }} />
+                        </button>
                       </div>
                     </div>
                   </div>
