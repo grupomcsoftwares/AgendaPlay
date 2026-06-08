@@ -287,7 +287,7 @@ export default function Queue() {
         style={{ gap: "0.75em", padding: "0.75em", minHeight: 0 }}
       >
         {/* Left column */}
-        <div className="flex flex-col" style={{ flex: "1 1 65%", gap: "0.75em", minHeight: 0 }}>
+        <div className="flex flex-col overflow-hidden" style={{ flex: "1 1 65%", gap: "0.75em", minHeight: 0 }}>
 
           {/* Cadeira atual */}
           <div
