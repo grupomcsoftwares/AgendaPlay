@@ -1,9 +1,8 @@
 import { Router } from "express";
 import webpush from "web-push";
 import { db } from "@workspace/db";
-import { pushSubscriptionsTable } from "@workspace/db/schema";
+import { pushSubscriptionsTable, appointmentsTable, settingsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-
 
 const router = Router();
 
@@ -52,37 +51,59 @@ export async function runPushScheduler() {
     try {
       const now = new Date();
       const windowStart = new Date(now.getTime() + 14 * 60 * 1000);
-      const windowEnd = new Date(now.getTime() + 16 * 60 * 1000);
-      const subs = await db
-        .select()
+      const windowEnd   = new Date(now.getTime() + 16 * 60 * 1000);
+
+      // Join with appointments + settings for rich notification content
+      const rows = await db
+        .select({
+          id:           pushSubscriptionsTable.id,
+          scheduledAt:  pushSubscriptionsTable.scheduledAt,
+          endpoint:     pushSubscriptionsTable.endpoint,
+          p256dh:       pushSubscriptionsTable.p256dh,
+          auth:         pushSubscriptionsTable.auth,
+          cancelToken:  pushSubscriptionsTable.cancelToken,
+          clientName:   appointmentsTable.clientName,
+          serviceName:  appointmentsTable.serviceName,
+          barberName:   appointmentsTable.barberName,
+          shopName:     settingsTable.barbershopName,
+        })
         .from(pushSubscriptionsTable)
+        .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
+        .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
         .where(eq(pushSubscriptionsTable.notify15Sent, false));
-      for (const sub of subs) {
-        const apptTime = new Date(sub.scheduledAt).getTime();
-        if (apptTime >= windowStart.getTime() && apptTime <= windowEnd.getTime()) {
-          const apptHH = new Date(sub.scheduledAt).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "America/Sao_Paulo",
-          });
-          try {
-            await webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              JSON.stringify({
-                title: "⏰ Seu horário é em 15 minutos!",
-                body: `Seu agendamento está confirmado para as ${apptHH}. Fique pronto!`,
-                tag: `appt-${sub.cancelToken}`,
-                url: `/agendamento/${sub.cancelToken}`,
-              }),
-            );
-            await db
-              .update(pushSubscriptionsTable)
-              .set({ notify15Sent: true })
-              .where(eq(pushSubscriptionsTable.id, sub.id));
-          } catch {
-            // subscription expired or invalid — remove it
-            await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, sub.id));
-          }
+
+      for (const row of rows) {
+        const apptTime = new Date(row.scheduledAt).getTime();
+        if (apptTime < windowStart.getTime() || apptTime > windowEnd.getTime()) continue;
+
+        const apptHH = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Sao_Paulo",
+        });
+
+        const shopLabel   = row.shopName ?? "AgendaPlay";
+        const barberPart  = row.barberName ? ` com ${row.barberName}` : "";
+        const title       = `⏰ ${shopLabel} — em 15 minutos!`;
+        const body        = `${row.clientName} · ${row.serviceName}${barberPart} · ${apptHH}`;
+
+        try {
+          await webpush.sendNotification(
+            { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+            JSON.stringify({
+              title,
+              body,
+              tag: `appt-${row.cancelToken}`,
+              url: `/agendamento/${row.cancelToken}`,
+            }),
+          );
+          await db
+            .update(pushSubscriptionsTable)
+            .set({ notify15Sent: true })
+            .where(eq(pushSubscriptionsTable.id, row.id));
+        } catch {
+          // subscription expired or invalid — remove it
+          await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, row.id));
         }
       }
     } catch { /* ignore scheduler errors */ }
