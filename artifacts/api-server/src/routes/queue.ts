@@ -42,7 +42,9 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
     .where(and(eq(queueTable.userId, userId), eq(queueTable.status, "in_progress")));
 
   for (const row of inProgressRows) {
-    const anchor = row.scheduledAt ?? row.startedAt;
+    // Use startedAt as anchor — the service ends after its duration from when it
+    // actually started, not from when it was originally scheduled.
+    const anchor = row.startedAt;
     if (!anchor) continue;
     const endMs = anchor.getTime() + row.serviceDuration * 60_000;
     if (endMs > now.getTime()) continue;
@@ -129,6 +131,8 @@ router.post("/queue", async (req, res): Promise<void> => {
       position: nextPosition,
       status: "waiting",
     }).returning();
+    // Auto-start immediately if the chair is empty (e.g. walk-in with no queue)
+    await autoAdvanceInTx(tx, userId);
     return created;
   });
   res.status(201).json(formatEntry(entry));
