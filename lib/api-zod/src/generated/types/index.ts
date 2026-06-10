@@ -28,6 +28,7 @@ export * from './comboDiscount';
 export * from './comboDiscountDiscountType';
 export * from './comboDiscountInput';
 export * from './comboDiscountInputDiscountType';
+export * from './commissionByBarber';
 export * from './dashboardSummary';
 export * from './daySchedule';
 export * from './financialSummary';

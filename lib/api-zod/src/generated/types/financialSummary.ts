@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { CommissionByBarber } from './commissionByBarber';
 import type { RevenueByDay } from './revenueByDay';
 import type { RevenueByService } from './revenueByService';
 
@@ -14,4 +15,5 @@ export interface FinancialSummary {
   averageTicket: number;
   revenueByService: RevenueByService[];
   revenueByDay: RevenueByDay[];
+  commissionByBarber: CommissionByBarber[];
 }

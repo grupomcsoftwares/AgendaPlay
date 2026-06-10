@@ -1437,7 +1437,7 @@ components:
 
     FinancialSummary:
       type: object
-      required: [totalRevenue, totalAppointments, averageTicket, revenueByService, revenueByDay]
+      required: [totalRevenue, totalAppointments, averageTicket, revenueByService, revenueByDay, commissionByBarber]
       properties:
         totalRevenue:
           type: number
@@ -1453,6 +1453,26 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RevenueByDay"
+        commissionByBarber:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionByBarber"
+
+    CommissionByBarber:
+      type: object
+      required: [barberName, revenue, commissionRate, commissionAmount, appointmentCount]
+      properties:
+        barberName:
+          type: string
+        revenue:
+          type: number
+        commissionRate:
+          type: number
+          description: Commission percentage (0-100). 0 means no rate set.
+        commissionAmount:
+          type: number
+        appointmentCount:
+          type: integer
 
     RevenueByService:
       type: object

@@ -628,6 +628,13 @@ export const GetFinancialSummaryResponse = zod.object({
   "date": zod.string(),
   "revenue": zod.number(),
   "count": zod.number()
+})),
+  "commissionByBarber": zod.array(zod.object({
+  "barberName": zod.string(),
+  "revenue": zod.number(),
+  "commissionRate": zod.number().describe('Commission percentage (0-100). 0 means no rate set.'),
+  "commissionAmount": zod.number(),
+  "appointmentCount": zod.number()
 }))
 })
 

@@ -284,12 +284,22 @@ export interface RevenueByDay {
   count: number;
 }
 
+export interface CommissionByBarber {
+  barberName: string;
+  revenue: number;
+  /** Commission percentage (0-100). 0 means no rate set. */
+  commissionRate: number;
+  commissionAmount: number;
+  appointmentCount: number;
+}
+
 export interface FinancialSummary {
   totalRevenue: number;
   totalAppointments: number;
   averageTicket: number;
   revenueByService: RevenueByService[];
   revenueByDay: RevenueByDay[];
+  commissionByBarber: CommissionByBarber[];
 }
 
 export interface LoyaltyConfig {

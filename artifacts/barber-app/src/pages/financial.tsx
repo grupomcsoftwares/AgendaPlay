@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useGetFinancialSummary, getGetFinancialSummaryQueryKey } from "@workspace/api-client-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon } from "lucide-react";
+import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -205,6 +205,88 @@ export default function Financial() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Comissão por Barbeiro */}
+      <Card className="bg-card border-border">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-primary" />
+            Comissão por Barbeiro
+          </CardTitle>
+          {summary?.commissionByBarber && summary.commissionByBarber.length > 0 && (
+            <span className="text-sm text-muted-foreground">
+              Total:{" "}
+              <span className="font-semibold text-amber-400">
+                {formatCurrency(
+                  summary.commissionByBarber.reduce((s, b) => s + b.commissionAmount, 0)
+                )}
+              </span>
+            </span>
+          )}
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+          ) : !summary?.commissionByBarber || summary.commissionByBarber.length === 0 ? (
+            <div className="flex h-24 items-center justify-center text-muted-foreground text-sm">
+              Nenhum atendimento com barbeiro atribuído neste período
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {summary.commissionByBarber.map((b) => {
+                const pct = b.revenue > 0 ? (b.commissionAmount / b.revenue) * 100 : 0;
+                const barWidth = summary.commissionByBarber.length > 1
+                  ? (b.commissionAmount / Math.max(...summary.commissionByBarber.map(x => x.commissionAmount || 0.01))) * 100
+                  : 100;
+                return (
+                  <div key={b.barberName} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{b.barberName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {b.appointmentCount} atend.
+                        </span>
+                        {b.commissionRate > 0 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">
+                            {b.commissionRate}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground">
+                          receita {formatCurrency(b.revenue)}
+                        </span>
+                        <span className="font-bold text-amber-400 min-w-[80px] text-right">
+                          {formatCurrency(b.commissionAmount)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${barWidth}%`,
+                          backgroundColor: b.commissionRate > 0
+                            ? "hsl(38 88% 55%)"
+                            : "hsl(0 0% 35%)",
+                        }}
+                      />
+                    </div>
+                    {b.commissionRate === 0 && (
+                      <p className="text-[0.7rem] text-muted-foreground">
+                        Sem taxa de comissão cadastrada — configure em Barbeiros
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
