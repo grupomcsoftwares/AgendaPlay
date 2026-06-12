@@ -53,7 +53,7 @@ export default function Subscribe() {
   }, [justSubscribed, refresh]);
 
   useEffect(() => {
-    if (user?.canAccess && !checkingSubscription) {
+    if (user?.hasActiveSubscription && !checkingSubscription) {
       setLocation("/dashboard");
     }
   }, [user, checkingSubscription, setLocation]);
