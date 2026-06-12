@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and } from "drizzle-orm";
-import { db, clientsTable } from "@workspace/db";
+import { eq, ilike, and, inArray } from "drizzle-orm";
+import { db, clientsTable, appointmentsTable, queueTable } from "@workspace/db";
 import {
   ListClientsQueryParams,
   CreateClientBody,
