@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,22 @@ export default function Dashboard() {
   const bookingUrl = user?.slug
     ? `${window.location.origin}/b/${user.slug}`
     : null;
+
+  const handleShare = async () => {
+    if (!bookingUrl) return;
+    const shopName = user?.barbershopName || "minha barbearia";
+    const text = `Agende seu horário na ${shopName}:\n${bookingUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shopName, text, url: bookingUrl });
+      } catch {
+      }
+    } else {
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    }
+  };
 
   const handleCopy = () => {
     if (!bookingUrl) return;
@@ -100,6 +116,15 @@ export default function Dashboard() {
                     <span>Copiar</span>
                   </>
                 )}
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                className="shrink-0 gap-1.5"
+                onClick={handleShare}
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Compartilhar</span>
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
