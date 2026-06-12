@@ -72,11 +72,38 @@ router.patch("/clients/:id", async (req, res): Promise<void> => {
     return;
   }
   const userId = req.session.userId!;
-  const [client] = await db
-    .update(clientsTable)
-    .set(parsed.data)
-    .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
-    .returning();
+
+  const client = await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(clientsTable)
+      .set(parsed.data)
+      .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
+      .returning();
+    if (!updated) return null;
+
+    // Propagate name change to all appointments and queue entries for this client
+    if (parsed.data.name) {
+      const updatedAppts = await tx
+        .update(appointmentsTable)
+        .set({ clientName: parsed.data.name })
+        .where(and(
+          eq(appointmentsTable.userId, userId),
+          eq(appointmentsTable.clientId, params.data.id),
+        ))
+        .returning({ id: appointmentsTable.id });
+
+      const apptIds = updatedAppts.map((a) => a.id).filter((id): id is number => id != null);
+      if (apptIds.length > 0) {
+        await tx
+          .update(queueTable)
+          .set({ clientName: parsed.data.name })
+          .where(inArray(queueTable.appointmentId, apptIds));
+      }
+    }
+
+    return updated;
+  });
+
   if (!client) {
     res.status(404).json({ error: "Client not found" });
     return;
