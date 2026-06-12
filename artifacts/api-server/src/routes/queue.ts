@@ -77,7 +77,8 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
     .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'waiting'`))
-    .orderBy(queueTable.position);
+    // Same ordering as GET /queue: by scheduled time, walk-ins last by position
+    .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
 
   const next = candidates.find(
     (c) => c.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now),
@@ -106,7 +107,8 @@ router.get("/queue", async (req, res): Promise<void> => {
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
     .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
-    .orderBy(queueTable.position);
+    // Scheduled appointments first (sorted by time); walk-ins (no scheduledAt) after, by insertion order
+    .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
 
