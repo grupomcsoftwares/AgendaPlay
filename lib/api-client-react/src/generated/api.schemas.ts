@@ -492,6 +492,19 @@ export interface SettingsUpdate {
   loyaltyConfig?: LoyaltyConfig | null;
 }
 
+export interface NextAvailableResult {
+  /**
+     * YYYY-MM-DD of next available slot, or null if none found
+     * @nullable
+     */
+  nextDate: string | null;
+  /**
+     * HH:MM of next available slot, or null if none found
+     * @nullable
+     */
+  nextTime: string | null;
+}
+
 export type ComboDiscountDiscountType = typeof ComboDiscountDiscountType[keyof typeof ComboDiscountDiscountType];
 
 

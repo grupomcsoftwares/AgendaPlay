@@ -474,6 +474,19 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
 
 
 /**
+ * @summary Get next available slot for a public shop (no auth required)
+ */
+export const GetNextAvailableParams = zod.object({
+  "slug": zod.coerce.string()
+})
+
+export const GetNextAvailableResponse = zod.object({
+  "nextDate": zod.string().nullable().describe('YYYY-MM-DD of next available slot, or null if none found'),
+  "nextTime": zod.string().nullable().describe('HH:MM of next available slot, or null if none found')
+})
+
+
+/**
  * @summary Get available time slots for a date and service
  */
 export const GetAvailabilityQueryParams = zod.object({

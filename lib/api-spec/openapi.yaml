@@ -451,6 +451,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /b/{slug}/next-available:
+    get:
+      operationId: getNextAvailable
+      tags: [appointments]
+      summary: Get next available slot for a public shop (no auth required)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Next available slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NextAvailableResult"
+        "404":
+          description: Shop not found
+
   /availability:
     get:
       operationId: getAvailability
@@ -1798,6 +1819,17 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
             - type: "null"
+
+    NextAvailableResult:
+      type: object
+      required: [nextDate, nextTime]
+      properties:
+        nextDate:
+          type: ["string", "null"]
+          description: "YYYY-MM-DD of next available slot, or null if none found"
+        nextTime:
+          type: ["string", "null"]
+          description: "HH:MM of next available slot, or null if none found"
 
     ComboDiscount:
       type: object

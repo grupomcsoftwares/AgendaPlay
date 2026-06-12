@@ -46,6 +46,7 @@ export * from './listSubscriptionPlansParams';
 export * from './loyaltyBalance';
 export * from './loyaltyClientBalance';
 export * from './loyaltyConfig';
+export * from './nextAvailableResult';
 export * from './queueEntry';
 export * from './queueInput';
 export * from './rescheduleByTokenInput';

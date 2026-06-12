@@ -51,6 +51,7 @@ import type {
   ListSubscriptionPlansParams,
   LoyaltyBalance,
   LoyaltyClientBalance,
+  NextAvailableResult,
   QueueEntry,
   QueueInput,
   RescheduleByTokenInput,
@@ -1707,6 +1708,83 @@ export const useRescheduleAppointmentByToken = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getRescheduleAppointmentByTokenMutationOptions(options));
     }
+
+export const getGetNextAvailableUrl = (slug: string,) => {
+
+
+
+
+  return `/api/b/${slug}/next-available`
+}
+
+/**
+ * @summary Get next available slot for a public shop (no auth required)
+ */
+export const getNextAvailable = async (slug: string, options?: RequestInit): Promise<NextAvailableResult> => {
+
+  return customFetch<NextAvailableResult>(getGetNextAvailableUrl(slug),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNextAvailableQueryKey = (slug: string,) => {
+    return [
+    `/api/b/${slug}/next-available`
+    ] as const;
+    }
+
+
+export const getGetNextAvailableQueryOptions = <TData = Awaited<ReturnType<typeof getNextAvailable>>, TError = ErrorType<void>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNextAvailableQueryKey(slug);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNextAvailable>>> = ({ signal }) => getNextAvailable(slug, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(slug), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNextAvailableQueryResult = NonNullable<Awaited<ReturnType<typeof getNextAvailable>>>
+export type GetNextAvailableQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get next available slot for a public shop (no auth required)
+ */
+
+export function useGetNextAvailable<TData = Awaited<ReturnType<typeof getNextAvailable>>, TError = ErrorType<void>>(
+ slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNextAvailableQueryOptions(slug,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getGetAvailabilityUrl = (params: GetAvailabilityParams,) => {
   const normalizedParams = new URLSearchParams();
