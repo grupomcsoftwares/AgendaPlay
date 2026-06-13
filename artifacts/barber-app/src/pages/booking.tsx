@@ -235,7 +235,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const loyaltyQueryParams = { ...(shopId ? { shopId } : {}), phone: normalizedPhone };
   const { data: loyaltyBalance } = useGetLoyaltyBalance(
     loyaltyQueryParams,
-    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 3 && normalizedPhone.length >= 8 } }
+    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 1 && normalizedPhone.length >= 8 } }
   );
 
   const subPlansParams = shopId ? { shopId } : undefined;
@@ -642,9 +642,26 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               <h2 className="text-xl font-bold">Escolha os serviços</h2>
               <p className="text-sm text-muted-foreground">Selecione um ou mais serviços</p>
             </div>
+
+            {/* Loyalty banner — shown when client has points redeemable for at least one service */}
+            {loyaltyBalance?.enabled && loyaltyAvailableDiscount > 0 && eligibleServicesAll.some(s => s.price <= loyaltyAvailableDiscount) && (
+              <div
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: `${AMBER}18`, border: `1px solid ${AMBER}55`, color: AMBER }}
+              >
+                <Star className="w-4 h-4 shrink-0" />
+                <span>
+                  Você tem <strong>{loyaltyBalance.points} pontos</strong> — vale até{" "}
+                  <strong>R$ {loyaltyAvailableDiscount.toFixed(2).replace(".", ",")}</strong> de desconto.
+                  Os serviços marcados com ⭐ podem ser trocados pelos seus pontos!
+                </span>
+              </div>
+            )}
+
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
+                const redeemableWithPoints = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
                 return (
                   <div key={service.id} className="relative">
                     <button
@@ -656,7 +673,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                       className="w-full text-left rounded-2xl p-4 transition-all"
                       style={{
                         backgroundColor: isSelected ? "hsl(0 0% 10%)" : "hsl(0 0% 7%)",
-                        border: `2px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                        border: `2px solid ${isSelected ? AMBER : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
                         cursor: isSelected ? "default" : "pointer",
                       }}
                     >
@@ -699,6 +716,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               <DollarSign className="w-3.5 h-3.5" />
                               R$ {service.price.toFixed(2).replace(".", ",")}
                             </span>
+                            {redeemableWithPoints && (
+                              <span
+                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }}
+                              >
+                                ⭐ Trocar por pontos
+                              </span>
+                            )}
                           </div>
                         </div>
                         {!isSelected && (
