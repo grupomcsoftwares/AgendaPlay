@@ -180,17 +180,26 @@ export default function Queue() {
   // Implements spatial navigation for TV remotes that send arrow key events.
   // Any element with data-tvfocus is part of the navigable grid.
   useEffect(() => {
+    // Auto-focus first navigable element on load so arrow keys work immediately
+    const autoFocus = setTimeout(() => {
+      const first = document.querySelector<HTMLElement>("[data-tvfocus]");
+      if (first && document.activeElement === document.body) first.focus();
+    }, 600);
+
+    const ARROW_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    const ALL_KEYS   = [...ARROW_KEYS, "Enter"];
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"];
-      if (!KEYS.includes(e.key)) return;
+      if (!ALL_KEYS.includes(e.key)) return;
+
+      // Always block default scroll/action for these keys on this page
+      e.preventDefault();
 
       const focusables = Array.from(
         document.querySelectorAll<HTMLElement>("[data-tvfocus]")
       ).filter((el) => !el.hasAttribute("disabled") && !el.closest("[hidden]"));
 
       if (focusables.length === 0) return;
-
-      e.preventDefault();
 
       const active = document.activeElement as HTMLElement | null;
 
@@ -207,28 +216,36 @@ export default function Queue() {
       }
 
       const cur = active.getBoundingClientRect();
+      const curMX = (cur.left + cur.right) / 2;
+      const curMY = (cur.top + cur.bottom) / 2;
 
       let best: HTMLElement | null = null;
       let bestScore = Infinity;
 
+      // Cross-axis penalty is 1.5 — strongly prefer elements in the pressed direction
+      // before penalising for off-axis offset, so Right really goes right, not diagonal.
+      const CROSS_PENALTY = 1.5;
+
       for (const el of focusables) {
         if (el === active) continue;
         const r = el.getBoundingClientRect();
+        const rMX = (r.left + r.right) / 2;
+        const rMY = (r.top + r.bottom) / 2;
         let candidate = false;
         let score = 0;
 
         if (e.key === "ArrowDown") {
           candidate = r.top >= cur.bottom - 4;
-          score = (r.top - cur.bottom) + Math.abs((r.left + r.right) / 2 - (cur.left + cur.right) / 2) * 0.3;
+          score = (r.top - cur.bottom) + Math.abs(rMX - curMX) * CROSS_PENALTY;
         } else if (e.key === "ArrowUp") {
           candidate = r.bottom <= cur.top + 4;
-          score = (cur.top - r.bottom) + Math.abs((r.left + r.right) / 2 - (cur.left + cur.right) / 2) * 0.3;
+          score = (cur.top - r.bottom) + Math.abs(rMX - curMX) * CROSS_PENALTY;
         } else if (e.key === "ArrowRight") {
           candidate = r.left >= cur.right - 4;
-          score = (r.left - cur.right) + Math.abs((r.top + r.bottom) / 2 - (cur.top + cur.bottom) / 2) * 0.3;
+          score = (r.left - cur.right) + Math.abs(rMY - curMY) * CROSS_PENALTY;
         } else if (e.key === "ArrowLeft") {
           candidate = r.right <= cur.left + 4;
-          score = (cur.left - r.right) + Math.abs((r.top + r.bottom) / 2 - (cur.top + cur.bottom) / 2) * 0.3;
+          score = (cur.left - r.right) + Math.abs(rMY - curMY) * CROSS_PENALTY;
         }
 
         if (candidate && score < bestScore) {
@@ -241,7 +258,10 @@ export default function Queue() {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      clearTimeout(autoFocus);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
   // ──────────────────────────────────────────────────────────────────────────
 
