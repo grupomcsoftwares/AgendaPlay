@@ -13,7 +13,6 @@ import {
   AlertTriangle,
   Menu,
   Activity,
-  LayoutGrid,
   QrCode,
   RefreshCw,
 } from "lucide-react";
@@ -29,14 +28,12 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   external?: boolean;
-  bookingLink?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
   { href: "/appointments", label: "Agendamentos", icon: List },
   { href: "/queue", label: "Painel de Fila", icon: Activity, external: true },
-  { href: "/booking", label: "Link de Agendamento", icon: LayoutGrid, external: true, bookingLink: true },
   { href: "/clients", label: "Clientes", icon: UserRound },
   { href: "/services", label: "Serviços", icon: Scissors },
   { href: "/barbers", label: "Barbeiros", icon: Users },
@@ -44,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "Configurações", icon: SettingsIcon },
 ];
 
-function NavLinks({ location, bookingUrl, onNavigate }: { location: string; bookingUrl: string; onNavigate?: () => void }) {
+function NavLinks({ location, onNavigate }: { location: string; onNavigate?: () => void }) {
   const itemClass = "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors w-full";
 
   const hoverOn = (e: React.MouseEvent) => {
@@ -61,7 +58,7 @@ function NavLinks({ location, bookingUrl, onNavigate }: { location: string; book
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
       {NAV_ITEMS.map((item) => {
-        const href = item.bookingLink ? (bookingUrl || item.href) : item.href;
+        const href = item.href;
         const isActive = !item.external && (
           location === item.href ||
           (item.href !== "/" && location.startsWith(item.href))
@@ -371,7 +368,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
               </SheetTitle>
             </SheetHeader>
 
-            <NavLinks location={location} bookingUrl={bookingUrl} onNavigate={() => setDrawerOpen(false)} />
+            <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
             <div className="border-t mx-3 my-1" style={{ borderColor: "hsl(var(--sidebar-border))" }} />
             <QrCodeButton onQrClick={() => setQrOpen(true)} onNavigate={() => setDrawerOpen(false)} />
             <UserFooter {...footerProps} />
@@ -426,7 +423,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <NavLinks location={location} bookingUrl={bookingUrl} />
+        <NavLinks location={location} />
         <div className="border-t mx-3 my-1" style={{ borderColor: "hsl(var(--sidebar-border))" }} />
         <QrCodeButton onQrClick={() => setQrOpen(true)} />
         <UserFooter {...footerProps} />
