@@ -381,7 +381,7 @@ export default function Queue() {
             data-testid="button-add-queue"
             data-tvfocus
             tabIndex={0}
-            className="flex items-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+            className="flex items-center transition-opacity hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-amber-400"
             style={{
               gap: "0.4em",
               padding: "0.3em 0.75em",
@@ -486,7 +486,7 @@ export default function Queue() {
                   data-testid={`button-complete-${currentEntry.id}`}
                   data-tvfocus
                   tabIndex={0}
-                  className="transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                  className="transition-opacity hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-amber-400"
                   style={{
                     padding: "0.5em 1.6em",
                     borderRadius: "0.4em",
@@ -603,7 +603,7 @@ export default function Queue() {
                       data-testid={`button-start-${nextEntry.id}`}
                       data-tvfocus
                       tabIndex={0}
-                      className="flex items-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+                      className="flex items-center transition-opacity hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-amber-400"
                       style={{
                         gap: "0.4em",
                         padding: "0.4em 0.9em",
@@ -756,7 +756,7 @@ export default function Queue() {
                           data-testid={`button-start-list-${entry.id}`}
                           data-tvfocus
                           tabIndex={0}
-                          className="hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-400"
+                          className="hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-amber-400"
                           style={{
                             padding: "0.3em",
                             borderRadius: "0.2em",
@@ -774,7 +774,7 @@ export default function Queue() {
                           data-testid={`button-remove-list-${entry.id}`}
                           data-tvfocus
                           tabIndex={0}
-                          className="hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-400"
+                          className="hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-1 focus:outline-amber-400"
                           style={{
                             padding: "0.3em",
                             borderRadius: "0.2em",
