@@ -15,6 +15,7 @@ import {
   Activity,
   LayoutGrid,
   QrCode,
+  RefreshCw,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useGetSettings } from "@workspace/api-client-react";
@@ -331,13 +332,23 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
               {barbershopName}
             </span>
           </div>
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="rounded-md p-2 transition-colors"
-            style={{ color: "hsl(var(--sidebar-foreground))" }}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => window.location.reload()}
+              title="Atualizar página"
+              className="rounded-md p-2 transition-colors"
+              style={{ color: "hsl(var(--sidebar-foreground) / 0.55)" }}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="rounded-md p-2 transition-colors"
+              style={{ color: "hsl(var(--sidebar-foreground))" }}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         {/* Mobile drawer */}
@@ -385,7 +396,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
         }}
       >
         <div
-          className="h-14 flex items-center px-5 border-b"
+          className="h-14 flex items-center justify-between px-5 border-b"
           style={{ borderColor: "hsl(var(--sidebar-border))" }}
         >
           <div className="flex items-center gap-2">
@@ -397,6 +408,22 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
               {barbershopName}
             </span>
           </div>
+          <button
+            onClick={() => window.location.reload()}
+            title="Atualizar página"
+            className="rounded-md p-1.5 transition-colors"
+            style={{ color: "hsl(var(--sidebar-foreground) / 0.45)" }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.backgroundColor = "";
+              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.45)";
+            }}
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
 
         <NavLinks location={location} bookingUrl={bookingUrl} />
