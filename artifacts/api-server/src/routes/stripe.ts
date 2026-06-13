@@ -6,6 +6,23 @@ import { getUncachableStripeClient } from "../stripeClient.js";
 
 const router: IRouter = Router();
 
+// Explicit column list that excludes `previousSlug` so queries work even when
+// the production database has not yet had that column added via a Publish migration.
+const userCols = {
+  id: usersTable.id,
+  email: usersTable.email,
+  passwordHash: usersTable.passwordHash,
+  barbershopName: usersTable.barbershopName,
+  ownerName: usersTable.ownerName,
+  slug: usersTable.slug,
+  trialStartedAt: usersTable.trialStartedAt,
+  stripeCustomerId: usersTable.stripeCustomerId,
+  stripeSubscriptionId: usersTable.stripeSubscriptionId,
+  stripePriceId: usersTable.stripePriceId,
+  maxBarbers: usersTable.maxBarbers,
+  createdAt: usersTable.createdAt,
+};
+
 function requireAuth(req: Request, res: Response, next: () => void): void {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });
@@ -16,7 +33,7 @@ function requireAuth(req: Request, res: Response, next: () => void): void {
 
 router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.session.userId!;
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado." });
     return;
@@ -86,7 +103,7 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
 
 router.get("/stripe/subscription-status", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.session.userId!;
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
   if (!user) {
     res.status(404).json({ error: "Usuário não encontrado." });
     return;
@@ -108,7 +125,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
 
 router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: Response): Promise<void> => {
   const userId = req.session.userId!;
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
+  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
   if (!user || !user.stripeCustomerId) {
     res.json({ hasSubscription: false });
     return;

@@ -36,6 +36,23 @@ declare module "express-session" {
 
 const router: IRouter = Router();
 
+// Explicit column list that excludes `previousSlug` so queries work even when
+// the production database has not yet had that column added via a Publish migration.
+const userCols = {
+  id: usersTable.id,
+  email: usersTable.email,
+  passwordHash: usersTable.passwordHash,
+  barbershopName: usersTable.barbershopName,
+  ownerName: usersTable.ownerName,
+  slug: usersTable.slug,
+  trialStartedAt: usersTable.trialStartedAt,
+  stripeCustomerId: usersTable.stripeCustomerId,
+  stripeSubscriptionId: usersTable.stripeSubscriptionId,
+  stripePriceId: usersTable.stripePriceId,
+  maxBarbers: usersTable.maxBarbers,
+  createdAt: usersTable.createdAt,
+};
+
 const TRIAL_DAYS = 7;
 
 function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; maxBarbers?: number | null }) {
@@ -121,7 +138,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -170,7 +187,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
   if (!user) {
     req.session.destroy(() => {});
     res.status(401).json({ error: "Não autenticado." });
