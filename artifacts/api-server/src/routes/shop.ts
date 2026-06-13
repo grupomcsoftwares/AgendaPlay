@@ -41,7 +41,17 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!user) {
-    res.status(404).json({ error: "Barbearia não encontrada" });
+    const [byPrevious] = await db
+      .select({ slug: usersTable.slug })
+      .from(usersTable)
+      .where(eq(usersTable.previousSlug, slug))
+      .limit(1);
+
+    if (byPrevious?.slug) {
+      res.status(301).json({ redirectToSlug: byPrevious.slug });
+    } else {
+      res.status(404).json({ error: "Barbearia não encontrada" });
+    }
     return;
   }
 

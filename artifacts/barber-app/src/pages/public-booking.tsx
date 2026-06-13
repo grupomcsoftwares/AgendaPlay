@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { Scissors, CalendarClock } from "lucide-react";
 import Booking from "./booking";
 import { useGetNextAvailable, getGetNextAvailableQueryKey } from "@workspace/api-client-react";
@@ -44,6 +44,7 @@ function formatNextAvailableLabel(nextDate: string | null, nextTime: string | nu
 export default function PublicBooking() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
+  const [, navigate] = useLocation();
 
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,8 +54,17 @@ export default function PublicBooking() {
     if (!slug) return;
     setLoading(true);
     setNotFound(false);
-    fetch(`${BASE}/api/b/${encodeURIComponent(slug)}`)
+    fetch(`${BASE}/api/b/${encodeURIComponent(slug)}`, { redirect: "manual" })
       .then(async (res) => {
+        if (res.status === 301 || res.type === "opaqueredirect") {
+          const data = await res.json() as { redirectToSlug?: string };
+          if (data.redirectToSlug) {
+            navigate(`/b/${encodeURIComponent(data.redirectToSlug)}`, { replace: true });
+            return;
+          }
+          setNotFound(true);
+          return;
+        }
         if (res.status === 404) {
           setNotFound(true);
           return;
@@ -65,7 +75,7 @@ export default function PublicBooking() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, navigate]);
 
   const { data: nextAvailable } = useGetNextAvailable(
     slug,

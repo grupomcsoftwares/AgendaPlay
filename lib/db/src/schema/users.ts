@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   barbershopName: text("barbershop_name").notNull().default("Minha Barbearia"),
   ownerName: text("owner_name").notNull().default("Proprietário"),
   slug: text("slug").unique(),
+  previousSlug: text("previous_slug"),
   trialStartedAt: timestamp("trial_started_at", { withTimezone: true }).notNull().defaultNow(),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),

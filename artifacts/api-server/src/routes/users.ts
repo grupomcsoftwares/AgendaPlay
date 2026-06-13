@@ -49,9 +49,15 @@ router.patch("/users/slug", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
+  const [current] = await db
+    .select({ slug: usersTable.slug })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
   const [updated] = await db
     .update(usersTable)
-    .set({ slug })
+    .set({ slug, previousSlug: current?.slug ?? null })
     .where(eq(usersTable.id, userId))
     .returning({ slug: usersTable.slug });
 
