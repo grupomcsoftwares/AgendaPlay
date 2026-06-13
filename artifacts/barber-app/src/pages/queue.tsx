@@ -176,6 +176,75 @@ export default function Queue() {
     return () => clearInterval(id);
   }, [queryClient]);
 
+  // ── TV remote / D-pad navigation ──────────────────────────────────────────
+  // Implements spatial navigation for TV remotes that send arrow key events.
+  // Any element with data-tvfocus is part of the navigable grid.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"];
+      if (!KEYS.includes(e.key)) return;
+
+      const focusables = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-tvfocus]")
+      ).filter((el) => !el.hasAttribute("disabled") && !el.closest("[hidden]"));
+
+      if (focusables.length === 0) return;
+
+      e.preventDefault();
+
+      const active = document.activeElement as HTMLElement | null;
+
+      // Enter — click the focused element
+      if (e.key === "Enter") {
+        active?.click();
+        return;
+      }
+
+      // If nothing focused yet, focus the first element
+      if (!active || !focusables.includes(active)) {
+        focusables[0].focus();
+        return;
+      }
+
+      const cur = active.getBoundingClientRect();
+
+      let best: HTMLElement | null = null;
+      let bestScore = Infinity;
+
+      for (const el of focusables) {
+        if (el === active) continue;
+        const r = el.getBoundingClientRect();
+        let candidate = false;
+        let score = 0;
+
+        if (e.key === "ArrowDown") {
+          candidate = r.top >= cur.bottom - 4;
+          score = (r.top - cur.bottom) + Math.abs((r.left + r.right) / 2 - (cur.left + cur.right) / 2) * 0.3;
+        } else if (e.key === "ArrowUp") {
+          candidate = r.bottom <= cur.top + 4;
+          score = (cur.top - r.bottom) + Math.abs((r.left + r.right) / 2 - (cur.left + cur.right) / 2) * 0.3;
+        } else if (e.key === "ArrowRight") {
+          candidate = r.left >= cur.right - 4;
+          score = (r.left - cur.right) + Math.abs((r.top + r.bottom) / 2 - (cur.top + cur.bottom) / 2) * 0.3;
+        } else if (e.key === "ArrowLeft") {
+          candidate = r.right <= cur.left + 4;
+          score = (cur.left - r.right) + Math.abs((r.top + r.bottom) / 2 - (cur.top + cur.bottom) / 2) * 0.3;
+        }
+
+        if (candidate && score < bestScore) {
+          bestScore = score;
+          best = el;
+        }
+      }
+
+      if (best) best.focus();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+  // ──────────────────────────────────────────────────────────────────────────
+
   // Sounds: play when service starts or ends
   useEffect(() => {
     const newId = currentEntry?.id ?? null;
@@ -290,7 +359,9 @@ export default function Queue() {
           <button
             onClick={() => setIsAddOpen(true)}
             data-testid="button-add-queue"
-            className="flex items-center transition-opacity hover:opacity-80"
+            data-tvfocus
+            tabIndex={0}
+            className="flex items-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
             style={{
               gap: "0.4em",
               padding: "0.3em 0.75em",
@@ -393,7 +464,9 @@ export default function Queue() {
                 <button
                   onClick={() => handleRemove(currentEntry.id)}
                   data-testid={`button-complete-${currentEntry.id}`}
-                  className="transition-opacity hover:opacity-80"
+                  data-tvfocus
+                  tabIndex={0}
+                  className="transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
                   style={{
                     padding: "0.5em 1.6em",
                     borderRadius: "0.4em",
@@ -508,7 +581,9 @@ export default function Queue() {
                     <button
                       onClick={() => handleStart(nextEntry.id)}
                       data-testid={`button-start-${nextEntry.id}`}
-                      className="flex items-center transition-opacity hover:opacity-80"
+                      data-tvfocus
+                      tabIndex={0}
+                      className="flex items-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
                       style={{
                         gap: "0.4em",
                         padding: "0.4em 0.9em",
@@ -650,11 +725,18 @@ export default function Queue() {
                           </span>
                         );
                       })()}
-                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ gap: "0.15em" }}>
+                      <div className="flex items-center transition-opacity" style={{ gap: "0.15em", opacity: 0.35 }}
+                        onFocus={(e) => (e.currentTarget.style.opacity = "1")}
+                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) e.currentTarget.style.opacity = "0.35"; }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.35")}
+                      >
                         <button
                           onClick={() => handleStart(entry.id)}
                           data-testid={`button-start-list-${entry.id}`}
-                          className="hover:opacity-80"
+                          data-tvfocus
+                          tabIndex={0}
+                          className="hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-400"
                           style={{
                             padding: "0.3em",
                             borderRadius: "0.2em",
@@ -670,7 +752,9 @@ export default function Queue() {
                         <button
                           onClick={() => handleRemove(entry.id)}
                           data-testid={`button-remove-list-${entry.id}`}
-                          className="hover:opacity-80"
+                          data-tvfocus
+                          tabIndex={0}
+                          className="hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-amber-400"
                           style={{
                             padding: "0.3em",
                             borderRadius: "0.2em",
