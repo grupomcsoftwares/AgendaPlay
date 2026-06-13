@@ -40,6 +40,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c9f7e06b-0eb3-45d0-bad7-b656cc0af854"
+      }
+    },
+    "owner": "grupomc"
   }
 }
