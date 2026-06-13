@@ -570,7 +570,7 @@ export default function Appointments() {
                   data-testid="button-confirm-create"
                   disabled={
                     (!formData.clientName && formData.clientId === "new") ||
-                    !formData.serviceId ||
+                    formData.serviceIds.length === 0 ||
                     !formData.time ||
                     createAppointment.isPending
                   }
