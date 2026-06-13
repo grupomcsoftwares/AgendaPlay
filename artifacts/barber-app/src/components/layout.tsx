@@ -12,12 +12,16 @@ import {
   Clock,
   AlertTriangle,
   Menu,
-  X,
+  Activity,
+  LayoutGrid,
+  QrCode,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useAuth } from "../context/AuthContext";
 import { useIsMobile } from "../hooks/use-mobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 type NavItem = {
   href: string;
@@ -181,11 +185,89 @@ function UserFooter({
   );
 }
 
+function QuickLinks({
+  bookingUrl,
+  onQrClick,
+  onNavigate,
+}: {
+  bookingUrl: string;
+  onQrClick: () => void;
+  onNavigate?: () => void;
+}) {
+  const linkClass =
+    "flex items-center gap-3 px-3 py-2 rounded-md text-xs transition-colors w-full cursor-pointer";
+  const style = { color: "hsl(var(--sidebar-foreground) / 0.55)" };
+
+  return (
+    <div className="px-3 pb-2 space-y-0.5">
+      <p className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-widest"
+        style={{ color: "hsl(var(--sidebar-foreground) / 0.3)" }}>
+        Links rápidos
+      </p>
+      <a
+        href="/queue"
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        style={style}
+        onClick={onNavigate}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.55)";
+        }}
+      >
+        <Activity className="h-4 w-4 flex-shrink-0 text-teal-400" />
+        <span>Painel de Fila</span>
+      </a>
+      <a
+        href={bookingUrl || "/booking"}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={linkClass}
+        style={style}
+        onClick={onNavigate}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.55)";
+        }}
+      >
+        <LayoutGrid className="h-4 w-4 flex-shrink-0 text-violet-400" />
+        <span>Pg. de Agendamento</span>
+      </a>
+      <button
+        onClick={() => { onQrClick(); onNavigate?.(); }}
+        className={linkClass}
+        style={style}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.backgroundColor = "";
+          (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.55)";
+        }}
+      >
+        <QrCode className="h-4 w-4 flex-shrink-0 text-amber-400" />
+        <span>QR Code</span>
+      </button>
+    </div>
+  );
+}
+
 export function Sidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: ["settings"] } });
   const { user, logout } = useAuth();
@@ -224,6 +306,8 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
           ? "hsl(38 60% 10%)"
           : "hsl(0 60% 10%)";
 
+  const bookingUrl = user ? `${window.location.origin}/booking?shopId=${user.id}` : "";
+
   const footerProps = {
     ownerName,
     barbershopName,
@@ -234,6 +318,29 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     trialBg,
     onLogout: handleLogout,
   };
+
+  const qrDialog = (
+    <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+      <DialogContent className="max-w-xs text-center">
+        <DialogHeader>
+          <DialogTitle>QR Code de Agendamento</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground mb-4">
+          Clientes escaneiam para acessar a página de agendamento online.
+        </p>
+        {bookingUrl ? (
+          <div className="flex justify-center">
+            <div className="p-3 bg-white rounded-xl shadow-sm">
+              <QRCodeSVG value={bookingUrl} size={200} />
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Carregando…</p>
+        )}
+        <p className="text-xs text-muted-foreground mt-3 break-all">{bookingUrl}</p>
+      </DialogContent>
+    </Dialog>
+  );
 
   if (isMobile) {
     return (
@@ -285,9 +392,13 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
             </SheetHeader>
 
             <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
+            <div className="border-t mx-3 my-1" style={{ borderColor: "hsl(var(--sidebar-border))" }} />
+            <QuickLinks bookingUrl={bookingUrl} onQrClick={() => setQrOpen(true)} onNavigate={() => setDrawerOpen(false)} />
             <UserFooter {...footerProps} />
           </SheetContent>
         </Sheet>
+
+        {qrDialog}
 
         {/* Page content */}
         <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
@@ -320,8 +431,12 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
         </div>
 
         <NavLinks location={location} />
+        <div className="border-t mx-3 my-1" style={{ borderColor: "hsl(var(--sidebar-border))" }} />
+        <QuickLinks bookingUrl={bookingUrl} onQrClick={() => setQrOpen(true)} />
         <UserFooter {...footerProps} />
       </aside>
+
+      {qrDialog}
 
       <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
     </div>

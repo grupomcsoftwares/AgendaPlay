@@ -20,7 +20,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Activity, LayoutGrid, QrCode, Pencil, List } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, List } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -35,18 +35,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
 const INITIAL_FORM = { clientId: "new", clientName: "", serviceIds: [] as string[], time: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
-  const { user } = useAuth();
-  const bookingUrl = user
-    ? `${window.location.origin}/booking?shopId=${user.id}`
-    : "";
-  const [qrOpen, setQrOpen] = useState(false);
+  const { user: _user } = useAuth();
   const [view, setView] = useState<"day" | "all">("day");
   const [date, setDate] = useState<Date>(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
@@ -311,46 +306,7 @@ export default function Appointments() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agendamentos</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">Gerencie a agenda do dia.</p>
-          <div className="flex flex-wrap items-center gap-2 mt-3">
-            <a href="/queue" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none no-underline">
-              <Activity className="h-3.5 w-3.5 text-teal-400" />
-              Painel de Fila
-            </a>
-            <a href={bookingUrl || "/booking"} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none no-underline">
-              <LayoutGrid className="h-3.5 w-3.5 text-violet-400" />
-              Página de Agendamento
-            </a>
-            <button
-              onClick={() => setQrOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors cursor-pointer select-none"
-            >
-              <QrCode className="h-3.5 w-3.5 text-amber-400" />
-              QR Code
-            </button>
-          </div>
         </div>
-
-        {/* QR Code dialog */}
-        <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-          <DialogContent className="max-w-xs text-center">
-            <DialogHeader>
-              <DialogTitle>QR Code de Agendamento</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground mb-4">
-              Clientes escaneiam para acessar a página de agendamento online.
-            </p>
-            {bookingUrl ? (
-              <div className="flex justify-center">
-                <div className="p-3 bg-white rounded-xl shadow-sm">
-                  <QRCodeSVG value={bookingUrl} size={200} />
-                </div>
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm">Carregando…</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-3 break-all">{bookingUrl}</p>
-          </DialogContent>
-        </Dialog>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* View toggle */}
