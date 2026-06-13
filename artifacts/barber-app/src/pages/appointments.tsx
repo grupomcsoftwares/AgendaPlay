@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
-const INITIAL_FORM = { clientId: "new", clientName: "", serviceId: "", time: "" };
+const INITIAL_FORM = { clientId: "new", clientName: "", serviceIds: [] as string[], time: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
@@ -163,18 +163,29 @@ export default function Appointments() {
   };
   const invalidate = invalidateAll;
 
-  const selectedService = useMemo(
-    () => services?.find((s) => s.id.toString() === formData.serviceId),
-    [services, formData.serviceId],
+  const selectedServices = useMemo(
+    () => (services ?? []).filter((s) => formData.serviceIds.includes(s.id.toString())),
+    [services, formData.serviceIds],
   );
 
-  const availabilityServiceId = selectedService?.id ?? 0;
+  const combinedName = selectedServices.map((s) => s.name).join(" + ");
+  const combinedPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+  const combinedDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+  const availabilityServiceId = selectedServices.length === 1 ? (selectedServices[0]?.id ?? 0) : 0;
+  const availabilityDuration = selectedServices.length > 1 ? combinedDuration : undefined;
+  const availabilityEnabled = isCreateOpen && selectedServices.length > 0;
+
+  const availabilityParams = selectedServices.length === 1
+    ? { date: formDateStr, serviceId: availabilityServiceId }
+    : { date: formDateStr, serviceDuration: combinedDuration };
+
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
-    { date: formDateStr, serviceId: availabilityServiceId },
+    availabilityParams,
     {
       query: {
-        queryKey: getGetAvailabilityQueryKey({ date: formDateStr, serviceId: availabilityServiceId }),
-        enabled: isCreateOpen && availabilityServiceId > 0,
+        queryKey: getGetAvailabilityQueryKey(availabilityParams),
+        enabled: availabilityEnabled,
       },
     },
   );
@@ -201,7 +212,7 @@ export default function Appointments() {
   }, [isCreateOpen]);
 
   const handleCreate = () => {
-    if (!selectedService || !formData.time) return;
+    if (selectedServices.length === 0 || !formData.time) return;
 
     let cName = formData.clientName;
     if (formData.clientId !== "new") {
@@ -217,10 +228,10 @@ export default function Appointments() {
       { data: {
         clientId: formData.clientId !== "new" ? parseInt(formData.clientId) : undefined,
         clientName: cName,
-        serviceId: selectedService.id,
-        serviceName: selectedService.name,
-        servicePrice: selectedService.price,
-        serviceDuration: selectedService.durationMinutes,
+        serviceId: selectedServices.length === 1 ? selectedServices[0]!.id : undefined,
+        serviceName: combinedName,
+        servicePrice: combinedPrice,
+        serviceDuration: combinedDuration,
         scheduledAt,
       }},
       {
@@ -465,26 +476,53 @@ export default function Appointments() {
                 )}
 
                 <div className="space-y-2">
-                  <Label>Serviço</Label>
-                  <Select value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, time: ""})}>
-                    <SelectTrigger data-testid="select-service">
-                      <SelectValue placeholder="Selecione um serviço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services?.map(s => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name} · {s.durationMinutes} min
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label>Serviço</Label>
+                    {selectedServices.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {combinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combinedPrice / 100)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="rounded-md border border-border overflow-hidden" data-testid="service-checklist">
+                    {(services ?? []).map((s) => {
+                      const checked = formData.serviceIds.includes(s.id.toString());
+                      return (
+                        <label
+                          key={s.id}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none",
+                            checked ? "bg-amber-500/10" : "hover:bg-muted/50",
+                            "border-b border-border last:border-b-0"
+                          )}
+                          data-testid={`service-option-${s.id}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? formData.serviceIds.filter((id) => id !== s.id.toString())
+                                : [...formData.serviceIds, s.id.toString()];
+                              setFormData({ ...formData, serviceIds: next, time: "" });
+                            }}
+                            className="accent-amber-500 w-4 h-4 flex-shrink-0"
+                          />
+                          <span className="flex-1 text-sm font-medium">{s.name}</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(s.price / 100)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Horário disponível</Label>
-                  {!selectedService ? (
+                  {selectedServices.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-3">
-                      Escolha um serviço para ver os horários livres.
+                      Escolha ao menos um serviço para ver os horários livres.
                     </p>
                   ) : availability?.dayClosed ? (
                     <p className="text-sm text-muted-foreground py-3">
