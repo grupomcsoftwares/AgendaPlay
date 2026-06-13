@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_BASE = "https://mcagenda.replit.app/api";
 const USER_KEY = "@agendaplay/user";
+const COOKIE_KEY = "@agendaplay/session_cookie";
 
 export type AuthUser = {
   id: string;
@@ -22,6 +23,7 @@ type AuthState = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  getSessionCookie: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -51,6 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || "E-mail ou senha incorretos.");
     }
+    // Capture Set-Cookie header for WebView session sync
+    const cookieHeader = res.headers.get("set-cookie");
+    if (cookieHeader) {
+      await AsyncStorage.setItem(COOKIE_KEY, cookieHeader);
+    }
     const data = await res.json();
     setUser(data);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
@@ -60,10 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fetch(`${API_BASE}/auth/logout`, { method: "POST" }).catch(() => {});
     setUser(null);
     await AsyncStorage.removeItem(USER_KEY);
+    await AsyncStorage.removeItem(COOKIE_KEY);
+  }, []);
+
+  const getSessionCookie = useCallback(async () => {
+    return AsyncStorage.getItem(COOKIE_KEY);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, getSessionCookie }}>
       {children}
     </AuthContext.Provider>
   );
