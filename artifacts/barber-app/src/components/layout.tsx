@@ -35,7 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
   { href: "/appointments", label: "Agendamentos", icon: List },
   { href: "/queue", label: "Painel de Fila", icon: Activity, external: true },
-  { href: "/booking", label: "Pg. de Agendamento", icon: LayoutGrid, external: true, bookingLink: true },
+  { href: "/booking", label: "Link de Agendamento", icon: LayoutGrid, external: true, bookingLink: true },
   { href: "/clients", label: "Clientes", icon: UserRound },
   { href: "/services", label: "Serviços", icon: Scissors },
   { href: "/barbers", label: "Barbeiros", icon: Users },
