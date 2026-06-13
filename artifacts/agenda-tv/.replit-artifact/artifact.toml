@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/agenda-tv/"
+title = "AgendaPlay TV & Mobile"
+version = "1.0.0"
+id = "artifacts/agenda-tv"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/agenda-tv/" ]
+localPort = 22287
+
+[services.development]
+run = "pnpm --filter @workspace/agenda-tv run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/agenda-tv", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/agenda-tv", "run", "serve" ]
+
+[services.env]
+PORT = "22287"
+BASE_PATH = "/agenda-tv/"
