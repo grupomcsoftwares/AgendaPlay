@@ -15,8 +15,8 @@ import { QRCodeSVG } from "qrcode.react";
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 const AMBER_DEEP = "hsl(38 80% 45%)";
-const STEP_LABELS_BASE = ["Serviço", "Data e hora", "Seus dados", "Pagamento"] as const;
-const STEP_LABELS_WITH_BARBER = ["Profissional", "Serviço", "Data e hora", "Seus dados", "Pagamento"] as const;
+const STEP_LABELS_BASE = ["Seus dados", "Serviço", "Data e hora", "Pagamento"] as const;
+const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Serviço", "Data e hora", "Pagamento"] as const;
 
 function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
   const cols = labels.length === 5 ? "grid-cols-5" : "grid-cols-4";
@@ -108,7 +108,17 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(() => {
+    try {
+      const key = `barber_client_info_${shopId ?? "public"}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { name?: string; phone?: string };
+        if (parsed.name && parsed.phone) return 1;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
   // Plays a celebratory check animation after a successful booking before
   // navigating to the confirmation page.
   const [confirmed, setConfirmed] = useState(false);
@@ -338,11 +348,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const needsBarberStep = activeBarbers.length >= 2;
   const stepLabels = needsBarberStep ? STEP_LABELS_WITH_BARBER : STEP_LABELS_BASE;
   // Indicator mapping:
-  //  - With barber step: picker -> 1, service list (step 1) -> 2, step N -> N+1.
-  //  - Without barber step: indicator = step.
+  //  - step 0 = "Seus dados" (new first step) → indicator 1
+  //  - Without barber: indicator = step + 1
+  //  - With barber: step 0→1, picker→2, service→3, step 2→4, step 3→5
   const indicatorStep = needsBarberStep
-    ? (pickingBarber ? 1 : step === 1 ? 2 : step + 1)
-    : step;
+    ? (step === 0 ? 1 : pickingBarber ? 2 : step === 1 ? 3 : step + 2)
+    : step + 1;
 
   // Auto-select the single barber (or none) and skip the picker.
   useEffect(() => {
@@ -453,8 +464,77 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
         <StepIndicator current={indicatorStep} labels={stepLabels} />
 
+        {step === 0 && (
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold">Seus Dados</h2>
+              <p className="text-sm text-muted-foreground">
+                Informe seu nome e telefone para continuar com o agendamento.
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name-step0" className="text-sm font-semibold">Nome Completo</Label>
+                <div className="relative">
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
+                    style={{ color: "hsl(0 0% 45%)" }}
+                  />
+                  <Input
+                    id="name-step0"
+                    data-testid="input-booking-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="João Silva"
+                    className="pl-9 h-11"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone-step0" className="text-sm font-semibold">Telefone</Label>
+                <Input
+                  id="phone-step0"
+                  data-testid="input-booking-phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(11) 99999-9999"
+                  className="h-11"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              data-testid="button-continue-step0"
+              disabled={!formData.name || !formData.phone}
+              onClick={() => setStep(1)}
+              className="w-full rounded-xl text-center font-semibold transition-opacity"
+              style={{
+                height: 52,
+                backgroundColor: AMBER_DEEP,
+                color: "hsl(0 0% 100%)",
+                border: "none",
+                cursor: formData.name && formData.phone ? "pointer" : "not-allowed",
+                opacity: formData.name && formData.phone ? 1 : 0.55,
+              }}
+            >
+              Continuar
+            </button>
+          </div>
+        )}
+
         {step === 1 && pickingBarber && (
           <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => setStep(0)}
+              data-testid="button-back-barber-to-step0"
+              className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+              style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Voltar
+            </button>
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Escolha o profissional</h2>
               <p className="text-sm text-muted-foreground">
@@ -512,7 +592,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
         {step === 1 && !pickingBarber && (
           <div className="space-y-4">
-            {needsBarberStep && (
+            {needsBarberStep ? (
               <button
                 type="button"
                 onClick={() => setPickingBarber(true)}
@@ -522,6 +602,17 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               >
                 <ChevronLeft className="w-4 h-4" />
                 Trocar profissional
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStep(0)}
+                data-testid="button-back-service-to-step0"
+                className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+                style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar
               </button>
             )}
             {selectedBarber && needsBarberStep && (
@@ -705,7 +796,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           </div>
         )}
 
-        <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: step === 1 ? "none" : "block" }}>
+        <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 1) ? "none" : "block" }}>
 
           {step === 2 && (
             <CardContent className="p-6 space-y-6">
@@ -961,50 +1052,20 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           {step === 3 && (
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
-                <CardTitle>3. Seus Dados</CardTitle>
+                <CardTitle>Revisar agendamento</CardTitle>
                 <CardDescription>
                   {selectedServices.map(s => s.name).join(" + ")} · {formData.date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })} às {formData.time}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
                 <div className="space-y-1">
-                  <h3 className="text-2xl font-bold">Seus Dados</h3>
+                  <h3 className="text-2xl font-bold">Quase lá!</h3>
                   <p className="text-sm text-muted-foreground">
-                    Só precisamos de algumas informações para confirmar.
+                    Adicione uma observação ou prossiga para o pagamento.
                   </p>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="text-sm font-semibold">Nome Completo</Label>
-                    <div className="relative">
-                      <User
-                        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
-                        style={{ color: "hsl(0 0% 45%)" }}
-                      />
-                      <Input
-                        id="name"
-                        data-testid="input-booking-name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="João Silva"
-                        className="pl-9 h-11"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-semibold">Telefone</Label>
-                    <Input
-                      id="phone"
-                      data-testid="input-booking-phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="(11) 99999-9999"
-                      className="h-11"
-                    />
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="notes" className="text-sm font-semibold">Observações (Opcional)</Label>
                     <Textarea
@@ -1078,7 +1139,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 <button
                   type="button"
                   data-testid="button-continue-to-payment"
-                  disabled={!formData.name || !formData.phone}
                   onClick={() => setStep(4)}
                   className="w-full rounded-xl text-center font-semibold transition-opacity"
                   style={{
@@ -1086,8 +1146,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     backgroundColor: AMBER_DEEP,
                     color: "hsl(0 0% 100%)",
                     border: "none",
-                    cursor: formData.name && formData.phone ? "pointer" : "not-allowed",
-                    opacity: formData.name && formData.phone ? 1 : 0.55,
+                    cursor: "pointer",
                   }}
                 >
                   Continuar para Pagamento
