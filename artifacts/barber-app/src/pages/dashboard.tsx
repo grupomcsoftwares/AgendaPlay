@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2 } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const { data: summary, isLoading } = useGetDashboardSummary({
     query: {
@@ -119,6 +122,15 @@ export default function Dashboard() {
               </Button>
               <Button
                 size="sm"
+                variant="outline"
+                className="shrink-0 gap-1.5"
+                onClick={() => setQrOpen(true)}
+              >
+                <QrCode className="h-4 w-4" />
+                <span className="hidden sm:inline">QR Code</span>
+              </Button>
+              <Button
+                size="sm"
                 variant="default"
                 className="shrink-0 gap-1.5"
                 onClick={handleShare}
@@ -133,6 +145,27 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-xs text-center">
+          <DialogHeader>
+            <DialogTitle>QR Code de Agendamento</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground mb-4">
+            Clientes escaneiam para acessar a página de agendamento online.
+          </p>
+          {bookingUrl ? (
+            <div className="flex justify-center">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
+                <QRCodeSVG value={bookingUrl} size={200} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">Carregando…</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-3 break-all">{bookingUrl}</p>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card className="bg-card border-border">
