@@ -590,7 +590,16 @@ export default function Appointments() {
                     {format(new Date(apt.scheduledAt), "HH:mm")}
                   </TableCell>
                   <TableCell className="font-medium">{apt.clientName}</TableCell>
-                  <TableCell>{apt.serviceName}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span>{apt.serviceName}</span>
+                      {apt.servicePrice != null && (
+                        <span className="text-xs text-emerald-400 font-medium">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(apt.servicePrice / 100)}
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
                   <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
                   <TableCell>{getStatusBadge(apt.status)}</TableCell>
