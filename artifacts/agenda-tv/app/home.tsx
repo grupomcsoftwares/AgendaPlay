@@ -13,6 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "@/hooks/useAuth";
 
 const BOOKING_URL_KEY = "@agendaplay/booking_url";
 const PROD_BASE = "https://mcagenda.replit.app";
@@ -45,14 +46,15 @@ const MODES = [
     description: "Sistema completo de gestão",
     badge: "APP",
     color: "#4ade80",
-    url: `${PROD_BASE}/login`,
+    url: `${PROD_BASE}/dashboard`,
     requiresConfig: false,
   },
 ];
 
-export default function ModeSelector() {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [savedBookingUrl, setSavedBookingUrl] = useState("");
   const [inputUrl, setInputUrl] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -99,6 +101,9 @@ export default function ModeSelector() {
             <Text style={styles.appName}>AgendaPlay</Text>
           </View>
           <Text style={styles.tagline}>Escolha o modo de exibição</Text>
+          {user?.barbershopName ? (
+            <Text style={styles.shopName}>{user.barbershopName}</Text>
+          ) : null}
         </View>
 
         <View style={styles.cards}>
@@ -145,6 +150,11 @@ export default function ModeSelector() {
             <Text style={styles.settingsText}>Alterar URL de agendamento</Text>
           </TouchableOpacity>
         ) : null}
+
+        <TouchableOpacity style={styles.logoutRow} onPress={logout}>
+          <Feather name="log-out" size={13} color="#555" />
+          <Text style={styles.logoutText}>Sair da conta</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
@@ -187,6 +197,7 @@ const styles = StyleSheet.create({
   logoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },
   appName: { fontSize: 26, fontWeight: "700", color: "#f5f5f5" },
   tagline: { fontSize: 14, color: "#666" },
+  shopName: { fontSize: 13, color: "#c9a84c", marginTop: 4, fontWeight: "600" },
   cards: { gap: 10 },
   card: {
     flexDirection: "row",
@@ -209,6 +220,8 @@ const styles = StyleSheet.create({
   cardDesc: { fontSize: 12, color: "#666", lineHeight: 17 },
   settingsRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 20, justifyContent: "center" },
   settingsText: { fontSize: 12, color: "#555" },
+  logoutRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, justifyContent: "center" },
+  logoutText: { fontSize: 12, color: "#555" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 24 },
   modal: { backgroundColor: "#1a1a1a", borderRadius: 20, padding: 24, width: "100%", maxWidth: 420 },
   modalTitle: { fontSize: 17, fontWeight: "700", color: "#f5f5f5", marginBottom: 8 },
