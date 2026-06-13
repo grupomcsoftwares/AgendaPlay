@@ -54,9 +54,15 @@ export default function ViewerScreen() {
         }}
         allowsBackForwardNavigationGestures
         sharedCookiesEnabled
+        thirdPartyCookiesEnabled
         javaScriptEnabled
         domStorageEnabled
+        allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
+        originWhitelist={["*"]}
+        mixedContentMode="always"
+        cacheEnabled
+        cacheMode="LOAD_DEFAULT"
       />
 
       {loading && !error && (

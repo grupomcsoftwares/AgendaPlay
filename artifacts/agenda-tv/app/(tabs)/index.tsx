@@ -45,7 +45,7 @@ const MODES = [
     description: "Sistema completo de gestão",
     badge: "APP",
     color: "#4ade80",
-    url: `${PROD_BASE}/dashboard`,
+    url: `${PROD_BASE}/login`,
     requiresConfig: false,
   },
 ];
