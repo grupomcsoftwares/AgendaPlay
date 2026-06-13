@@ -480,7 +480,7 @@ export default function Appointments() {
                     <Label>Serviço</Label>
                     {selectedServices.length > 0 && (
                       <span className="text-xs text-muted-foreground">
-                        {combinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combinedPrice / 100)}
+                        {combinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combinedPrice)}
                       </span>
                     )}
                   </div>
@@ -510,7 +510,7 @@ export default function Appointments() {
                           />
                           <span className="flex-1 text-sm font-medium">{s.name}</span>
                           <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(s.price / 100)}
+                            {s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(s.price)))}
                           </span>
                         </label>
                       );
@@ -606,6 +606,7 @@ export default function Appointments() {
                 <TableHead>Horário</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
+                <TableHead>Valor</TableHead>
                 <TableHead>Profissional</TableHead>
                 <TableHead>Pagamento</TableHead>
                 <TableHead>Status</TableHead>
@@ -628,15 +629,11 @@ export default function Appointments() {
                     {format(new Date(apt.scheduledAt), "HH:mm")}
                   </TableCell>
                   <TableCell className="font-medium">{apt.clientName}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span>{apt.serviceName}</span>
-                      {apt.servicePrice != null && (
-                        <span className="text-xs text-emerald-400 font-medium">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(apt.servicePrice / 100)}
-                        </span>
-                      )}
-                    </div>
+                  <TableCell>{apt.serviceName}</TableCell>
+                  <TableCell className="font-medium text-emerald-400 whitespace-nowrap">
+                    {apt.servicePrice != null
+                      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(apt.servicePrice)))
+                      : "—"}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
                   <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
