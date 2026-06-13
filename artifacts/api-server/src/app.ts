@@ -61,7 +61,7 @@ const allowedOrigins = new Set([...replitDomains, "http://localhost:3000", "http
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin) || replitDomains.some((d) => origin.startsWith(d))) {
+      if (!origin || allowedOrigins.has(origin) || replitDomains.some((d) => origin.startsWith(d)) || origin.endsWith(".riker.replit.dev") || origin.endsWith(".expo.replit.dev")) {
         callback(null, true);
       } else {
         callback(null, false);
@@ -110,6 +110,10 @@ app.use(
     },
   }),
 );
+
+app.get("/api/app-version", (_req, res) => {
+  res.json({ version: "1.0.0" });
+});
 
 app.use("/api", router);
 

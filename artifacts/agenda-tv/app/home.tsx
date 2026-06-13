@@ -14,6 +14,8 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import UpdateDialog from "@/components/UpdateDialog";
 
 const BOOKING_URL_KEY = "@agendaplay/booking_url";
 const PROD_BASE = "https://mcagenda.replit.app";
@@ -55,6 +57,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { hasUpdate, currentVersion, latestVersion, dismiss } = useUpdateCheck();
   const [savedBookingUrl, setSavedBookingUrl] = useState("");
   const [inputUrl, setInputUrl] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -186,6 +189,13 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <UpdateDialog
+        visible={hasUpdate}
+        currentVersion={currentVersion}
+        latestVersion={latestVersion}
+        onDismiss={dismiss}
+      />
     </View>
   );
 }

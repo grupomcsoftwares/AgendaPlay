@@ -14,10 +14,13 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import UpdateDialog from "@/components/UpdateDialog";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { login, loading } = useAuth();
+  const { hasUpdate, currentVersion, latestVersion, dismiss } = useUpdateCheck();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -106,6 +109,12 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <UpdateDialog
+        visible={hasUpdate}
+        currentVersion={currentVersion}
+        latestVersion={latestVersion}
+        onDismiss={dismiss}
+      />
     </KeyboardAvoidingView>
   );
 }
