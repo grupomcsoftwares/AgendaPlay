@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, desc } from "drizzle-orm";
-import { db, settingsTable, loyaltyPointsTable, type LoyaltyConfig } from "@workspace/db";
+import { db, settingsTable, loyaltyPointsTable, clientsTable, type LoyaltyConfig } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
@@ -17,12 +17,28 @@ function normalizePhone(raw: string): string {
 
 router.get("/loyalty/clients", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+
+  // Buscar clientes da loja para lookup de nome
+  const clients = await db
+    .select({ phone: clientsTable.phone, name: clientsTable.name })
+    .from(clientsTable)
+    .where(eq(clientsTable.userId, userId));
+
+  const clientNameMap = new Map(clients.map((c) => [c.phone, c.name]));
+
   const rows = await db
     .select({ clientPhone: loyaltyPointsTable.clientPhone, points: loyaltyPointsTable.points })
     .from(loyaltyPointsTable)
     .where(eq(loyaltyPointsTable.userId, userId))
     .orderBy(desc(loyaltyPointsTable.points));
-  res.json(rows);
+
+  const result = rows.map((r) => ({
+    clientPhone: r.clientPhone,
+    clientName: clientNameMap.get(r.clientPhone) ?? r.clientPhone,
+    points: r.points,
+  }));
+
+  res.json(result);
 });
 
 router.get("/loyalty/balance", async (req, res): Promise<void> => {

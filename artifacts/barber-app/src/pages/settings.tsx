@@ -903,7 +903,7 @@ export default function Settings() {
                     key={c.clientPhone}
                     className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
                   >
-                    <span className="text-muted-foreground">{c.clientPhone}</span>
+                    <span className="text-muted-foreground">{c.clientName || c.clientPhone}</span>
                     <span className="font-semibold tabular-nums">
                       {c.points.toLocaleString("pt-BR")} pts
                     </span>

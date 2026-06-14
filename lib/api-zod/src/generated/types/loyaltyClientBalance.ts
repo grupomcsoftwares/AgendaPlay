@@ -8,5 +8,6 @@
 
 export interface LoyaltyClientBalance {
   clientPhone: string;
+  clientName?: string;
   points: number;
 }

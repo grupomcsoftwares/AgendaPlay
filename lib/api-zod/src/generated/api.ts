@@ -1287,6 +1287,7 @@ export const UpdateSettingsResponse = zod.object({
  */
 export const ListLoyaltyClientsResponseItem = zod.object({
   "clientPhone": zod.string(),
+  "clientName": zod.string().optional(),
   "points": zod.number()
 })
 export const ListLoyaltyClientsResponse = zod.array(ListLoyaltyClientsResponseItem)
