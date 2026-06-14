@@ -75,7 +75,7 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
 router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> => {
   try {
     const result = await db.execute(sql`
-      SELECT
+      SELECT DISTINCT ON (pr.unit_amount)
         p.id as product_id,
         p.name as product_name,
         p.description as product_description,
@@ -87,7 +87,7 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
       FROM stripe.products p
       JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
       WHERE p.active = true
-      ORDER BY pr.unit_amount ASC
+      ORDER BY pr.unit_amount ASC, p.created ASC
     `);
     const rows = (result.rows as Array<Record<string, unknown>>).map((r) => {
       const meta = r.product_metadata as Record<string, string> | null;
