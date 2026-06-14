@@ -124,86 +124,85 @@ export default function ViewerScreen() {
           <Text style={styles.loadingText}>Preparando sessão...</Text>
         </View>
       ) : (
-        <WebView
-          key={url ?? "no-url"}
-          ref={webViewRef}
-          source={{
-            uri: url ?? "",
-          }}
-          style={styles.webview}
-        onLoadStart={() => {
-          setLoading(true);
-          setError(false);
-          setLoadTimeout(false);
-        }}
-        onLoadEnd={() => {
-          setLoading(false);
-          setTimeout(() => setShowBack(true), 800);
-        }}
-        onLoadProgress={(event: any) => {
-          const { progress } = event.nativeEvent;
-          if (progress === 1) {
-            setLoading(false);
-          }
-        }}
-        onError={() => {
-          setLoading(false);
-          setError(true);
-        }}
-        onHttpError={(syntheticEvent: any) => {
-          const { nativeEvent } = syntheticEvent;
-          if (nativeEvent.statusCode >= 400) {
-            setLoading(false);
-            setError(true);
-          }
-        }}
-        allowsBackForwardNavigationGestures
-        sharedCookiesEnabled
-        thirdPartyCookiesEnabled
-        javaScriptEnabled
-        domStorageEnabled
-        allowsInlineMediaPlayback
-        mediaPlaybackRequiresUserAction={false}
-        originWhitelist={["*"]}
-        mixedContentMode="always"
-        cacheEnabled
-        cacheMode="LOAD_DEFAULT"
-      />
-
-      {loading && !error && (
-        <View style={styles.loadingOverlay}>
-          <Feather name="scissors" size={36} color="#c9a84c" />
-          <ActivityIndicator size="large" color="#c9a84c" style={{ marginTop: 16 }} />
-          <Text style={styles.loadingText}>Conectando ao sistema…</Text>
-        </View>
-      )}
-
-      {error && (
-        <View style={styles.center}>
-          <Feather name="wifi-off" size={48} color="#555" />
-          <Text style={styles.msgText}>Sem conexão com o servidor</Text>
-          <TouchableOpacity
-            style={styles.retryBtn}
-            onPress={() => {
-              setError(false);
+        <>
+          <WebView
+            key={url ?? "no-url"}
+            ref={webViewRef}
+            source={{ uri: url ?? "" }}
+            style={styles.webview}
+            onLoadStart={() => {
               setLoading(true);
-              webViewRef.current?.reload();
+              setError(false);
+              setLoadTimeout(false);
             }}
-          >
-            <Text style={styles.retryText}>Tentar novamente</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            onLoadEnd={() => {
+              setLoading(false);
+              setTimeout(() => setShowBack(true), 800);
+            }}
+            onLoadProgress={(event: any) => {
+              if (event.nativeEvent.progress === 1) {
+                setLoading(false);
+              }
+            }}
+            onError={() => {
+              setLoading(false);
+              setError(true);
+            }}
+            onHttpError={(syntheticEvent: any) => {
+              if (syntheticEvent.nativeEvent.statusCode >= 400) {
+                setLoading(false);
+                setError(true);
+              }
+            }}
+            allowsBackForwardNavigationGestures
+            sharedCookiesEnabled
+            thirdPartyCookiesEnabled
+            javaScriptEnabled
+            domStorageEnabled
+            allowsInlineMediaPlayback
+            mediaPlaybackRequiresUserAction={false}
+            originWhitelist={["*"]}
+            mixedContentMode="always"
+            cacheEnabled
+            cacheMode="LOAD_DEFAULT"
+          />
 
-      {showBack && !loading && !error && (
-        <TouchableOpacity
-          style={[styles.backBtn, { top: insets.top + 12 }]}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-          testID="back-button"
-        >
-          <Feather name="arrow-left" size={16} color="#f5f5f5" />
-        </TouchableOpacity>
+          {loading && !error && (
+            <View style={styles.loadingOverlay}>
+              <Feather name="scissors" size={36} color="#c9a84c" />
+              <ActivityIndicator size="large" color="#c9a84c" style={{ marginTop: 16 }} />
+              <Text style={styles.loadingText}>Conectando ao sistema…</Text>
+            </View>
+          )}
+
+          {error && (
+            <View style={styles.center}>
+              <Feather name="wifi-off" size={48} color="#555" />
+              <Text style={styles.msgText}>Sem conexão com o servidor</Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => {
+                  setError(false);
+                  setLoading(true);
+                  webViewRef.current?.reload();
+                }}
+              >
+                <Text style={styles.retryText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showBack && !loading && !error && (
+            <TouchableOpacity
+              style={[styles.backBtn, { top: insets.top + 12 }]}
+              onPress={() => router.back()}
+              activeOpacity={0.8}
+              testID="back-button"
+            >
+              <Feather name="arrow-left" size={16} color="#f5f5f5" />
+            </TouchableOpacity>
+          )}
+        </>
       )}
     </View>
   );
