@@ -71,6 +71,12 @@ export default function HomeScreen() {
   const [focusedIdx, setFocusedIdx] = useState(0);
 
   const handlePress = useCallback((mode: HomeMode) => {
+    if (mode.id === "management" && !Platform.isTV) {
+      // Phone/tablet: show native menu (web sidebar hidden on narrow screens)
+      router.push({ pathname: "/dashboard" });
+      return;
+    }
+    // TV or queue mode: go directly to WebView
     router.push({ pathname: "/viewer", params: { url: mode.url, title: mode.title } });
   }, [router]);
 
