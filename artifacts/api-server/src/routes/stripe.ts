@@ -1,7 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 
 const router: IRouter = Router();
@@ -74,29 +75,54 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
 
 router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = await db.execute(sql`
-      SELECT DISTINCT ON (pr.unit_amount)
-        p.id as product_id,
-        p.name as product_name,
-        p.description as product_description,
-        p.metadata as product_metadata,
-        pr.id as price_id,
-        pr.unit_amount,
-        pr.currency,
-        pr.recurring
-      FROM stripe.products p
-      JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-      WHERE p.active = true
-      ORDER BY pr.unit_amount ASC, p.created ASC
-    `);
-    const rows = (result.rows as Array<Record<string, unknown>>).map((r) => {
-      const meta = r.product_metadata as Record<string, string> | null;
-      const rawMax = meta?.maxBarbers;
+    const stripe = await getUncachableStripeClient();
+
+    // Fetch products + prices directly from Stripe API (no DB dependency)
+    const products = await stripe.products.list({ active: true, limit: 100 });
+    const prices = await stripe.prices.list({ active: true, limit: 100, type: "recurring" });
+
+    // Build price lookup by product
+    const priceMap = new Map<string, Stripe.Price>();
+    for (const pr of prices.data) {
+      const productId = typeof pr.product === "string" ? pr.product : (pr.product as any)?.id;
+      if (productId && !priceMap.has(productId)) {
+        priceMap.set(productId, pr);
+      }
+    }
+
+    const rows: Array<Record<string, unknown>> = [];
+    for (const p of products.data) {
+      const pr = priceMap.get(p.id);
+      if (!pr) continue;
+      const rawMax = p.metadata?.maxBarbers;
       const maxBarbers = rawMax !== undefined ? (parseInt(rawMax, 10) || null) : null;
-      return { ...r, maxBarbers };
+      rows.push({
+        product_id: p.id,
+        product_name: p.name,
+        product_description: p.description,
+        product_metadata: p.metadata,
+        price_id: pr.id,
+        unit_amount: pr.unit_amount,
+        currency: pr.currency,
+        recurring: pr.recurring,
+        maxBarbers,
+      });
+    }
+
+    // Sort by price ascending
+    rows.sort((a, b) => (a.unit_amount as number) - (b.unit_amount as number));
+
+    // Deduplicate: keep only one plan per unit_amount (first one in order)
+    const seenAmounts = new Set<number>();
+    const deduped = rows.filter((r) => {
+      const amount = r.unit_amount as number;
+      if (seenAmounts.has(amount)) return false;
+      seenAmounts.add(amount);
+      return true;
     });
-    res.json({ data: rows });
-  } catch {
+
+    res.json({ data: deduped });
+  } catch (err) {
     res.json({ data: [] });
   }
 });
