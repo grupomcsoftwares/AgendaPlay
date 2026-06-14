@@ -71,10 +71,6 @@ export default function HomeScreen() {
   const [focusedIdx, setFocusedIdx] = useState(0);
 
   const handlePress = useCallback((mode: HomeMode) => {
-    if (mode.id === "management") {
-      router.push({ pathname: "/dashboard" });
-      return;
-    }
     router.push({ pathname: "/viewer", params: { url: mode.url, title: mode.title } });
   }, [router]);
 
