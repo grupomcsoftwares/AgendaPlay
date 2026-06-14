@@ -3,14 +3,34 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   Platform,
+  BackHandler,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
+
+function useTVRemote(onEvent: (type: string) => void) {
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    try {
+      const TVEventHandler = (require("react-native") as any).TVEventHandler;
+      if (!TVEventHandler) return;
+      const handler = new TVEventHandler();
+      handler.enable(null, (_: unknown, evt: { eventType: string }) => {
+        onEventRef.current(evt.eventType);
+      });
+      return () => handler.disable();
+    } catch {
+      // Not on TV — ignore
+    }
+  }, []);
+}
 
 export default function ViewerScreen() {
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
@@ -22,7 +42,23 @@ export default function ViewerScreen() {
   const [error, setError] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [cookieReady, setCookieReady] = useState(false);
-  const [loadTimeout, setLoadTimeout] = useState(false);
+  const [backFocused, setBackFocused] = useState(false);
+
+  // Hardware back button (Android) + TV remote back key
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.back();
+      return true;
+    });
+    return () => sub.remove();
+  }, [router]);
+
+  // TV remote back/menu keys
+  useTVRemote((type) => {
+    if (type === "back" || type === "menu") {
+      router.back();
+    }
+  });
 
   // Inject session cookie into CookieManager before WebView mounts
   useEffect(() => {
@@ -39,8 +75,6 @@ export default function ViewerScreen() {
       }
       const parsed = new URL(url);
       const domain = parsed.hostname;
-      // Parse the raw cookie string to extract name=value and attributes
-      // Example: connect.sid=xxx; Path=/; HttpOnly; Secure; SameSite=None
       const [nameValue, ...attrs] = raw.split(/;\s*/);
       const [name, value] = nameValue.split("=");
       if (!name || value === undefined) {
@@ -64,40 +98,23 @@ export default function ViewerScreen() {
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
 
-      // On Android, use setFromResponse for raw Set-Cookie strings
       if (Platform.OS === "android") {
         CookieManager.setFromResponse(parsed.origin, raw)
-          .then(() => {
-            console.log("[CookieManager] cookie set via setFromResponse for", domain);
-          })
-          .catch((err: any) => {
-            console.warn("[CookieManager] setFromResponse failed:", err);
-          })
-          .finally(() => {
-            setCookieReady(true);
-          });
+          .catch(() => {})
+          .finally(() => setCookieReady(true));
         return;
       }
 
       CookieManager.set(parsed.origin, cookieOpts)
-        .then(() => {
-          console.log("[CookieManager] cookie set for", domain);
-        })
-        .catch((err: any) => {
-          console.warn("[CookieManager] failed to set cookie:", err);
-        })
-        .finally(() => {
-          setCookieReady(true);
-        });
+        .catch(() => {})
+        .finally(() => setCookieReady(true));
     });
   }, [getSessionCookie, url]);
 
   // Timeout: if loading takes > 15s, show retry option
   useEffect(() => {
     if (!loading) return;
-    const timer = setTimeout(() => {
-      setLoadTimeout(true);
-    }, 15000);
+    const timer = setTimeout(() => setLoading(false), 15000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -106,9 +123,9 @@ export default function ViewerScreen() {
       <View style={styles.center}>
         <Feather name="monitor" size={48} color="#555" />
         <Text style={styles.msgText}>Disponível no app nativo Android/iOS</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={() => router.back()}>
+        <Pressable style={styles.retryBtn} onPress={() => router.back()}>
           <Text style={styles.retryText}>← Voltar</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -133,16 +150,13 @@ export default function ViewerScreen() {
             onLoadStart={() => {
               setLoading(true);
               setError(false);
-              setLoadTimeout(false);
             }}
             onLoadEnd={() => {
               setLoading(false);
               setTimeout(() => setShowBack(true), 800);
             }}
             onLoadProgress={(event: any) => {
-              if (event.nativeEvent.progress === 1) {
-                setLoading(false);
-              }
+              if (event.nativeEvent.progress === 1) setLoading(false);
             }}
             onError={() => {
               setLoading(false);
@@ -179,28 +193,34 @@ export default function ViewerScreen() {
             <View style={styles.center}>
               <Feather name="wifi-off" size={48} color="#555" />
               <Text style={styles.msgText}>Sem conexão com o servidor</Text>
-              <TouchableOpacity
-                style={styles.retryBtn}
+              <Pressable
+                style={[styles.retryBtn, backFocused && styles.retryBtnFocused]}
                 onPress={() => {
                   setError(false);
                   setLoading(true);
                   webViewRef.current?.reload();
                 }}
+                onFocus={() => setBackFocused(true)}
+                onBlur={() => setBackFocused(false)}
+                focusable
+                hasTVPreferredFocus
               >
                 <Text style={styles.retryText}>Tentar novamente</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
 
           {showBack && !loading && !error && (
-            <TouchableOpacity
-              style={[styles.backBtn, { top: insets.top + 12 }]}
+            <Pressable
+              style={[styles.backBtn, { top: insets.top + 12 }, backFocused && styles.backBtnFocused]}
               onPress={() => router.back()}
-              activeOpacity={0.8}
+              onFocus={() => setBackFocused(true)}
+              onBlur={() => setBackFocused(false)}
+              focusable
               testID="back-button"
             >
-              <Feather name="arrow-left" size={16} color="#f5f5f5" />
-            </TouchableOpacity>
+              <Feather name="arrow-left" size={16} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
+            </Pressable>
           )}
         </>
       )}
@@ -232,9 +252,10 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 22,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#333",
   },
+  retryBtnFocused: { borderColor: "#c9a84c", backgroundColor: "#1a1a0a" },
   retryText: { color: "#c9a84c", fontWeight: "600", fontSize: 14 },
   backBtn: {
     position: "absolute",
@@ -245,7 +266,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.65)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#333",
   },
+  backBtnFocused: { borderColor: "#c9a84c", backgroundColor: "rgba(201,168,76,0.15)" },
 });

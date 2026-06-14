@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Platform,
   ScrollView,
+  Pressable,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -39,6 +39,25 @@ const MODES = [
 
 export type HomeMode = (typeof MODES)[number];
 
+function useTVRemote(onEvent: (type: string) => void) {
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+
+  useEffect(() => {
+    try {
+      const TVEventHandler = (require("react-native") as any).TVEventHandler;
+      if (!TVEventHandler) return;
+      const handler = new TVEventHandler();
+      handler.enable(null, (_: unknown, evt: { eventType: string }) => {
+        onEventRef.current(evt.eventType);
+      });
+      return () => handler.disable();
+    } catch {
+      // Not on TV — ignore
+    }
+  }, []);
+}
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,15 +67,35 @@ export default function HomeScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
 
-  const handlePress = (mode: HomeMode) => {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [focusedIdx, setFocusedIdx] = useState(0);
+
+  const handlePress = useCallback((mode: HomeMode) => {
     if (mode.id === "management") {
       router.push({ pathname: "/dashboard" });
       return;
     }
-    const url = mode.url;
-    if (!url) return;
-    router.push({ pathname: "/viewer", params: { url, title: mode.title } });
-  };
+    router.push({ pathname: "/viewer", params: { url: mode.url, title: mode.title } });
+  }, [router]);
+
+  useTVRemote((type) => {
+    if (type === "up") {
+      setFocusedIdx((prev) => {
+        const next = Math.max(0, prev - 1);
+        setFocusedId(MODES[next]?.id ?? null);
+        return next;
+      });
+    } else if (type === "down") {
+      setFocusedIdx((prev) => {
+        const next = Math.min(MODES.length - 1, prev + 1);
+        setFocusedId(MODES[next]?.id ?? null);
+        return next;
+      });
+    } else if (type === "select") {
+      const mode = MODES[focusedIdx];
+      if (mode) handlePress(mode);
+    }
+  });
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -76,35 +115,61 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.cards}>
-          {MODES.map((mode) => (
-            <TouchableOpacity
-              key={mode.id}
-              style={styles.card}
-              onPress={() => handlePress(mode)}
-              activeOpacity={0.7}
-              testID={`mode-${mode.id}`}
-            >
-              <View style={[styles.iconBox, { backgroundColor: mode.color + "22" }]}>
-                <Feather name={mode.icon} size={28} color={mode.color} />
-              </View>
-              <View style={styles.cardBody}>
-                <View style={styles.titleRow}>
-                  <Text style={styles.cardTitle}>{mode.title}</Text>
-                  <View style={[styles.badge, { backgroundColor: mode.color + "25" }]}>
-                    <Text style={[styles.badgeText, { color: mode.color }]}>{mode.badge}</Text>
-                  </View>
+          {MODES.map((mode, idx) => {
+            const isFocused = focusedId === mode.id;
+            return (
+              <Pressable
+                key={mode.id}
+                style={[
+                  styles.card,
+                  isFocused && { borderColor: mode.color, backgroundColor: "#1a1a1a" },
+                ]}
+                onPress={() => handlePress(mode)}
+                onFocus={() => {
+                  setFocusedId(mode.id);
+                  setFocusedIdx(idx);
+                }}
+                onBlur={() => setFocusedId((prev) => (prev === mode.id ? null : prev))}
+                focusable
+                hasTVPreferredFocus={idx === 0}
+                testID={`mode-${mode.id}`}
+              >
+                <View style={[styles.iconBox, { backgroundColor: mode.color + "22" }]}>
+                  <Feather
+                    name={mode.icon}
+                    size={28}
+                    color={isFocused ? mode.color : mode.color + "bb"}
+                  />
                 </View>
-                <Text style={styles.cardDesc} numberOfLines={2}>{mode.description}</Text>
-              </View>
-              <Feather name="chevron-right" size={18} color="#555" />
-            </TouchableOpacity>
-          ))}
+                <View style={styles.cardBody}>
+                  <View style={styles.titleRow}>
+                    <Text style={[styles.cardTitle, isFocused && { color: "#fff" }]}>
+                      {mode.title}
+                    </Text>
+                    <View style={[styles.badge, { backgroundColor: mode.color + "25" }]}>
+                      <Text style={[styles.badgeText, { color: mode.color }]}>{mode.badge}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDesc} numberOfLines={2}>{mode.description}</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={isFocused ? mode.color : "#555"} />
+              </Pressable>
+            );
+          })}
         </View>
 
-        <TouchableOpacity style={styles.logoutRow} onPress={logout}>
-          <Feather name="log-out" size={13} color="#555" />
-          <Text style={styles.logoutText}>Sair da conta</Text>
-        </TouchableOpacity>
+        <Pressable
+          style={({ pressed }) => [styles.logoutRow, pressed && styles.logoutFocused]}
+          onPress={logout}
+          focusable
+        >
+          {({ pressed }) => (
+            <>
+              <Feather name="log-out" size={13} color={pressed ? "#ef4444" : "#555"} />
+              <Text style={[styles.logoutText, pressed && styles.logoutTextFocused]}>Sair da conta</Text>
+            </>
+          )}
+        </Pressable>
       </ScrollView>
 
       <UpdateDialog
@@ -133,8 +198,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     gap: 14,
-    borderWidth: 1,
-    borderColor: "#242424",
+    borderWidth: 2,
+    borderColor: "transparent",
   },
   iconBox: { width: 50, height: 50, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   cardBody: { flex: 1 },
@@ -143,6 +208,20 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   badgeText: { fontSize: 10, fontWeight: "700" },
   cardDesc: { fontSize: 12, color: "#666", lineHeight: 17 },
-  logoutRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 20, justifyContent: "center" },
+  logoutRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+    alignSelf: "center",
+  },
+  logoutFocused: { borderColor: "#ef4444", backgroundColor: "#1a0a0a" },
   logoutText: { fontSize: 12, color: "#555" },
+  logoutTextFocused: { color: "#ef4444", fontWeight: "600" },
 });
