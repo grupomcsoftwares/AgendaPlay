@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "AgendaPlay",
+    "name": "Baico Recarga Play",
     "slug": "agenda-tv",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "agenda-tv",
