@@ -49,6 +49,10 @@ export default function HomeScreen() {
   const botPad = isWeb ? 34 : insets.bottom;
 
   const handlePress = (mode: HomeMode) => {
+    if (mode.id === "management") {
+      router.push({ pathname: "/dashboard" });
+      return;
+    }
     const url = mode.url;
     if (!url) return;
     router.push({ pathname: "/viewer", params: { url, title: mode.title } });
