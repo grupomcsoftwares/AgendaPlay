@@ -118,11 +118,19 @@ export default function Appointments() {
   const handleEdit = () => {
     if (!editTarget || !editTime) return;
     const scheduledAt = new Date(`${editDateStr}T${editTime}:00-03:00`).toISOString();
+    // Old date to invalidate its availability cache so the old slot frees up
+    const oldDate = new Date(editTarget.scheduledAt).toISOString().split("T")[0];
+    const serviceId = editTarget.serviceId ?? 0;
     updateAppointment.mutate(
       { id: editTarget.id, data: { scheduledAt } },
       {
         onSuccess: () => {
           invalidateAll();
+          // Explicitly invalidate old date availability so old slot shows free
+          if (oldDate && oldDate !== editDateStr) {
+            queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: oldDate, serviceId }) });
+          }
+          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: editDateStr, serviceId }) });
           setEditTarget(null);
           toast({ title: "Horário atualizado" });
         },

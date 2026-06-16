@@ -153,11 +153,18 @@ export default function CancelBooking() {
     setErrorMsg(null);
     // Fixed -03:00 (Brazil) — matches server's TZ assumption.
     const scheduledAt = new Date(`${reschedDate}T${reschedTime}:00-03:00`).toISOString();
+    // Remember old date to invalidate its availability cache
+    const oldDate = appointment ? new Date(appointment.scheduledAt).toISOString().split("T")[0] : "";
     rescheduleMut.mutate(
       { token, data: { scheduledAt } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
+          // Invalidate new date and old date so the old slot frees up immediately
+          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceDuration }) });
+          if (oldDate && oldDate !== reschedDate) {
+            queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: oldDate, serviceDuration }) });
+          }
           queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
           setReschedOpen(false);
         },
