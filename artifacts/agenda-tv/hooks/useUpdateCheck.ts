@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = "https://mcagenda.replit.app/api";
+const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app"}/api`;
 const SKIPPED_VERSION_KEY = "@agendaplay/skipped_version";
 
 export type UpdateInfo = {
@@ -10,7 +10,7 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.13";
+export const APP_VERSION = "1.0.14";
 
 export function useUpdateCheck(): UpdateInfo {
   const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION);

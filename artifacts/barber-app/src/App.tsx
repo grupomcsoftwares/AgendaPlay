@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { Sidebar } from "./components/layout";
-import { playAlert15 } from "@/lib/sounds";
+import { playAlert15, playNewAppointment, playRescheduled } from "@/lib/sounds";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Dashboard from "./pages/dashboard";
@@ -43,7 +43,10 @@ function ThemeWrapper({ children }: { children: React.ReactNode }) {
     if (!("serviceWorker" in navigator)) return;
     const handler = (event: MessageEvent) => {
       if (event.data?.type === "PLAY_SOUND") {
-        playAlert15();
+        const s = event.data?.sound;
+        if (s === "rescheduled") playRescheduled();
+        else if (s === "new") playNewAppointment();
+        else playAlert15();
       }
     };
     navigator.serviceWorker.addEventListener("message", handler);

@@ -10,3 +10,4 @@ export * from "./loyalty-points";
 export * from "./subscription-plans";
 export * from "./client-subscriptions";
 export * from "./push-subscriptions";
+export * from "./admin-push-subscriptions";

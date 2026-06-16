@@ -9,7 +9,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, CreditCard, BadgeCheck, XCircle, AlertTriangle } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, CreditCard, BadgeCheck, XCircle, AlertTriangle, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,6 +153,9 @@ export default function Settings() {
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
 
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     barbershopName: "",
     ownerName: "",
@@ -264,6 +267,74 @@ export default function Settings() {
       }
     );
   };
+
+  const handlePushToggle = async () => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      toast({ title: "Notificações não suportadas neste dispositivo", variant: "destructive" });
+      return;
+    }
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await fetch("/api/push/admin/unsubscribe", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+            credentials: "include",
+          });
+          await sub.unsubscribe();
+        }
+        setPushEnabled(false);
+        toast({ title: "Notificações desativadas" });
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          toast({ title: "Permissão negada para notificações", variant: "destructive" });
+          setPushLoading(false);
+          return;
+        }
+        const res = await fetch("/api/push/vapid-public-key", { credentials: "include" });
+        const { key } = await res.json();
+        if (!key) {
+          toast({ title: "Chave VAPID não disponível", variant: "destructive" });
+          setPushLoading(false);
+          return;
+        }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key,
+        });
+        const { endpoint } = sub;
+        const raw = sub.toJSON() as unknown as { keys?: { p256dh?: string; auth?: string } };
+        const p256dh = raw.keys?.p256dh ?? "";
+        const auth = raw.keys?.auth ?? "";
+        await fetch("/api/push/admin/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint, p256dh, auth }),
+          credentials: "include",
+        });
+        setPushEnabled(true);
+        toast({ title: "Notificações ativadas!" });
+      }
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erro ao gerenciar notificações", variant: "destructive" });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    navigator.serviceWorker.ready.then(async (reg) => {
+      const sub = await reg.pushManager.getSubscription();
+      setPushEnabled(!!sub);
+    });
+  }, []);
 
   const handleSlugSave = () => {
     const err = validateSlug(slugValue);
@@ -661,6 +732,42 @@ export default function Settings() {
                 <p className="text-xs text-muted-foreground">Intervalo = duração do serviço</p>
               </div>
               <Switch checked={formData.smartSlots} onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 2.5: Notificações Push ────────────────────────── */}
+      <div className="max-w-5xl">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Notificações Push</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Receber alertas no dispositivo</p>
+                <p className="text-xs text-muted-foreground">
+                  {pushEnabled
+                    ? "Você receberá notificações de novos agendamentos e reagendamentos"
+                    : "Ative para receber notificações de novos agendamentos e reagendamentos"}
+                </p>
+              </div>
+              <Button
+                variant={pushEnabled ? "default" : "outline"}
+                size="sm"
+                className="shrink-0 gap-1.5 h-8 text-xs"
+                disabled={pushLoading}
+                onClick={handlePushToggle}
+              >
+                {pushLoading ? (
+                  <span className="animate-pulse">…</span>
+                ) : pushEnabled ? (
+                  <><BellOff className="h-3.5 w-3.5" /> Desativar</>
+                ) : (
+                  <><Bell className="h-3.5 w-3.5" /> Ativar</>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>

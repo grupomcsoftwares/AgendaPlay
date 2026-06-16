@@ -3,6 +3,7 @@ import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
+import { sendAdminPush } from "./push.js";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -414,6 +415,21 @@ router.post("/appointments", async (req, res): Promise<void> => {
     return;
   }
 
+  // Notify admin via push
+  const apptHH = new Date(appointment.scheduledAt).toLocaleTimeString("pt-BR", {
+    hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+  });
+  const apptDD = new Date(appointment.scheduledAt).toLocaleDateString("pt-BR", {
+    day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo",
+  });
+  sendAdminPush(appointment.userId, {
+    title: "📅 Novo agendamento",
+    body: `${appointment.clientName} · ${appointment.serviceName} · ${apptDD} às ${apptHH}`,
+    tag: `new-${appointment.id}`,
+    url: `/agendamento/${appointment.cancelToken}`,
+    sound: "new",
+  }).catch(() => {});
+
   res.status(201).json(formatAppointmentWithToken(appointment));
 });
 
@@ -696,6 +712,24 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
   }
+  // Notify admin via push about reschedule
+  if (result.appointment) {
+    const a = result.appointment;
+    const apptHH = new Date(a.scheduledAt).toLocaleTimeString("pt-BR", {
+      hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
+    });
+    const apptDD = new Date(a.scheduledAt).toLocaleDateString("pt-BR", {
+      day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo",
+    });
+    sendAdminPush(a.userId, {
+      title: "🔄 Horário alterado",
+      body: `${a.clientName} · ${a.serviceName} · novo horário: ${apptDD} às ${apptHH}`,
+      tag: `resched-${a.id}`,
+      url: `/agendamento/${a.cancelToken}`,
+      sound: "rescheduled",
+    }).catch(() => {});
+  }
+
   res.json(formatAppointmentWithToken(result.appointment!));
 });
 

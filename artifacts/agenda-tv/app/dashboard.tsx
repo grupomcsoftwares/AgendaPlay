@@ -17,7 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 
-const PROD_BASE = "https://mcagenda.replit.app";
+const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app"}`;
 
 const MENU_ITEMS = [
   { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
@@ -111,7 +111,9 @@ export default function DashboardScreen() {
         const [nameValue] = raw.split(/;\s*/);
         const [name, value] = nameValue.split("=");
         if (name && value !== undefined) {
-          setInjectedCookie(`document.cookie = "${name}=${value}; domain=.replit.app; path=/;";`);
+          const domain = process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app";
+          const cookieDomain = domain.endsWith(".replit.app") ? ".replit.app" : domain;
+          setInjectedCookie(`document.cookie = "${name}=${value}; domain=${cookieDomain}; path=/;";`);
         }
       }
       setCookieReady(true);

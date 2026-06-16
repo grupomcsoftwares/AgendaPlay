@@ -1,7 +1,7 @@
 import { Router } from "express";
 import webpush from "web-push";
 import { db } from "@workspace/db";
-import { pushSubscriptionsTable, appointmentsTable, settingsTable } from "@workspace/db/schema";
+import { pushSubscriptionsTable, adminPushSubscriptionsTable, appointmentsTable, settingsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -44,6 +44,66 @@ router.delete("/push/unsubscribe/:token", async (req, res) => {
   await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.cancelToken, req.params.token));
   res.json({ ok: true });
 });
+
+// ── Admin push subscriptions ─────────────────────────────────────────
+
+router.post("/push/admin/subscribe", async (req, res) => {
+  const userId = req.session?.userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { endpoint, p256dh, auth } = req.body ?? {};
+  if (
+    typeof endpoint !== "string" || !endpoint.startsWith("https://") ||
+    typeof p256dh !== "string" || !p256dh ||
+    typeof auth !== "string" || !auth
+  ) {
+    res.status(400).json({ error: "Dados inválidos." });
+    return;
+  }
+  await db
+    .insert(adminPushSubscriptionsTable)
+    .values({ userId, endpoint, p256dh, auth })
+    .onConflictDoUpdate({
+      target: [adminPushSubscriptionsTable.userId, adminPushSubscriptionsTable.endpoint],
+      set: { p256dh, auth },
+    });
+  res.json({ ok: true });
+});
+
+router.delete("/push/admin/unsubscribe", async (req, res) => {
+  const userId = req.session?.userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const endpoint = typeof req.body?.endpoint === "string" ? req.body.endpoint : null;
+  if (endpoint) {
+    await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.endpoint, endpoint));
+  } else {
+    await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.userId, userId));
+  }
+  res.json({ ok: true });
+});
+
+export async function sendAdminPush(userId: string, payload: {
+  title: string;
+  body: string;
+  tag?: string;
+  url?: string;
+  sound?: "new" | "rescheduled";
+}) {
+  if (!process.env.VAPID_PUBLIC_KEY) return;
+  const subs = await db
+    .select()
+    .from(adminPushSubscriptionsTable)
+    .where(eq(adminPushSubscriptionsTable.userId, userId));
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload),
+      );
+    } catch {
+      await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.id, sub.id));
+    }
+  }
+}
 
 export async function runPushScheduler() {
   if (!process.env.VAPID_PUBLIC_KEY) return;

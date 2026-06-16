@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE = "https://mcagenda.replit.app/api";
+const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app"}/api`;
 const USER_KEY = "@agendaplay/user";
 const COOKIE_KEY = "@agendaplay/session_cookie";
 
