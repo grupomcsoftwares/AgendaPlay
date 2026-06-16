@@ -13,6 +13,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { playRescheduled } from "@/lib/sounds";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -167,6 +168,7 @@ export default function CancelBooking() {
           }
           queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
           setReschedOpen(false);
+          playRescheduled();
         },
         onError: (err: unknown) => {
           const data = (err as { data?: { error?: string } } | null)?.data;

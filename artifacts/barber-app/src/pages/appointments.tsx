@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { playNewAppointment } from "@/lib/sounds";
+import { playNewAppointment, playRescheduled } from "@/lib/sounds";
 import {
   useListAppointments,
   useCreateAppointment,
@@ -133,6 +133,7 @@ export default function Appointments() {
           queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: editDateStr, serviceId }) });
           setEditTarget(null);
           toast({ title: "Horário atualizado" });
+          playRescheduled();
         },
         onError: (err) => {
           const apiErr = err as ApiError<{ error?: string }>;

@@ -67,3 +67,14 @@ export function playAlert15() {
     }
   } catch { /* ignore */ }
 }
+
+export function playRescheduled() {
+  try {
+    const ac = getCtx();
+    const t = ac.currentTime;
+    // Arpeggio maior (descendente) — diferente do novo agendamento
+    tone(ac, 880, t, 0.2, 0.25, "triangle");     // A5
+    tone(ac, 783.99, t + 0.12, 0.2, 0.25, "triangle"); // G5
+    tone(ac, 659.25, t + 0.24, 0.35, 0.3, "triangle"); // E5
+  } catch { /* ignore */ }
+}
