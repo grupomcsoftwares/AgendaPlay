@@ -6,6 +6,8 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,14 +20,14 @@ import UpdateDialog from "@/components/UpdateDialog";
 const PROD_BASE = "https://mcagenda.replit.app";
 
 const MENU_ITEMS = [
-  { id: "overview",     label: "Visão Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
+  { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
   { id: "appointments", label: "Agendamentos",   icon: "list" as const,        url: `${PROD_BASE}/appointments` },
   { id: "queue",        label: "Painel de Fila", icon: "activity" as const,    url: `${PROD_BASE}/queue` },
   { id: "clients",      label: "Clientes",        icon: "user" as const,        url: `${PROD_BASE}/clients` },
-  { id: "services",     label: "Serviços",        icon: "scissors" as const,    url: `${PROD_BASE}/services` },
+  { id: "services",     label: "Servi\u00e7os",        icon: "scissors" as const,    url: `${PROD_BASE}/services` },
   { id: "barbers",      label: "Barbeiros",       icon: "users" as const,       url: `${PROD_BASE}/barbers` },
   { id: "finance",      label: "Financeiro",      icon: "credit-card" as const, url: `${PROD_BASE}/financial` },
-  { id: "settings",     label: "Configurações",   icon: "settings" as const,    url: `${PROD_BASE}/settings` },
+  { id: "settings",     label: "Configura\u00e7\u00f5es",   icon: "settings" as const,    url: `${PROD_BASE}/settings` },
 ];
 
 // TV remote D-pad handler
@@ -48,6 +50,11 @@ function useTVRemote(onEvent: (type: string) => void) {
   }, []);
 }
 
+function useIsTablet() {
+  const { width } = useWindowDimensions();
+  return width >= 600;
+}
+
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -56,19 +63,23 @@ export default function DashboardScreen() {
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
+  const isTablet = useIsTablet();
+  const isTV = Platform.isTV || false;
 
   const [selectedId, setSelectedId] = useState<string>("overview");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
   const [cookieReady, setCookieReady] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
 
   const selectedItem = MENU_ITEMS.find((i) => i.id === selectedId) ?? MENU_ITEMS[0];
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
     setLoading(true);
-  }, []);
+    if (!isTablet && !isTV) setMenuOpen(false);
+  }, [isTablet, isTV]);
 
   // TV remote
   useTVRemote((type) => {
@@ -109,13 +120,24 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
+      {/* Overlay when menu is open on mobile */}
+      {menuOpen && !isTablet && !isTV && (
+        <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)} />
+      )}
+
       {/* Sidebar */}
-      <View style={styles.sidebar}>
+      <View style={[styles.sidebar, menuOpen ? styles.sidebarOpen : styles.sidebarClosed]}>
         <View style={styles.sidebarHeader}>
-          <Feather name="scissors" size={20} color="#c9a84c" />
-          <Text style={styles.shopName} numberOfLines={1}>
-            {user?.barbershopName || "AgendaPlay"}
-          </Text>
+          {menuOpen ? (
+            <>
+              <Feather name="scissors" size={20} color="#c9a84c" />
+              <Text style={styles.shopName} numberOfLines={1}>
+                {user?.barbershopName || "AgendaPlay"}
+              </Text>
+            </>
+          ) : (
+            <Feather name="scissors" size={20} color="#c9a84c" />
+          )}
         </View>
         <ScrollView
           contentContainerStyle={{ paddingBottom: botPad + 24 }}
@@ -131,7 +153,8 @@ export default function DashboardScreen() {
                   key={item.id}
                   style={[
                     styles.menuItem,
-                    isSelected && styles.menuItemSelected,
+                    !menuOpen && styles.menuItemCollapsed,
+                    isSelected && (menuOpen ? styles.menuItemSelected : styles.menuItemSelectedCollapsed),
                     isFocused && !isSelected && styles.menuItemFocused,
                   ]}
                   onPress={() => handlePress(item)}
@@ -148,16 +171,18 @@ export default function DashboardScreen() {
                     size={18}
                     color={isSelected ? "#0f0f0f" : isFocused ? "#c9a84c" : "#aaa"}
                   />
-                  <Text
-                    style={[
-                      styles.menuLabel,
-                      isSelected && styles.menuLabelSelected,
-                      !isSelected && isFocused && styles.menuLabelFocused,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  {isSelected && <View style={styles.selectedDot} />}
+                  {menuOpen && (
+                    <Text
+                      style={[
+                        styles.menuLabel,
+                        isSelected && styles.menuLabelSelected,
+                        !isSelected && isFocused && styles.menuLabelFocused,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  )}
+                  {menuOpen && isSelected && <View style={styles.selectedDot} />}
                 </Pressable>
               );
             })}
@@ -167,6 +192,16 @@ export default function DashboardScreen() {
 
       {/* Content area */}
       <View style={styles.content}>
+        {/* Hamburger button (only on mobile when menu is closed) */}
+        {!menuOpen && !isTablet && !isTV && (
+          <Pressable
+            style={styles.hamburgerBtn}
+            onPress={() => setMenuOpen(true)}
+          >
+            <Feather name="menu" size={22} color="#c9a84c" />
+          </Pressable>
+        )}
+
         {loading && (
           <View style={styles.loaderOverlay}>
             <View style={styles.loaderBox}>
@@ -205,11 +240,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#0c0c0c",
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    zIndex: 5,
+  },
   sidebar: {
-    width: 220,
     backgroundColor: "#0f0f0f",
     borderRightWidth: 1,
     borderRightColor: "#1a1a1a",
+    zIndex: 10,
+  },
+  sidebarOpen: {
+    width: 220,
+  },
+  sidebarClosed: {
+    width: 56,
   },
   sidebarHeader: {
     flexDirection: "row",
@@ -219,6 +265,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#1a1a1a",
+    minHeight: 56,
   },
   shopName: {
     fontSize: 15,
@@ -241,9 +288,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "transparent",
   },
+  menuItemCollapsed: {
+    justifyContent: "center",
+    paddingHorizontal: 0,
+  },
   menuItemSelected: {
     backgroundColor: "#c9a84c",
     borderColor: "transparent",
+  },
+  menuItemSelectedCollapsed: {
+    backgroundColor: "#c9a84c",
+    borderColor: "transparent",
+    borderRadius: 8,
   },
   menuItemFocused: {
     backgroundColor: "#1a1a0a",
@@ -293,5 +349,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#888",
     fontWeight: "500",
+  },
+  hamburgerBtn: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: "#1a1a1a",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#333",
   },
 });
