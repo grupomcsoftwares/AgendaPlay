@@ -598,6 +598,26 @@ export default function Settings() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3">
               <div className="space-y-1">
+                <Label className="text-xs">Intervalo entre agendamentos</Label>
+                <select
+                  value={formData.slotIntervalMinutes}
+                  onChange={(e) => setFormData({ ...formData, slotIntervalMinutes: Number(e.target.value) })}
+                  className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm"
+                  disabled={formData.smartSlots}
+                  title={formData.smartSlots ? "Desativado porque Horários inteligentes está ligado" : ""}
+                >
+                  <option value={5}>5 minutos</option>
+                  <option value={10}>10 minutos</option>
+                  <option value={15}>15 minutos</option>
+                  <option value={20}>20 minutos</option>
+                  <option value={30}>30 minutos</option>
+                  <option value={60}>1 hora</option>
+                </select>
+                {formData.smartSlots && (
+                  <p className="text-xs text-muted-foreground">Controlado automaticamente pela duração do serviço</p>
+                )}
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs">Janela máxima para agendar</Label>
                 <select value={formData.maxBookingDays} onChange={(e) => setFormData({ ...formData, maxBookingDays: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
                   <option value={7}>7 dias</option>
