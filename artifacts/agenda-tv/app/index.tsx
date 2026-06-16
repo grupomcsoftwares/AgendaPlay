@@ -30,7 +30,11 @@ export default function LoginScreen() {
     setError("");
     try {
       await login(email.trim(), password.trim());
-      router.replace("/home");
+      if (Platform.isTV) {
+        router.replace("/home");
+      } else {
+        router.replace("/dashboard");
+      }
     } catch (err: any) {
       setError(err?.message || "Erro ao fazer login.");
     }
