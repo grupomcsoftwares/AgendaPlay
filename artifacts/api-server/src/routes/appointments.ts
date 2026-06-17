@@ -198,7 +198,7 @@ router.get("/availability", async (req, res): Promise<void> => {
   const slots: Array<{ time: string; available: boolean }> = [];
   // Step: if smartSlots, use service duration as step (tighter packing);
   // otherwise use the configured grid interval
-  const step = smartSlots ? Math.max(slotIntervalMinutes, duration) : Math.max(5, slotIntervalMinutes);
+  const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
   const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
