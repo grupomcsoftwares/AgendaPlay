@@ -270,7 +270,7 @@ export default function Settings() {
 
   const handlePushToggle = async () => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-      toast({ title: "Notificações não suportadas neste dispositivo", variant: "destructive" });
+      toast({ title: "Notificações push não suportadas neste navegador", variant: "destructive" });
       return;
     }
     setPushLoading(true);
@@ -297,13 +297,29 @@ export default function Settings() {
           return;
         }
         const res = await fetch("/api/push/vapid-public-key", { credentials: "include" });
+        if (!res.ok) {
+          toast({ title: "Erro ao buscar chave VAPID", variant: "destructive" });
+          setPushLoading(false);
+          return;
+        }
         const { key } = await res.json();
         if (!key) {
           toast({ title: "Chave VAPID não disponível", variant: "destructive" });
           setPushLoading(false);
           return;
         }
-        const reg = await navigator.serviceWorker.ready;
+        // Wait for service worker with a timeout
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Service Worker não respondeu")), 5000)
+          ),
+        ]);
+        if (!reg.active) {
+          toast({ title: "Service Worker não está ativo. Recarregue a página.", variant: "destructive" });
+          setPushLoading(false);
+          return;
+        }
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: key,
