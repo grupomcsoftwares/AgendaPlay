@@ -196,10 +196,10 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  // Step: if smartSlots, use 5-minute granularity for floating slots (maximum
-  // flexibility so any time that fits is offered). Otherwise use the configured
-  // grid interval.
-  const step = smartSlots ? 5 : Math.max(5, slotIntervalMinutes);
+  // Step: if smartSlots, use the service duration as the step so the grid
+  // matches the service length (e.g. 35 min service = 35 min slots).
+  // Otherwise use the configured grid interval.
+  const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
   const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
