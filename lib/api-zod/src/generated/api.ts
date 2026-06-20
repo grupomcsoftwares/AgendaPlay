@@ -270,9 +270,12 @@ export const UpdateAppointmentParams = zod.object({
 
 export const UpdateAppointmentBody = zod.object({
   "clientName": zod.string().optional(),
+  "serviceId": zod.number().nullish(),
   "serviceName": zod.string().optional(),
   "servicePrice": zod.number().optional(),
   "serviceDuration": zod.number().optional(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "scheduledAt": zod.string().optional(),
   "status": zod.string().optional(),
   "notes": zod.string().nullish()

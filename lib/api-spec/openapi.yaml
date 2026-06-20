@@ -1356,12 +1356,18 @@ components:
       properties:
         clientName:
           type: string
+        serviceId:
+          type: ["integer", "null"]
         serviceName:
           type: string
         servicePrice:
           type: number
         serviceDuration:
           type: integer
+        barberId:
+          type: ["integer", "null"]
+        barberName:
+          type: ["string", "null"]
         scheduledAt:
           type: string
         status:

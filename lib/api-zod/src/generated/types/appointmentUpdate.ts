@@ -8,9 +8,15 @@
 
 export interface AppointmentUpdate {
   clientName?: string;
+  /** @nullable */
+  serviceId?: number | null;
   serviceName?: string;
   servicePrice?: number;
   serviceDuration?: number;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
   scheduledAt?: string;
   status?: string;
   /** @nullable */

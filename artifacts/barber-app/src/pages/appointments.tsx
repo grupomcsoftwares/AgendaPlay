@@ -96,19 +96,21 @@ export default function Appointments() {
   const [editTarget, setEditTarget] = useState<Appointment | null>(null);
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editTime, setEditTime] = useState("");
+  const [editServiceIdState, setEditServiceIdState] = useState<number>(0);
   const editDateStr = format(editDate, "yyyy-MM-dd");
-  const editServiceId = editTarget?.serviceId ?? 0;
+  // Use the selected service in the edit modal, falling back to the original
+  const effectiveEditServiceId = editServiceIdState > 0 ? editServiceIdState : (editTarget?.serviceId ?? 0);
   const editServiceDuration = editTarget?.serviceDuration ?? 0;
   // If the appointment has a serviceId, use it; otherwise use its stored duration
-  const editAvailabilityParams = editServiceId > 0
-    ? { date: editDateStr, serviceId: editServiceId }
+  const editAvailabilityParams = effectiveEditServiceId > 0
+    ? { date: editDateStr, serviceId: effectiveEditServiceId }
     : { date: editDateStr, serviceDuration: editServiceDuration };
   const { data: editAvailability, isFetching: editLoadingSlots } = useGetAvailability(
     editAvailabilityParams,
     {
       query: {
         queryKey: getGetAvailabilityQueryKey(editAvailabilityParams),
-        enabled: !!editTarget && (editServiceId > 0 || editServiceDuration > 0),
+        enabled: !!editTarget && (effectiveEditServiceId > 0 || editServiceDuration > 0),
       },
     },
   );
@@ -118,6 +120,7 @@ export default function Appointments() {
     setEditTarget(apt);
     setEditDate(d);
     setEditTime(format(d, "HH:mm"));
+    setEditServiceIdState(apt.serviceId ?? 0);
   };
 
   const handleEdit = () => {
@@ -126,8 +129,17 @@ export default function Appointments() {
     // Old date to invalidate its availability cache so the old slot frees up
     const oldDate = new Date(editTarget.scheduledAt).toISOString().split("T")[0];
     const serviceId = editTarget.serviceId ?? 0;
+    // If service changed, include the new service details
+    const selectedService = services?.find((s) => s.id === effectiveEditServiceId);
+    const updateData: Parameters<typeof updateAppointment.mutate>[0]['data'] = { scheduledAt };
+    if (selectedService && effectiveEditServiceId !== serviceId) {
+      updateData.serviceId = selectedService.id;
+      updateData.serviceName = selectedService.name;
+      updateData.servicePrice = parseFloat(String(selectedService.price));
+      updateData.serviceDuration = selectedService.durationMinutes;
+    }
     updateAppointment.mutate(
-      { id: editTarget.id, data: { scheduledAt } },
+      { id: editTarget.id, data: updateData },
       {
         onSuccess: () => {
           invalidateAll();
@@ -706,6 +718,32 @@ export default function Appointments() {
                 })}
               </div>
             </div>
+
+            {/* Service selector */}
+            {services && services.length > 0 && (
+              <div className="space-y-2">
+                <Label>Serviço</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {services.map((s) => {
+                    const selected = effectiveEditServiceId === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => { setEditServiceIdState(s.id); setEditTime(""); }}
+                        className={cn(
+                          "rounded-md py-2 px-2 text-xs font-semibold border transition-colors text-left",
+                          selected ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-border hover:border-muted-foreground/40",
+                        )}
+                      >
+                        <div className="font-semibold truncate">{s.name}</div>
+                        <div className="text-[10px] text-muted-foreground">{s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(s.price)))}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Novo Horário</Label>
