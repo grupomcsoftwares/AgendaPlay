@@ -98,12 +98,17 @@ export default function Appointments() {
   const [editTime, setEditTime] = useState("");
   const editDateStr = format(editDate, "yyyy-MM-dd");
   const editServiceId = editTarget?.serviceId ?? 0;
+  const editServiceDuration = editTarget?.serviceDuration ?? 0;
+  // If the appointment has a serviceId, use it; otherwise use its stored duration
+  const editAvailabilityParams = editServiceId > 0
+    ? { date: editDateStr, serviceId: editServiceId }
+    : { date: editDateStr, serviceDuration: editServiceDuration };
   const { data: editAvailability, isFetching: editLoadingSlots } = useGetAvailability(
-    { date: editDateStr, serviceId: editServiceId },
+    editAvailabilityParams,
     {
       query: {
-        queryKey: getGetAvailabilityQueryKey({ date: editDateStr, serviceId: editServiceId }),
-        enabled: !!editTarget && editServiceId > 0,
+        queryKey: getGetAvailabilityQueryKey(editAvailabilityParams),
+        enabled: !!editTarget && (editServiceId > 0 || editServiceDuration > 0),
       },
     },
   );
