@@ -73,7 +73,20 @@ router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const query = ListAppointmentsQueryParams.safeParse(req.query);
   let appointments;
-  if (query.success && query.data.date) {
+  if (query.success && query.data.dateStart && query.data.dateEnd) {
+    const rangeStart = new Date(query.data.dateStart);
+    const rangeEnd = new Date(query.data.dateEnd);
+    rangeEnd.setDate(rangeEnd.getDate() + 1);
+    appointments = await db
+      .select()
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.userId, userId),
+        gte(appointmentsTable.scheduledAt, rangeStart),
+        lt(appointmentsTable.scheduledAt, rangeEnd),
+      ))
+      .orderBy(appointmentsTable.scheduledAt);
+  } else if (query.success && query.data.date) {
     const date = new Date(query.data.date);
     const nextDay = new Date(date);
     nextDay.setDate(nextDay.getDate() + 1);

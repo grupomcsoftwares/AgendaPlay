@@ -42,9 +42,24 @@ const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
   const { user: _user } = useAuth();
-  const [view, setView] = useState<"day" | "all">("day");
+  const [view, setView] = useState<"day" | "all" | "range">("day");
   const [date, setDate] = useState<Date>(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
+
+  // Date range for range view
+  const [dateStart, setDateStart] = useState<Date>(new Date());
+  const [dateEnd, setDateEnd] = useState<Date>(new Date());
+  const dateStartStr = format(dateStart, "yyyy-MM-dd");
+  const dateEndStr = format(dateEnd, "yyyy-MM-dd");
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [pendingStart, setPendingStart] = useState<Date>(new Date());
+  const [pendingEnd, setPendingEnd] = useState<Date>(new Date());
+  const [calMode, setCalMode] = useState<"start" | "end">("start");
+  const [calOpen, setCalOpen] = useState(false);
+
+  const rangeParams = view === "range"
+    ? { dateStart: dateStartStr, dateEnd: dateEndStr }
+    : {};
 
   // Day view — polls every 5s for live updates
   const { data: dayAppointments, isLoading: dayLoading } = useListAppointments(
@@ -54,6 +69,7 @@ export default function Appointments() {
         queryKey: getListAppointmentsQueryKey({ date: dateStr }),
         refetchInterval: 5000,
         refetchOnWindowFocus: true,
+        enabled: view === "day",
       },
     },
   );
@@ -71,8 +87,48 @@ export default function Appointments() {
     },
   );
 
-  const appointments = view === "day" ? dayAppointments : allAppointments;
-  const isLoading = view === "day" ? dayLoading : allLoading;
+  // Range view — appointments in a date range
+  const { data: rangeAppointments, isLoading: rangeLoading } = useListAppointments(
+    rangeParams,
+    {
+      query: {
+        queryKey: getListAppointmentsQueryKey(rangeParams),
+        refetchInterval: 10000,
+        refetchOnWindowFocus: true,
+        enabled: view === "range",
+      },
+    },
+  );
+
+  const appointments = view === "day" ? dayAppointments : view === "range" ? rangeAppointments : allAppointments;
+  const isLoading = view === "day" ? dayLoading : view === "range" ? rangeLoading : allLoading;
+
+  const handleOpenPeriod = () => {
+    setPendingStart(dateStart);
+    setPendingEnd(dateEnd);
+    setPeriodOpen(true);
+  };
+
+  const handleConfirmPeriod = () => {
+    setDateStart(pendingStart);
+    setDateEnd(pendingEnd);
+    setPeriodOpen(false);
+    if (view !== "range") setView("range");
+  };
+
+  const handleQuickPeriod = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    setDateStart(start);
+    setDateEnd(end);
+    if (view !== "range") setView("range");
+  };
+
+  const periodLabel =
+    dateStartStr === dateEndStr
+      ? format(dateStart, "dd 'de' MMMM, yyyy", { locale: ptBR })
+      : `${format(dateStart, "dd/MM/yyyy")} - ${format(dateEnd, "dd/MM/yyyy")}`;
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
 
@@ -359,19 +415,76 @@ export default function Appointments() {
             </button>
           </div>
 
-          {view === "day" && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="gap-2 border-border" data-testid="button-pick-date">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(date, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+          {/* Quick range buttons — same style as financeiro */}
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
+          <Button
+            variant="outline"
+            className="justify-start gap-2 font-normal min-w-[180px]"
+            onClick={handleOpenPeriod}
+          >
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            {periodLabel}
+          </Button>
+
+          {/* Period picker dialog — same as financeiro */}
+          <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
+            <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden border-border/60">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+                <DialogTitle className="text-xl font-semibold tracking-tight">
+                  Selecione o período
+                </DialogTitle>
+              </DialogHeader>
+              <div className="px-6 py-5 space-y-4">
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium text-foreground">Data de início</span>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 font-normal"
+                    onClick={() => { setCalMode("start"); setCalOpen(true); }}
+                  >
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    {format(pendingStart, "EEE, dd MMM yyyy", { locale: ptBR })}
+                  </Button>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium text-foreground">Data de término</span>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 font-normal"
+                    onClick={() => { setCalMode("end"); setCalOpen(true); }}
+                  >
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    {format(pendingEnd, "EEE, dd MMM yyyy", { locale: ptBR })}
+                  </Button>
+                </div>
+                {calOpen && (
+                  <div className="border rounded-xl p-2">
+                    <Calendar
+                      mode="single"
+                      locale={ptBR}
+                      selected={calMode === "start" ? pendingStart : pendingEnd}
+                      onSelect={(d) => {
+                        if (!d) return;
+                        if (calMode === "start") setPendingStart(d);
+                        else setPendingEnd(d);
+                        setCalOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
+                <Button variant="ghost" onClick={() => setPeriodOpen(false)}>
+                  Cancelar
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} />
-              </PopoverContent>
-            </Popover>
-          )}
+                <Button onClick={handleConfirmPeriod}>
+                  OK
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
