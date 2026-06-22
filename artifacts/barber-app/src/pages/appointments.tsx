@@ -20,7 +20,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, List } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -193,7 +192,7 @@ export default function Appointments() {
 
   // Refresh every surface that depends on appointment data.
   const invalidateAll = () => {
-    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: dateStr }) });
+    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey(rangeParams) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: formDateStr }) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({}) });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
@@ -244,7 +243,7 @@ export default function Appointments() {
     if (!isCreateOpen) {
       setFormData(INITIAL_FORM);
     } else {
-      setFormDate(date);
+      setFormDate(new Date());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateOpen]);
