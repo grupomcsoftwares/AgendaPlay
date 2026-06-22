@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 
-const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app"}`;
+const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
 const MENU_ITEMS = [
   { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },

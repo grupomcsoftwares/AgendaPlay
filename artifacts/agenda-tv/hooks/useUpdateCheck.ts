@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app"}/api`;
+const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
 const SKIPPED_VERSION_KEY = "@agendaplay/skipped_version";
 
 export type UpdateInfo = {

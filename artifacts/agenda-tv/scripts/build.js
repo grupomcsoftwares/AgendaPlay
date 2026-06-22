@@ -55,6 +55,11 @@ function stripProtocol(domain) {
 }
 
 function getDeploymentDomain() {
+  // Prefer explicit EXPO_PUBLIC_DOMAIN override for production builds
+  if (process.env.EXPO_PUBLIC_DOMAIN) {
+    return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
+  }
+
   if (process.env.REPLIT_INTERNAL_APP_DOMAIN) {
     return stripProtocol(process.env.REPLIT_INTERNAL_APP_DOMAIN);
   }
@@ -63,12 +68,8 @@ function getDeploymentDomain() {
     return stripProtocol(process.env.REPLIT_DEV_DOMAIN);
   }
 
-  if (process.env.EXPO_PUBLIC_DOMAIN) {
-    return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
-  }
-
   console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+    "ERROR: No deployment domain found. Set EXPO_PUBLIC_DOMAIN, REPLIT_INTERNAL_APP_DOMAIN, or REPLIT_DEV_DOMAIN",
   );
   process.exit(1);
 }
@@ -112,9 +113,11 @@ function clearMetroCache() {
   console.log("Cache cleared");
 }
 
+const METRO_PORT = 8083;
+
 async function checkMetroHealth() {
   try {
-    const response = await fetch("http://localhost:8081/status", {
+    const response = await fetch(`http://localhost:${METRO_PORT}/status`, {
       signal: AbortSignal.timeout(5000),
     });
     return response.ok;
@@ -155,6 +158,8 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       "--no-dev",
       "--minify",
       "--localhost",
+      "--port",
+      String(METRO_PORT),
     ],
     {
       stdio: ["ignore", "pipe", "pipe"],
