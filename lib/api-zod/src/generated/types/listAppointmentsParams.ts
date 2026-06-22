@@ -7,6 +7,17 @@
  */
 
 export type ListAppointmentsParams = {
+/**
+ * Single date (YYYY-MM-DD). Ignored when dateStart/dateEnd are provided.
+ */
 date?: string;
+/**
+ * Start date (YYYY-MM-DD) for range filter.
+ */
+dateStart?: string;
+/**
+ * End date (YYYY-MM-DD) for range filter.
+ */
+dateEnd?: string;
 status?: string;
 };

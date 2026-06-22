@@ -233,7 +233,9 @@ export const DeleteServiceParams = zod.object({
  * @summary List appointments
  */
 export const ListAppointmentsQueryParams = zod.object({
-  "date": zod.coerce.string().optional(),
+  "date": zod.coerce.string().optional().describe('Single date (YYYY-MM-DD). Ignored when dateStart\/dateEnd are provided.'),
+  "dateStart": zod.coerce.string().optional().describe('Start date (YYYY-MM-DD) for range filter.'),
+  "dateEnd": zod.coerce.string().optional().describe('End date (YYYY-MM-DD) for range filter.'),
   "status": zod.coerce.string().optional()
 })
 
