@@ -36,7 +36,7 @@ export default function Dashboard() {
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: shopName, text, url: bookingUrl });
+        await navigator.share({ text });
       } catch {
       }
     } else {
