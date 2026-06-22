@@ -194,7 +194,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         coveredByPlan: usePlan,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
         ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
-        // Send pre-loyalty price; server computes authoritative final price
+        // Send serviceId for single-service bookings so server can resolve day-based pricing
+        ...(selectedServices.length === 1 ? { serviceId: selectedServices[0]!.id } : {}),
       }},
       {
         onSuccess: (created) => {
