@@ -23,3 +23,9 @@ id = "MQCdn83BTyL_uSM11RYmt"
 uri = "file://artifacts/agenda-tv/static-build/android/manifest.json"
 type = "unspecified"
 title = "Android Manifest (v1.0.16)"
+
+[[outputs]]
+id = "rcCQ8OTPqvVSJY4tJ0ldC"
+uri = "file://artifacts/agenda-tv/eas.json"
+type = "unspecified"
+title = "EAS Config"
