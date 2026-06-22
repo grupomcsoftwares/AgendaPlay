@@ -112,7 +112,6 @@ export default function ViewerScreen() {
       ) : (
         <>
           <WebView
-            key={url ?? "no-url"}
             ref={webViewRef}
             source={{ uri: url ?? "" }}
             style={styles.webview}

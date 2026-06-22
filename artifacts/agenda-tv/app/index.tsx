@@ -17,6 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 
+const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
+
 export default function LoginScreen() {
   const router = useRouter();
   const { user, login, loading } = useAuth();
@@ -116,7 +118,7 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.registerRow}
-            onPress={() => router.push({ pathname: "/viewer", params: { url: "https://mcagenda.replit.app/register", title: "Criar conta" } })}
+            onPress={() => router.push({ pathname: "/viewer", params: { url: `${PROD_BASE}/register`, title: "Criar conta" } })}
           >
             <Text style={styles.registerText}>
               Não tem conta? <Text style={styles.registerLink}>Criar barbearia</Text>

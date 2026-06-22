@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "KO15hKCE4Yf1Mod5j29cy"
@@ -18,3 +17,9 @@ id = "fgSO37L4okVN8NSR1gKtA"
 uri = "file://artifacts/agenda-tv/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "MQCdn83BTyL_uSM11RYmt"
+uri = "file://artifacts/agenda-tv/static-build/android/manifest.json"
+type = "unspecified"
+title = "Android Manifest (v1.0.16)"

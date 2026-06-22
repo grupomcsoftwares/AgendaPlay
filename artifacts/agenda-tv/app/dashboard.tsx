@@ -113,7 +113,7 @@ export default function DashboardScreen() {
         const [nameValue] = raw.split(/;\s*/);
         const [name, value] = nameValue.split("=");
         if (name && value !== undefined) {
-          const domain = process.env.EXPO_PUBLIC_DOMAIN || "mcagenda.replit.app";
+          const domain = process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net";
           const cookieDomain = domain.endsWith(".replit.app") ? ".replit.app" : domain;
           setInjectedCookie(`document.cookie = "${name}=${value}; domain=${cookieDomain}; path=/;";`);
         }
