@@ -18,10 +18,8 @@ localPort = 22287
 [services.development]
 run = "pnpm --filter @workspace/agenda-tv run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/agenda-tv", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/agenda-tv", "run", "serve" ]
-
+# No production build — Expo mobile app is distributed via Expo Go / EAS
+# The build script requires Metro bundler which is unavailable during Replit deployment
 [services.env]
 PORT = "22287"
 BASE_PATH = "/agenda-tv/"
