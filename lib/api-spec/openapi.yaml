@@ -596,17 +596,29 @@ paths:
       tags: [financial]
       summary: Get financial summary
       parameters:
+        - name: dateStart
+          in: query
+          description: "Start date (YYYY-MM-DD). Defaults to start of current month."
+          schema:
+            type: string
+        - name: dateEnd
+          in: query
+          description: "End date (YYYY-MM-DD). Defaults to end of current month."
+          schema:
+            type: string
         - name: month
           in: query
+          description: "Legacy month (1-12). Ignored when dateStart/dateEnd are provided."
           schema:
             type: integer
         - name: year
           in: query
+          description: "Legacy year. Ignored when dateStart/dateEnd are provided."
           schema:
             type: integer
         - name: day
           in: query
-          description: Optional day of month (1-31). When provided, the summary is limited to that single day.
+          description: "Legacy day (1-31). Ignored when dateStart/dateEnd are provided."
           schema:
             type: integer
       responses:

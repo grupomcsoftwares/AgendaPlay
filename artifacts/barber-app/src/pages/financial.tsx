@@ -1,29 +1,31 @@
 import React, { useState } from "react";
 import { useGetFinancialSummary, getGetFinancialSummaryQueryKey } from "@workspace/api-client-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon, UserCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon, UserCheck, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Financial() {
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
-  const currentDay = new Date().getDate();
-
-  const [month, setMonth] = useState(currentMonth.toString());
-  const [year, setYear] = useState(currentYear.toString());
-  const [day, setDay] = useState(currentDay.toString());
+  const today = new Date();
+  const [dateStart, setDateStart] = useState<Date>(startOfMonth(today));
+  const [dateEnd, setDateEnd] = useState<Date>(endOfMonth(today));
+  const [periodOpen, setPeriodOpen] = useState(false);
+  const [pendingStart, setPendingStart] = useState<Date>(startOfMonth(today));
+  const [pendingEnd, setPendingEnd] = useState<Date>(endOfMonth(today));
+  const [calMode, setCalMode] = useState<"start" | "end">("start");
   const [calOpen, setCalOpen] = useState(false);
 
+  const dateStartStr = format(dateStart, "yyyy-MM-dd");
+  const dateEndStr = format(dateEnd, "yyyy-MM-dd");
+
   const params = {
-    month: parseInt(month),
-    year: parseInt(year),
-    ...(day !== "all" ? { day: parseInt(day) } : {}),
+    dateStart: dateStartStr,
+    dateEnd: dateEndStr,
   };
 
   const { data: summary, isLoading } = useGetFinancialSummary(
@@ -31,22 +33,33 @@ export default function Financial() {
     { query: { queryKey: getGetFinancialSummaryQueryKey(params) } }
   );
 
-  // Month-level summary (no day filter) to highlight days that have revenue in the calendar.
-  const monthParams = { month: parseInt(month), year: parseInt(year) };
-  const { data: monthSummary } = useGetFinancialSummary(
-    monthParams,
-    { query: { queryKey: getGetFinancialSummaryQueryKey(monthParams) } }
-  );
-  const daysWithData = new Set(
-    (monthSummary?.revenueByDay ?? []).map((d) => parseInt(d.date.split("-")[2])),
-  );
-
-  const displayMonth = new Date(parseInt(year), parseInt(month) - 1, 1);
-  const selectedDate =
-    day !== "all" ? new Date(parseInt(year), parseInt(month) - 1, parseInt(day)) : undefined;
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  };
+
+  const periodLabel =
+    dateStartStr === dateEndStr
+      ? format(dateStart, "dd 'de' MMMM, yyyy", { locale: ptBR })
+      : `${format(dateStart, "dd/MM/yyyy")} - ${format(dateEnd, "dd/MM/yyyy")}`;
+
+  const handleOpenPeriod = () => {
+    setPendingStart(dateStart);
+    setPendingEnd(dateEnd);
+    setPeriodOpen(true);
+  };
+
+  const handleConfirmPeriod = () => {
+    setDateStart(pendingStart);
+    setDateEnd(pendingEnd);
+    setPeriodOpen(false);
+  };
+
+  const handleQuickPeriod = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    setDateStart(start);
+    setDateEnd(end);
   };
 
   return (
@@ -56,62 +69,81 @@ export default function Financial() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">Acompanhe o faturamento do seu negócio.</p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <Popover open={calOpen} onOpenChange={setCalOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="justify-start gap-2 font-normal min-w-[180px]"
-              >
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                {selectedDate
-                  ? format(selectedDate, "dd 'de' MMMM, yyyy", { locale: ptBR })
-                  : "Todos os dias"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                locale={ptBR}
-                month={displayMonth}
-                onMonthChange={(d) => {
-                  setMonth((d.getMonth() + 1).toString());
-                  setYear(d.getFullYear().toString());
-                }}
-                selected={selectedDate}
-                onSelect={(d) => {
-                  if (!d) return;
-                  setMonth((d.getMonth() + 1).toString());
-                  setYear(d.getFullYear().toString());
-                  setDay(d.getDate().toString());
-                  setCalOpen(false);
-                }}
-                modifiers={{
-                  hasData: (date) =>
-                    date.getMonth() === parseInt(month) - 1 &&
-                    date.getFullYear() === parseInt(year) &&
-                    daysWithData.has(date.getDate()),
-                }}
-                modifiersClassNames={{
-                  hasData: "bg-primary/20 text-primary font-semibold",
-                }}
-              />
-              <div className="border-t border-border p-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-center"
-                  onClick={() => {
-                    setDay("all");
-                    setCalOpen(false);
-                  }}
-                >
-                  Todos os dias
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
+          <Button
+            variant="outline"
+            className="justify-start gap-2 font-normal min-w-[180px]"
+            onClick={handleOpenPeriod}
+          >
+            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+            {periodLabel}
+          </Button>
         </div>
       </div>
+
+      {/* Period picker dialog */}
+      <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
+        <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden border-border/60">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              Selecione o período do relatório
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-5 space-y-4">
+            {/* Start date */}
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium text-foreground">Data de início</span>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2 font-normal"
+                onClick={() => { setCalMode("start"); setCalOpen(true); }}
+              >
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                {format(pendingStart, "EEE, dd MMM yyyy", { locale: ptBR })}
+              </Button>
+            </div>
+            {/* End date */}
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium text-foreground">Data de término</span>
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2 font-normal"
+                onClick={() => { setCalMode("end"); setCalOpen(true); }}
+              >
+                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                {format(pendingEnd, "EEE, dd MMM yyyy", { locale: ptBR })}
+              </Button>
+            </div>
+            {/* Calendar picker */}
+            {calOpen && (
+              <div className="border rounded-xl p-2">
+                <Calendar
+                  mode="single"
+                  locale={ptBR}
+                  selected={calMode === "start" ? pendingStart : pendingEnd}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    if (calMode === "start") setPendingStart(d);
+                    else setPendingEnd(d);
+                    setCalOpen(false);
+                  }}
+                />
+              </div>
+            )}
+          </div>
+          <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
+            <Button variant="ghost" onClick={() => setPeriodOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmPeriod}>
+              OK
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -175,7 +207,7 @@ export default function Financial() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados para este mês</div>
+              <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados para este período</div>
             )}
           </CardContent>
         </Card>
@@ -200,7 +232,7 @@ export default function Financial() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados para este mês</div>
+              <div className="flex h-full items-center justify-center text-muted-foreground">Sem dados para este período</div>
             )}
           </CardContent>
         </Card>

@@ -9,12 +9,22 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const query = GetFinancialSummaryQueryParams.safeParse(req.query);
   const now = new Date();
-  const month = (query.success && query.data.month) ? Number(query.data.month) : now.getMonth() + 1;
-  const year  = (query.success && query.data.year)  ? Number(query.data.year)  : now.getFullYear();
-  const day   = (query.success && query.data.day)   ? Number(query.data.day)   : null;
 
-  const rangeStart = day !== null ? new Date(year, month - 1, day)     : new Date(year, month - 1, 1);
-  const rangeEnd   = day !== null ? new Date(year, month - 1, day + 1) : new Date(year, month, 1);
+  let rangeStart: Date;
+  let rangeEnd: Date;
+
+  if (query.success && query.data.dateStart && query.data.dateEnd) {
+    rangeStart = new Date(query.data.dateStart);
+    rangeEnd = new Date(query.data.dateEnd);
+    // Advance end by one day so the full end date is included
+    rangeEnd = new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000);
+  } else {
+    const month = (query.success && query.data.month) ? Number(query.data.month) : now.getMonth() + 1;
+    const year  = (query.success && query.data.year)  ? Number(query.data.year)  : now.getFullYear();
+    const day   = (query.success && query.data.day)   ? Number(query.data.day)   : null;
+    rangeStart = day !== null ? new Date(year, month - 1, day)     : new Date(year, month - 1, 1);
+    rangeEnd   = day !== null ? new Date(year, month - 1, day + 1) : new Date(year, month, 1);
+  }
 
   // Fetch completed appointments joined with barber commission rate
   const rows = await db

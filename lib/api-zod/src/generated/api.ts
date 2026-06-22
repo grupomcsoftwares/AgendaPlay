@@ -671,9 +671,11 @@ export const GetDashboardSummaryResponse = zod.object({
  * @summary Get financial summary
  */
 export const GetFinancialSummaryQueryParams = zod.object({
-  "month": zod.coerce.number().optional(),
-  "year": zod.coerce.number().optional(),
-  "day": zod.coerce.number().optional().describe('Optional day of month (1-31). When provided, the summary is limited to that single day.')
+  "dateStart": zod.coerce.string().optional().describe('Start date (YYYY-MM-DD). Defaults to start of current month.'),
+  "dateEnd": zod.coerce.string().optional().describe('End date (YYYY-MM-DD). Defaults to end of current month.'),
+  "month": zod.coerce.number().optional().describe('Legacy month (1-12). Ignored when dateStart\/dateEnd are provided.'),
+  "year": zod.coerce.number().optional().describe('Legacy year. Ignored when dateStart\/dateEnd are provided.'),
+  "day": zod.coerce.number().optional().describe('Legacy day (1-31). Ignored when dateStart\/dateEnd are provided.')
 })
 
 export const GetFinancialSummaryResponse = zod.object({

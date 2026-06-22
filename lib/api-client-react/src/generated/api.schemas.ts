@@ -595,10 +595,24 @@ barberId?: number;
 };
 
 export type GetFinancialSummaryParams = {
+/**
+ * Start date (YYYY-MM-DD). Defaults to start of current month.
+ */
+dateStart?: string;
+/**
+ * End date (YYYY-MM-DD). Defaults to end of current month.
+ */
+dateEnd?: string;
+/**
+ * Legacy month (1-12). Ignored when dateStart/dateEnd are provided.
+ */
 month?: number;
+/**
+ * Legacy year. Ignored when dateStart/dateEnd are provided.
+ */
 year?: number;
 /**
- * Optional day of month (1-31). When provided, the summary is limited to that single day.
+ * Legacy day (1-31). Ignored when dateStart/dateEnd are provided.
  */
 day?: number;
 };
