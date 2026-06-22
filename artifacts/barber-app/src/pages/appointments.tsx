@@ -42,11 +42,7 @@ const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
   const { user: _user } = useAuth();
-  const [view, setView] = useState<"day" | "all" | "range">("day");
-  const [date, setDate] = useState<Date>(new Date());
-  const dateStr = format(date, "yyyy-MM-dd");
-
-  // Date range for range view
+  // Date range for appointments list
   const [dateStart, setDateStart] = useState<Date>(new Date());
   const [dateEnd, setDateEnd] = useState<Date>(new Date());
   const dateStartStr = format(dateStart, "yyyy-MM-dd");
@@ -57,51 +53,18 @@ export default function Appointments() {
   const [calMode, setCalMode] = useState<"start" | "end">("start");
   const [calOpen, setCalOpen] = useState(false);
 
-  const rangeParams = view === "range"
-    ? { dateStart: dateStartStr, dateEnd: dateEndStr }
-    : {};
+  const rangeParams = { dateStart: dateStartStr, dateEnd: dateEndStr };
 
-  // Day view — polls every 5s for live updates
-  const { data: dayAppointments, isLoading: dayLoading } = useListAppointments(
-    { date: dateStr },
-    {
-      query: {
-        queryKey: getListAppointmentsQueryKey({ date: dateStr }),
-        refetchInterval: 5000,
-        refetchOnWindowFocus: true,
-        enabled: view === "day",
-      },
-    },
-  );
-
-  // All view — all appointments for this account
-  const { data: allAppointments, isLoading: allLoading } = useListAppointments(
-    {},
-    {
-      query: {
-        queryKey: getListAppointmentsQueryKey({}),
-        refetchInterval: 10000,
-        refetchOnWindowFocus: true,
-        enabled: view === "all",
-      },
-    },
-  );
-
-  // Range view — appointments in a date range
-  const { data: rangeAppointments, isLoading: rangeLoading } = useListAppointments(
+  const { data: appointments, isLoading } = useListAppointments(
     rangeParams,
     {
       query: {
         queryKey: getListAppointmentsQueryKey(rangeParams),
-        refetchInterval: 10000,
+        refetchInterval: 5000,
         refetchOnWindowFocus: true,
-        enabled: view === "range",
       },
     },
   );
-
-  const appointments = view === "day" ? dayAppointments : view === "range" ? rangeAppointments : allAppointments;
-  const isLoading = view === "day" ? dayLoading : view === "range" ? rangeLoading : allLoading;
 
   const handleOpenPeriod = () => {
     setPendingStart(dateStart);
@@ -113,7 +76,6 @@ export default function Appointments() {
     setDateStart(pendingStart);
     setDateEnd(pendingEnd);
     setPeriodOpen(false);
-    if (view !== "range") setView("range");
   };
 
   const handleQuickPeriod = (days: number) => {
@@ -122,7 +84,6 @@ export default function Appointments() {
     start.setDate(start.getDate() - days);
     setDateStart(start);
     setDateEnd(end);
-    if (view !== "range") setView("range");
   };
 
   const periodLabel =
@@ -391,31 +352,7 @@ export default function Appointments() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* View toggle */}
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <button
-              type="button"
-              onClick={() => setView("day")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                view === "day" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" /> Por dia
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("all")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-                view === "all" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <List className="h-3.5 w-3.5" /> Todos
-            </button>
-          </div>
-
-          {/* Quick range buttons — same style as financeiro */}
+          {/* Quick range buttons */}
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
@@ -690,14 +627,14 @@ export default function Appointments() {
             <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium">Nenhum agendamento</h3>
             <p className="text-muted-foreground">
-              {view === "day" ? "Não há horários marcados para esta data." : "Nenhum agendamento encontrado."}
+              Nenhum agendamento encontrado.
             </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                {view === "all" && <TableHead>Data</TableHead>}
+                <TableHead>Data</TableHead>
                 <TableHead>Horário</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Serviço</TableHead>
@@ -709,17 +646,13 @@ export default function Appointments() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...(appointments)].sort((a,b) =>
-                view === "all"
-                  ? new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-                  : new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+              {[...(appointments ?? [])].sort((a,b) =>
+                new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
               ).map((apt) => (
                 <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
-                  {view === "all" && (
-                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                      {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
-                    </TableCell>
-                  )}
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
+                  </TableCell>
                   <TableCell className="font-bold text-lg">
                     {format(new Date(apt.scheduledAt), "HH:mm")}
                   </TableCell>
