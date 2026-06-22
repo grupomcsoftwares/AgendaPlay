@@ -11,6 +11,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeepAwake } from "expo-keep-awake";
 import { useAuth } from "@/hooks/useAuth";
 
 function useTVRemote(onEvent: (type: string) => void) {
@@ -33,6 +34,7 @@ function useTVRemote(onEvent: (type: string) => void) {
 }
 
 export default function ViewerScreen() {
+  useKeepAwake();
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -60,54 +62,21 @@ export default function ViewerScreen() {
     }
   });
 
-  // Inject session cookie into CookieManager before WebView mounts
+  // Inject session cookie via JavaScript (reliable across platforms)
+  const [injectedCookie, setInjectedCookie] = useState<string | null>(null);
   useEffect(() => {
-    const WebView = require("react-native-webview");
-    const { CookieManager } = WebView;
-    if (!CookieManager) {
-      setCookieReady(true);
-      return;
-    }
     getSessionCookie().then((raw) => {
-      if (!raw || !url) {
-        setCookieReady(true);
-        return;
+      if (raw && url) {
+        const [nameValue] = raw.split(/;\s*/);
+        const [name, value] = nameValue.split("=");
+        if (name && value !== undefined) {
+          const parsed = new URL(url);
+          const domain = parsed.hostname;
+          const cookieDomain = domain.endsWith(".replit.app") ? ".replit.app" : domain;
+          setInjectedCookie(`document.cookie = "${name}=${value}; domain=${cookieDomain}; path=/;";`);
+        }
       }
-      const parsed = new URL(url);
-      const domain = parsed.hostname;
-      const [nameValue, ...attrs] = raw.split(/;\s*/);
-      const [name, value] = nameValue.split("=");
-      if (!name || value === undefined) {
-        setCookieReady(true);
-        return;
-      }
-      const path = attrs.find((a) => a.toLowerCase().startsWith("path="))?.split("=")[1] ?? "/";
-      const secure = attrs.some((a) => a.toLowerCase() === "secure");
-      const httpOnly = attrs.some((a) => a.toLowerCase() === "httponly");
-      const sameSiteAttr = attrs.find((a) => a.toLowerCase().startsWith("samesite="));
-      const sameSite = sameSiteAttr ? sameSiteAttr.split("=")[1] : "Lax";
-
-      const cookieOpts = {
-        name,
-        value,
-        domain,
-        path,
-        secure,
-        httpOnly,
-        sameSite: sameSite as "Lax" | "Strict" | "None",
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-
-      if (Platform.OS === "android") {
-        CookieManager.setFromResponse(parsed.origin, raw)
-          .catch(() => {})
-          .finally(() => setCookieReady(true));
-        return;
-      }
-
-      CookieManager.set(parsed.origin, cookieOpts)
-        .catch(() => {})
-        .finally(() => setCookieReady(true));
+      setCookieReady(true);
     });
   }, [getSessionCookie, url]);
 
@@ -147,6 +116,7 @@ export default function ViewerScreen() {
             ref={webViewRef}
             source={{ uri: url ?? "" }}
             style={styles.webview}
+            injectedJavaScript={injectedCookie || ""}
             onLoadStart={() => {
               setLoading(true);
               setError(false);

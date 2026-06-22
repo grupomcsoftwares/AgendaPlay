@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,11 +19,22 @@ import UpdateDialog from "@/components/UpdateDialog";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, loading } = useAuth();
+  const { user, login, loading } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, dismiss } = useUpdateCheck();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (user && !loading) {
+      if (Platform.isTV) {
+        router.replace("/home");
+      } else {
+        router.replace("/dashboard");
+      }
+    }
+  }, [user, loading, router]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;
