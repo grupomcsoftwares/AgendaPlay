@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { ServiceDayPricing } from './serviceDayPricing';
 
 export interface ServiceInput {
   name: string;
@@ -14,4 +15,5 @@ export interface ServiceInput {
   imageUrl?: string;
   sortOrder?: number;
   barberIds?: number[];
+  dayPricing?: ServiceDayPricing[];
 }

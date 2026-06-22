@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useListServices, useCreateService, useUpdateService, useDeleteService, getListServicesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Scissors, Upload, Clock, X, ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Scissors, Upload, Clock, X, ImageIcon, ArrowUp, ArrowDown, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 function ServiceImageUpload({
   imageUrl,
@@ -124,11 +126,43 @@ export default function Services() {
     durationMinutes: "30",
     price: "0.00",
     imageUrl: "",
+    dayPricingEnabled: false,
+    dayPrices: ["", "", "", "", "", "", ""] as string[],
   });
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", durationMinutes: "30", price: "0.00", imageUrl: "" });
+    setFormData({
+      name: "",
+      description: "",
+      durationMinutes: "30",
+      price: "0.00",
+      imageUrl: "",
+      dayPricingEnabled: false,
+      dayPrices: ["", "", "", "", "", "", ""],
+    });
     setEditingId(null);
+  };
+
+  const DAYS_OF_WEEK = [
+    { label: "Dom", full: "Domingo" },
+    { label: "Seg", full: "Segunda" },
+    { label: "Ter", full: "Terça" },
+    { label: "Qua", full: "Quarta" },
+    { label: "Qui", full: "Quinta" },
+    { label: "Sex", full: "Sexta" },
+    { label: "Sáb", full: "Sábado" },
+  ];
+
+  const getDayPricingPayload = () => {
+    if (!formData.dayPricingEnabled) return [];
+    const items: { dayOfWeek: number; price: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const val = formData.dayPrices[i].trim();
+      if (val !== "" && !Number.isNaN(parseFloat(val))) {
+        items.push({ dayOfWeek: i, price: parseFloat(val) });
+      }
+    }
+    return items;
   };
 
   const handleImageFile = (file: File) => {
@@ -152,6 +186,7 @@ export default function Services() {
       durationMinutes: parseInt(formData.durationMinutes),
       price: parseFloat(formData.price),
       imageUrl: formData.imageUrl || undefined,
+      dayPricing: getDayPricingPayload(),
     };
 
     if (editingId) {
@@ -336,6 +371,57 @@ export default function Services() {
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Preço por dia da semana
+                  </Label>
+                  <Switch
+                    checked={formData.dayPricingEnabled}
+                    onCheckedChange={(checked) => setFormData({ ...formData, dayPricingEnabled: checked })}
+                    data-testid="switch-day-pricing"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {formData.dayPricingEnabled ? "Ativo" : "Inativo (usa preço base)"}
+                  </span>
+                </div>
+                {formData.dayPricingEnabled && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {DAYS_OF_WEEK.map((d, i) => (
+                      <div key={i} className="space-y-1">
+                        <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {d.label}
+                        </Label>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                            R$
+                          </span>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            placeholder={formData.price}
+                            value={formData.dayPrices[i]}
+                            onChange={(e) => {
+                              const next = [...formData.dayPrices];
+                              next[i] = e.target.value;
+                              setFormData({ ...formData, dayPrices: next });
+                            }}
+                            className="h-9 pl-6 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums text-sm"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {formData.dayPricingEnabled && (
+                  <p className="text-xs text-muted-foreground">
+                    Deixe em branco para usar o preço base. Preencha apenas os dias com preço diferente.
+                  </p>
+                )}
+              </div>
             </div>
 
             <DialogFooter className="px-6 py-4 border-t border-border/60 bg-muted/20 sm:justify-end gap-2">
@@ -435,12 +521,23 @@ export default function Services() {
                           size="icon"
                           onClick={() => {
                             setEditingId(service.id);
+                            const dayPrices = ["", "", "", "", "", "", ""];
+                            const hasDayPricing = (service.dayPricing?.length ?? 0) > 0;
+                            if (service.dayPricing) {
+                              for (const dp of service.dayPricing) {
+                                if (dp.dayOfWeek >= 0 && dp.dayOfWeek <= 6) {
+                                  dayPrices[dp.dayOfWeek] = dp.price.toString();
+                                }
+                              }
+                            }
                             setFormData({
                               name: service.name,
                               description: service.description || "",
                               durationMinutes: service.durationMinutes.toString(),
                               price: service.price.toString(),
                               imageUrl: service.imageUrl || "",
+                              dayPricingEnabled: hasDayPricing,
+                              dayPrices,
                             });
                             setIsCreateOpen(true);
                           }}

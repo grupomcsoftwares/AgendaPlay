@@ -43,6 +43,16 @@ export interface ClientUpdate {
   notes?: string | null;
 }
 
+export interface ServiceDayPricing {
+  /**
+     * 0 = Sunday, 1 = Monday, ... 6 = Saturday
+     * @minimum 0
+     * @maximum 6
+     */
+  dayOfWeek: number;
+  price: number;
+}
+
 export interface Service {
   id: number;
   name: string;
@@ -55,6 +65,8 @@ export interface Service {
   sortOrder: number;
   /** IDs of barbers that perform this service. Empty array means "all barbers" (legacy). */
   barberIds: number[];
+  /** Per-day pricing overrides. Falls back to base price when a day is not listed. */
+  dayPricing?: ServiceDayPricing[];
 }
 
 export interface ServiceInput {
@@ -65,6 +77,7 @@ export interface ServiceInput {
   imageUrl?: string;
   sortOrder?: number;
   barberIds?: number[];
+  dayPricing?: ServiceDayPricing[];
 }
 
 export interface ServiceUpdate {
@@ -77,6 +90,7 @@ export interface ServiceUpdate {
   imageUrl?: string | null;
   sortOrder?: number;
   barberIds?: number[];
+  dayPricing?: ServiceDayPricing[];
 }
 
 export interface DaySchedule {

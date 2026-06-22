@@ -101,6 +101,11 @@ export const ListServicesQueryParams = zod.object({
   "shopId": zod.coerce.string().optional().describe('Shop owner user ID (required for public booking page)')
 })
 
+export const listServicesResponseDayPricingItemDayOfWeekMin = 0;
+export const listServicesResponseDayPricingItemDayOfWeekMax = 6;
+
+
+
 export const ListServicesResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -109,7 +114,11 @@ export const ListServicesResponseItem = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).'),
+  "dayPricing": zod.array(zod.object({
+  "dayOfWeek": zod.number().min(listServicesResponseDayPricingItemDayOfWeekMin).max(listServicesResponseDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
+  "price": zod.number()
+})).optional().describe('Per-day pricing overrides. Falls back to base price when a day is not listed.')
 })
 export const ListServicesResponse = zod.array(ListServicesResponseItem)
 
@@ -117,6 +126,11 @@ export const ListServicesResponse = zod.array(ListServicesResponseItem)
 /**
  * @summary Create a service
  */
+export const createServiceBodyDayPricingItemDayOfWeekMin = 0;
+export const createServiceBodyDayPricingItemDayOfWeekMax = 6;
+
+
+
 export const CreateServiceBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
@@ -124,7 +138,11 @@ export const CreateServiceBody = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().optional(),
   "sortOrder": zod.number().optional(),
-  "barberIds": zod.array(zod.number()).optional()
+  "barberIds": zod.array(zod.number()).optional(),
+  "dayPricing": zod.array(zod.object({
+  "dayOfWeek": zod.number().min(createServiceBodyDayPricingItemDayOfWeekMin).max(createServiceBodyDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
+  "price": zod.number()
+})).optional()
 })
 
 
@@ -135,6 +153,11 @@ export const GetServiceParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const getServiceResponseDayPricingItemDayOfWeekMin = 0;
+export const getServiceResponseDayPricingItemDayOfWeekMax = 6;
+
+
+
 export const GetServiceResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
@@ -143,7 +166,11 @@ export const GetServiceResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).'),
+  "dayPricing": zod.array(zod.object({
+  "dayOfWeek": zod.number().min(getServiceResponseDayPricingItemDayOfWeekMin).max(getServiceResponseDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
+  "price": zod.number()
+})).optional().describe('Per-day pricing overrides. Falls back to base price when a day is not listed.')
 })
 
 
@@ -154,6 +181,11 @@ export const UpdateServiceParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateServiceBodyDayPricingItemDayOfWeekMin = 0;
+export const updateServiceBodyDayPricingItemDayOfWeekMax = 6;
+
+
+
 export const UpdateServiceBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().nullish(),
@@ -161,8 +193,17 @@ export const UpdateServiceBody = zod.object({
   "price": zod.number().optional(),
   "imageUrl": zod.string().nullish(),
   "sortOrder": zod.number().optional(),
-  "barberIds": zod.array(zod.number()).optional()
+  "barberIds": zod.array(zod.number()).optional(),
+  "dayPricing": zod.array(zod.object({
+  "dayOfWeek": zod.number().min(updateServiceBodyDayPricingItemDayOfWeekMin).max(updateServiceBodyDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
+  "price": zod.number()
+})).optional()
 })
+
+export const updateServiceResponseDayPricingItemDayOfWeekMin = 0;
+export const updateServiceResponseDayPricingItemDayOfWeekMax = 6;
+
+
 
 export const UpdateServiceResponse = zod.object({
   "id": zod.number(),
@@ -172,7 +213,11 @@ export const UpdateServiceResponse = zod.object({
   "price": zod.number(),
   "imageUrl": zod.string().nullish(),
   "sortOrder": zod.number(),
-  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).')
+  "barberIds": zod.array(zod.number()).describe('IDs of barbers that perform this service. Empty array means \"all barbers\" (legacy).'),
+  "dayPricing": zod.array(zod.object({
+  "dayOfWeek": zod.number().min(updateServiceResponseDayPricingItemDayOfWeekMin).max(updateServiceResponseDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
+  "price": zod.number()
+})).optional().describe('Per-day pricing overrides. Falls back to base price when a day is not listed.')
 })
 
 

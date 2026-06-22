@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, inArray, and } from "drizzle-orm";
-import { db, servicesTable, barberServicesTable } from "@workspace/db";
+import { db, servicesTable, barberServicesTable, serviceDayPricingTable } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 import {
   CreateServiceBody,
@@ -39,6 +39,46 @@ async function withBarberIds(rows: ServiceRow[]) {
   }));
 }
 
+async function withDayPricing(rows: ServiceRow[]) {
+  if (rows.length === 0) return [];
+  const pricing = await db
+    .select()
+    .from(serviceDayPricingTable)
+    .where(inArray(serviceDayPricingTable.serviceId, rows.map((s) => s.id)));
+  const byService = new Map<number, Array<{ dayOfWeek: number; price: number }>>();
+  for (const p of pricing) {
+    const arr = byService.get(p.serviceId) ?? [];
+    arr.push({ dayOfWeek: p.dayOfWeek, price: parseFloat(p.price) });
+    byService.set(p.serviceId, arr);
+  }
+  return rows.map((s) => ({
+    ...s,
+    price: parseFloat(s.price),
+    dayPricing: byService.get(s.id) ?? [],
+  }));
+}
+
+export async function resolveServicePrice(serviceId: number, userId: string, date: Date): Promise<number | null> {
+  const [service] = await db
+    .select()
+    .from(servicesTable)
+    .where(and(eq(servicesTable.id, serviceId), eq(servicesTable.userId, userId)));
+  if (!service) return null;
+
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ...
+  const [dayPrice] = await db
+    .select()
+    .from(serviceDayPricingTable)
+    .where(and(
+      eq(serviceDayPricingTable.serviceId, serviceId),
+      eq(serviceDayPricingTable.dayOfWeek, dayOfWeek),
+    ))
+    .limit(1);
+
+  if (dayPrice) return parseFloat(dayPrice.price);
+  return parseFloat(service.price);
+}
+
 router.get("/services", async (req, res): Promise<void> => {
   const shopId = resolveShop(req);
   if (!shopId) {
@@ -48,7 +88,8 @@ router.get("/services", async (req, res): Promise<void> => {
   const services = await db.select().from(servicesTable)
     .where(eq(servicesTable.userId, shopId))
     .orderBy(servicesTable.sortOrder);
-  res.json(await withBarberIds(services));
+  const withBarbers = await withBarberIds(services);
+  res.json(await withDayPricing(withBarbers as unknown as ServiceRow[]));
 });
 
 router.post("/services", requireAuth, async (req, res): Promise<void> => {
@@ -58,7 +99,7 @@ router.post("/services", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = req.session.userId!;
-  const { barberIds, ...rest } = parsed.data;
+  const { barberIds, dayPricing, ...rest } = parsed.data;
   const service = await db.transaction(async (tx) => {
     const maxOrder = await tx.select({ max: servicesTable.sortOrder })
       .from(servicesTable)
@@ -77,9 +118,20 @@ router.post("/services", requireAuth, async (req, res): Promise<void> => {
         barberIds.map((bid) => ({ barberId: bid, serviceId: s.id })),
       );
     }
+    if (dayPricing && dayPricing.length > 0) {
+      await tx.insert(serviceDayPricingTable).values(
+        dayPricing.map((dp) => ({
+          serviceId: s.id,
+          userId,
+          dayOfWeek: dp.dayOfWeek,
+          price: String(dp.price),
+        })),
+      );
+    }
     return s;
   });
-  const [enriched] = await withBarberIds([service]);
+  const withBarbers = await withBarberIds([service]);
+  const [enriched] = await withDayPricing(withBarbers as unknown as ServiceRow[]);
   res.status(201).json(enriched);
 });
 
@@ -98,7 +150,8 @@ router.get("/services/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Service not found" });
     return;
   }
-  const [enriched] = await withBarberIds([service]);
+  const withBarbers = await withBarberIds([service]);
+  const [enriched] = await withDayPricing(withBarbers as unknown as ServiceRow[]);
   res.json(enriched);
 });
 
@@ -135,7 +188,7 @@ router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = req.session.userId!;
-  const { barberIds, ...rest } = parsed.data;
+  const { barberIds, dayPricing, ...rest } = parsed.data;
   const updateData: Record<string, unknown> = { ...rest };
   if (rest.price !== undefined) {
     updateData.price = String(rest.price);
@@ -154,13 +207,27 @@ router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
         );
       }
     }
+    if (dayPricing !== undefined) {
+      await tx.delete(serviceDayPricingTable).where(eq(serviceDayPricingTable.serviceId, s.id));
+      if (dayPricing.length > 0) {
+        await tx.insert(serviceDayPricingTable).values(
+          dayPricing.map((dp) => ({
+            serviceId: s.id,
+            userId,
+            dayOfWeek: dp.dayOfWeek,
+            price: String(dp.price),
+          })),
+        );
+      }
+    }
     return s;
   });
   if (!service) {
     res.status(404).json({ error: "Service not found" });
     return;
   }
-  const [enriched] = await withBarberIds([service]);
+  const withBarbers = await withBarberIds([service]);
+  const [enriched] = await withDayPricing(withBarbers as unknown as ServiceRow[]);
   res.json(enriched);
 });
 
@@ -173,6 +240,7 @@ router.delete("/services/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const service = await db.transaction(async (tx) => {
     await tx.delete(barberServicesTable).where(eq(barberServicesTable.serviceId, params.data.id));
+    await tx.delete(serviceDayPricingTable).where(eq(serviceDayPricingTable.serviceId, params.data.id));
     const [s] = await tx.delete(servicesTable)
       .where(and(eq(servicesTable.id, params.data.id), eq(servicesTable.userId, userId)))
       .returning();

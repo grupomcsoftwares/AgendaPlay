@@ -1151,6 +1151,23 @@ components:
           description: IDs of barbers that perform this service. Empty array means "all barbers" (legacy).
           items:
             type: integer
+        dayPricing:
+          type: array
+          description: Per-day pricing overrides. Falls back to base price when a day is not listed.
+          items:
+            $ref: "#/components/schemas/ServiceDayPricing"
+
+    ServiceDayPricing:
+      type: object
+      required: [dayOfWeek, price]
+      properties:
+        dayOfWeek:
+          type: integer
+          description: 0 = Sunday, 1 = Monday, ... 6 = Saturday
+          minimum: 0
+          maximum: 6
+        price:
+          type: number
 
     ServiceInput:
       type: object
@@ -1172,6 +1189,10 @@ components:
           type: array
           items:
             type: integer
+        dayPricing:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceDayPricing"
 
     ServiceUpdate:
       type: object
@@ -1192,6 +1213,10 @@ components:
           type: array
           items:
             type: integer
+        dayPricing:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceDayPricing"
 
     Barber:
       type: object

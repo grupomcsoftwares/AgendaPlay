@@ -3,6 +3,7 @@ import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
+import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
 import {
   ListAppointmentsQueryParams,
@@ -291,8 +292,17 @@ router.post("/appointments", async (req, res): Promise<void> => {
     loyaltyDiscount = Math.floor(loyaltyPointsRedeemed / loyaltyConfig.pointsPerRedemptionUnit);
   }
 
+  // Resolve day-based pricing if applicable
+  let dayBasedPrice = parsed.data.servicePrice;
+  if (parsed.data.serviceId != null) {
+    const resolvedPrice = await resolveServicePrice(parsed.data.serviceId, shopId, scheduledAtDate);
+    if (resolvedPrice !== null) {
+      dayBasedPrice = resolvedPrice;
+    }
+  }
+
   // Final price is server-authoritative. Client sends the pre-loyalty price.
-  const finalServicePrice = Math.max(0, parsed.data.servicePrice - loyaltyDiscount);
+  const finalServicePrice = Math.max(0, dayBasedPrice - loyaltyDiscount);
   // ─────────────────────────────────────────────────────────────────────────
 
   let conflict = false;

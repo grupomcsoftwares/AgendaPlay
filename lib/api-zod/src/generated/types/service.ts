@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { ServiceDayPricing } from './serviceDayPricing';
 
 export interface Service {
   id: number;
@@ -18,4 +19,6 @@ export interface Service {
   sortOrder: number;
   /** IDs of barbers that perform this service. Empty array means "all barbers" (legacy). */
   barberIds: number[];
+  /** Per-day pricing overrides. Falls back to base price when a day is not listed. */
+  dayPricing?: ServiceDayPricing[];
 }

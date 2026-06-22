@@ -53,6 +53,7 @@ export * from './rescheduleByTokenInput';
 export * from './revenueByDay';
 export * from './revenueByService';
 export * from './service';
+export * from './serviceDayPricing';
 export * from './serviceInput';
 export * from './serviceUpdate';
 export * from './settings';

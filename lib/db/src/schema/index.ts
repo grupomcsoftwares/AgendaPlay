@@ -1,5 +1,6 @@
 export * from "./clients";
 export * from "./services";
+export * from "./service-day-pricing";
 export * from "./appointments";
 export * from "./queue";
 export * from "./settings";
