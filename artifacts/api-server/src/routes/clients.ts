@@ -9,6 +9,7 @@ import {
   UpdateClientBody,
   DeleteClientParams,
 } from "@workspace/api-zod";
+import { broadcastQueueUpdate } from "./queue.js";
 
 const router: IRouter = Router();
 
@@ -108,6 +109,12 @@ router.patch("/clients/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Client not found" });
     return;
   }
+
+  // Notify real-time queue listeners if the name was changed
+  if (parsed.data.name) {
+    broadcastQueueUpdate(userId);
+  }
+
   res.json({ ...client, createdAt: client.createdAt.toISOString() });
 });
 

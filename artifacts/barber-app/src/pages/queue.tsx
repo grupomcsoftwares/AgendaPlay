@@ -169,11 +169,28 @@ export default function Queue() {
 
   const prevEntryId = useRef<number | null>(null);
 
+  // ── Real-time queue updates via SSE ──────────────────────────────────
   useEffect(() => {
-    const id = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
-    }, 5000);
-    return () => clearInterval(id);
+    const apiBase = import.meta.env.VITE_API_URL || "";
+    const sseUrl = `${apiBase}/api/queue/subscribe`;
+    const source = new EventSource(sseUrl, { withCredentials: true });
+
+    source.addEventListener("message", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === "queue_updated") {
+          queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
+        }
+      } catch {
+        // ignore malformed
+      }
+    });
+
+    source.addEventListener("error", () => {
+      // Silently reconnect; EventSource handles this automatically
+    });
+
+    return () => source.close();
   }, [queryClient]);
 
   // ── TV remote / D-pad navigation ──────────────────────────────────────────

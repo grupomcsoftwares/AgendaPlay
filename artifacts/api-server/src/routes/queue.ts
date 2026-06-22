@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, sql, and } from "drizzle-orm";
 import { db, queueTable, appointmentsTable } from "@workspace/db";
 import {
@@ -8,6 +8,62 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+// ── SSE: real-time queue updates per user ───────────────────────────────────
+const sseClients = new Map<string, Set<Response>>();
+
+export function broadcastQueueUpdate(userId: string): void {
+  const clients = sseClients.get(userId);
+  if (!clients) return;
+  const payload = `data: ${JSON.stringify({ type: "queue_updated" })}\n\n`;
+  for (const res of clients) {
+    res.write(payload);
+  }
+}
+
+function addSseClient(userId: string, res: Response): void {
+  let set = sseClients.get(userId);
+  if (!set) {
+    set = new Set();
+    sseClients.set(userId, set);
+  }
+  set.add(res);
+}
+
+function removeSseClient(userId: string, res: Response): void {
+  const set = sseClients.get(userId);
+  if (set) {
+    set.delete(res);
+    if (set.size === 0) sseClients.delete(userId);
+  }
+}
+
+router.get("/queue/subscribe", async (req, res): Promise<void> => {
+  const userId = req.session.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+  addSseClient(userId, res);
+
+  const heartbeat = setInterval(() => {
+    res.write(`:ping\n\n`);
+  }, 30000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    removeSseClient(userId, res);
+  });
+});
 
 function formatEntry(
   e: typeof queueTable.$inferSelect,
