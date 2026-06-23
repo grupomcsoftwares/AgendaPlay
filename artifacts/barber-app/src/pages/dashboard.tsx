@@ -26,7 +26,7 @@ export default function Dashboard() {
   };
 
   const bookingUrl = user?.slug
-    ? `${window.location.origin}/b/${user.slug}`
+    ? `https://agendaplay.net/b/${user.slug}`
     : null;
 
   const handleShare = async () => {
