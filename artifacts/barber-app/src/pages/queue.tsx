@@ -153,7 +153,13 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
 }
 
 export default function Queue() {
-  const { data: queue, isLoading } = useListQueue({ query: { queryKey: getListQueueQueryKey() } });
+  const { data: queue, isLoading } = useListQueue({
+    query: {
+      queryKey: getListQueueQueryKey(),
+      refetchInterval: 5000,
+      refetchOnWindowFocus: true,
+    },
+  });
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const addToQueue = useAddToQueue();
   const removeFromQueue = useRemoveFromQueue();

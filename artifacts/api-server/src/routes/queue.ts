@@ -155,16 +155,16 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
 
 router.get("/queue", async (req, res): Promise<void> => {
   const userId = req.session.userId!;
-  await db.transaction(async (tx) => {
+  const rows = await db.transaction(async (tx) => {
     await autoAdvanceInTx(tx, userId);
+    const rows = await tx
+      .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
+      .from(queueTable)
+      .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
+      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
+      .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
+    return rows;
   });
-  const rows = await db
-    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
-    .from(queueTable)
-    .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-    .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
-    // Scheduled appointments first (sorted by time); walk-ins (no scheduledAt) after, by insertion order
-    .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
 
