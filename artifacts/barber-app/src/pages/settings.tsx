@@ -589,9 +589,9 @@ export default function Settings() {
                   </div>
                 ) : (
                   <div className="flex gap-1.5">
-                    <Input readOnly value={user.slug ? `${window.location.origin}/b/${user.slug}` : `${window.location.origin}/booking?shopId=${user.id}`} className="font-mono text-xs bg-muted h-8" data-testid="display-booking-url" />
+                    <Input readOnly value={user.slug ? `https://agendaplay.net/b/${user.slug}` : `https://agendaplay.net/booking?shopId=${user.id}`} className="font-mono text-xs bg-muted h-8" data-testid="display-booking-url" />
                     <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Editar" onClick={() => { setSlugValue(user.slug ?? ""); setSlugEditMode(true); setSlugError(null); }} data-testid="button-edit-slug"><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Copiar" onClick={() => { const l = user.slug ? `${window.location.origin}/b/${user.slug}` : `${window.location.origin}/booking?shopId=${user.id}`; navigator.clipboard.writeText(l); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+                    <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Copiar" onClick={() => { const l = user.slug ? `https://agendaplay.net/b/${user.slug}` : `https://agendaplay.net/booking?shopId=${user.id}`; navigator.clipboard.writeText(l); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                       {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
