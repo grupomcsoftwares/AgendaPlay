@@ -380,12 +380,29 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     setPickingBarber(false);
   };
 
+  const serviceExclusions = (settings?.serviceExclusions as number[][] | undefined) ?? [];
+
   const handleToggleService = (serviceId: number) => {
     setFormData(prev => {
-      const ids = prev.serviceIds.includes(serviceId)
-        ? prev.serviceIds.filter(id => id !== serviceId)
-        : [...prev.serviceIds, serviceId];
-      return { ...prev, serviceIds: ids, time: "" };
+      const alreadySelected = prev.serviceIds.includes(serviceId);
+      if (alreadySelected) {
+        const ids = prev.serviceIds.filter(id => id !== serviceId);
+        return { ...prev, serviceIds: ids, time: "" };
+      }
+      // Check if any currently selected service is excluded from this one
+      const blockedBy = prev.serviceIds.find(selectedId =>
+        serviceExclusions.some(pair =>
+          (pair[0] === selectedId && pair[1] === serviceId) ||
+          (pair[0] === serviceId && pair[1] === selectedId)
+        )
+      );
+      if (blockedBy) {
+        const blockedName = services?.find(s => s.id === serviceId)?.name ?? "Esse serviço";
+        const currentName = services?.find(s => s.id === blockedBy)?.name ?? "o serviço selecionado";
+        alert(`Não é possível escolher ${blockedName} junto com ${currentName}. Remova ${currentName} primeiro.`);
+        return prev;
+      }
+      return { ...prev, serviceIds: [...prev.serviceIds, serviceId], time: "" };
     });
   };
 
@@ -659,19 +676,26 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
                 const redeemableWithPoints = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
+                const isBlocked = !isSelected && serviceExclusions.some(pair =>
+                  formData.serviceIds.some(selectedId =>
+                    (pair[0] === selectedId && pair[1] === service.id) ||
+                    (pair[0] === service.id && pair[1] === selectedId)
+                  )
+                );
                 return (
                   <div key={service.id} className="relative">
                     <button
                       type="button"
                       data-testid={`button-service-${service.id}`}
                       onClick={() => {
-                        if (!isSelected) handleToggleService(service.id);
+                        if (!isSelected && !isBlocked) handleToggleService(service.id);
                       }}
                       className="w-full text-left rounded-2xl p-4 transition-all"
                       style={{
-                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : "hsl(0 0% 7%)",
-                        border: `2px solid ${isSelected ? AMBER : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
-                        cursor: isSelected ? "default" : "pointer",
+                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : isBlocked ? "hsl(0 0% 5%)" : "hsl(0 0% 7%)",
+                        border: `2px solid ${isSelected ? AMBER : isBlocked ? "hsl(0 80% 35%)" : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
+                        cursor: isSelected ? "default" : isBlocked ? "not-allowed" : "pointer",
+                        opacity: isBlocked ? 0.6 : 1,
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -713,6 +737,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               <DollarSign className="w-3.5 h-3.5" />
                               R$ {service.price.toFixed(2).replace(".", ",")}
                             </span>
+                            {isBlocked && (
+                              <span
+                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: "hsl(0 60% 25%)", color: "hsl(0 70% 55%)", border: "1px solid hsl(0 60% 35%)" }}
+                              >
+                                Seleção inválida
+                              </span>
+                            )}
                             {redeemableWithPoints && (
                               <span
                                 className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"

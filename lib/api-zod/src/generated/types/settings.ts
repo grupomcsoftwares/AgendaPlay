@@ -43,4 +43,6 @@ export interface Settings {
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  /** Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos) */
+  serviceExclusions?: number[][];
 }

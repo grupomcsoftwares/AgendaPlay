@@ -47,6 +47,7 @@ export const settingsTable = pgTable("settings", {
   slotIntervalMinutes: integer("slot_interval_minutes").notNull().default(15),
   smartSlots: boolean("smart_slots").notNull().default(false),
   loyaltyConfig: jsonb("loyalty_config").$type<LoyaltyConfig>(),
+  serviceExclusions: jsonb("service_exclusions").$type<number[][]>().default([]),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

@@ -1167,7 +1167,8 @@ export const GetSettingsResponse = zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
-}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)')
 })
 
 
@@ -1330,7 +1331,8 @@ export const UpdateSettingsResponse = zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
-}),zod.null()]).optional()
+}),zod.null()]).optional(),
+  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)')
 })
 
 

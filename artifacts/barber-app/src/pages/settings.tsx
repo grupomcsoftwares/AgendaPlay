@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -149,6 +150,9 @@ export default function Settings() {
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", maxPerMonth: "", active: true });
 
+  const [exclusionOpen, setExclusionOpen] = useState(false);
+  const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
@@ -156,7 +160,27 @@ export default function Settings() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    barbershopName: string;
+    ownerName: string;
+    logoUrl: string;
+    phone: string;
+    address: string;
+    bookingPageMessage: string;
+    weeklySchedule: WeeklySchedule;
+    paymentEnableNow: boolean;
+    paymentEnableOnSite: boolean;
+    pixKey: string;
+    maxBookingDays: number;
+    minAdvanceMinutes: number;
+    minCancelMinutes: number;
+    slotIntervalMinutes: number;
+    smartSlots: boolean;
+    loyaltyEnabled: boolean;
+    loyaltyPointsPerReal: number;
+    loyaltyPointsPerRedemptionUnit: number;
+    serviceExclusions: number[][];
+  }>({
     barbershopName: "",
     ownerName: "",
     logoUrl: "",
@@ -175,6 +199,7 @@ export default function Settings() {
     loyaltyEnabled: false,
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
+    serviceExclusions: [],
   });
 
   useEffect(() => {
@@ -207,6 +232,7 @@ export default function Settings() {
         loyaltyEnabled: lc?.enabled ?? false,
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
+        serviceExclusions: (settings.serviceExclusions as number[][] | undefined) ?? [],
       });
     }
   }, [settings]);
@@ -984,6 +1010,139 @@ export default function Settings() {
                   disabled={createCombo.isPending || updateComboMut.isPending || comboForm.serviceIds.length < 2}
                 >
                   {createCombo.isPending || updateComboMut.isPending ? "Salvando..." : "Salvar combo"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Service Exclusions */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base">Restrições de Serviços</CardTitle>
+            <CardDescription className="text-xs">
+              Impedir que certos serviços sejam agendados juntos
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 shrink-0 h-8 text-xs"
+            onClick={() => {
+              setExclusionForm({ id1: null, id2: null });
+              setExclusionOpen(true);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" /> Nova restrição
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {formData.serviceExclusions.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              Nenhuma restrição configurada. Clique em "Nova restrição" para criar.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {formData.serviceExclusions.map((pair, idx) => {
+                const s1 = services?.find(s => s.id === pair[0]);
+                const s2 = services?.find(s => s.id === pair[1]);
+                const name1 = s1?.name || `#${pair[0]}`;
+                const name2 = s2?.name || `#${pair[1]}`;
+                return (
+                  <div key={idx} className="flex items-center justify-between border border-border rounded-lg px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{name1} + {name2}</p>
+                      <p className="text-xs text-muted-foreground">Não podem ser agendados juntos</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        const next = formData.serviceExclusions.filter((_, i) => i !== idx);
+                        setFormData(prev => ({ ...prev, serviceExclusions: next }));
+                        updateSettings.mutate({ serviceExclusions: next } as any);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {exclusionOpen && (
+            <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/20 mt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">Nova restrição</p>
+                <Button variant="ghost" size="icon" onClick={() => setExclusionOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-xs">Serviço 1</Label>
+                  <Select
+                    value={exclusionForm.id1?.toString() ?? ""}
+                    onValueChange={(v) => setExclusionForm(prev => ({ ...prev, id1: Number(v) }))}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Escolher..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services?.map(s => (
+                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Serviço 2</Label>
+                  <Select
+                    value={exclusionForm.id2?.toString() ?? ""}
+                    onValueChange={(v) => setExclusionForm(prev => ({ ...prev, id2: Number(v) }))}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Escolher..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {services?.map(s => (
+                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setExclusionOpen(false)}>Cancelar</Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (!exclusionForm.id1 || !exclusionForm.id2 || exclusionForm.id1 === exclusionForm.id2) {
+                      toast({ title: "Selecione 2 serviços diferentes", variant: "destructive" });
+                      return;
+                    }
+                    const newPair = [Math.min(exclusionForm.id1, exclusionForm.id2), Math.max(exclusionForm.id1, exclusionForm.id2)];
+                    const exists = formData.serviceExclusions.some(
+                      p => p[0] === newPair[0] && p[1] === newPair[1]
+                    );
+                    if (exists) {
+                      toast({ title: "Essa restrição já existe", variant: "destructive" });
+                      return;
+                    }
+                    const next = [...formData.serviceExclusions, newPair];
+                    setFormData(prev => ({ ...prev, serviceExclusions: next }));
+                    updateSettings.mutate({ serviceExclusions: next } as any);
+                    setExclusionOpen(false);
+                    setExclusionForm({ id1: null, id2: null });
+                    toast({ title: "Restrição adicionada" });
+                  }}
+                  disabled={!exclusionForm.id1 || !exclusionForm.id2}
+                >
+                  Salvar restrição
                 </Button>
               </div>
             </div>

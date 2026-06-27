@@ -37,4 +37,5 @@ export interface SettingsUpdate {
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  serviceExclusions?: number[][];
 }

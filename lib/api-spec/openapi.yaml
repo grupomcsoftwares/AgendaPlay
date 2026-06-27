@@ -1803,6 +1803,13 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
             - type: "null"
+        serviceExclusions:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          description: "Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)"
 
     AccountDeletion:
       type: object
