@@ -210,10 +210,10 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  // Step: smartSlots scans every 5 minutes so short services can find the
-  // nearest available gap (e.g. a 17 min service can start at 15:32 if the
-  // previous appointment ends at 15:30). Normal mode uses the configured grid.
-  const step = smartSlots ? 5 : Math.max(5, slotIntervalMinutes);
+  // Step: smartSlots spaces slots by the service duration itself so each slot
+  // is a natural fit for the selected service/combo. Normal mode uses the
+  // configured fixed grid (e.g. every 15 min).
+  const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
   const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;

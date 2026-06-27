@@ -770,8 +770,8 @@ export default function Settings() {
             </div>
             <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
               <div>
-                <p className="text-sm font-medium">Horários inteligentes</p>
-                <p className="text-xs text-muted-foreground">Slots a cada duração do serviço (ex: 35 min = 35 min)</p>
+                <p className="text-sm font-medium">Modo inteligente</p>
+                <p className="text-xs text-muted-foreground">Horários espaçados pela duração do serviço escolhido</p>
               </div>
               <Switch checked={formData.smartSlots} onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })} />
             </div>
