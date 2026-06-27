@@ -1063,7 +1063,7 @@ export default function Settings() {
                       onClick={() => {
                         const next = formData.serviceExclusions.filter((_, i) => i !== idx);
                         setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                        updateSettings.mutate({ serviceExclusions: next } as any);
+                        updateSettings.mutate({ data: { serviceExclusions: next } });
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1135,7 +1135,7 @@ export default function Settings() {
                     }
                     const next = [...formData.serviceExclusions, newPair];
                     setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                    updateSettings.mutate({ serviceExclusions: next } as any);
+                    updateSettings.mutate({ data: { serviceExclusions: next } });
                     setExclusionOpen(false);
                     setExclusionForm({ id1: null, id2: null });
                     toast({ title: "Restrição adicionada" });
