@@ -10,7 +10,7 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.15";
+export const APP_VERSION = "1.0.1";
 
 export function useUpdateCheck(): UpdateInfo {
   const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION);
