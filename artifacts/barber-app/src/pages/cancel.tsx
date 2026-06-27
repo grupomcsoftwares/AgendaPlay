@@ -35,11 +35,37 @@ export default function CancelBooking() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reschedOpen, setReschedOpen] = useState(false);
   const [pushState, setPushState] = useState<"unknown" | "denied" | "subscribed" | "idle">("unknown");
+  const [reminderBanner, setReminderBanner] = useState(false);
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
   const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
   const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
   const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+
+  // Check appointment time and show reminder banner when 15 min left
+  useEffect(() => {
+    if (!appointment || cancelled || locked) return;
+    const check = () => {
+      const apptTime = new Date(appointment.scheduledAt).getTime();
+      const diffMin = (apptTime - Date.now()) / 60000;
+      if (diffMin <= 15 && diffMin > -5) {
+        setReminderBanner(true);
+      }
+    };
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, [appointment?.scheduledAt, cancelled, locked]);
+
+  // Ping the server every minute to trigger push reminders (autoscale-safe)
+  useEffect(() => {
+    const ping = () => {
+      fetch(`${BASE}/api/push/trigger-reminders`, { method: "POST" }).catch(() => {});
+    };
+    ping();
+    const id = setInterval(ping, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -213,6 +239,19 @@ export default function CancelBooking() {
           <h1 className="text-2xl font-bold">{settings?.barbershopName || "Barbearia"}</h1>
           <p className="text-sm text-muted-foreground">Seu agendamento</p>
         </div>
+
+        {reminderBanner && !cancelled && !locked && (
+          <div
+            className="rounded-xl p-4 flex items-start gap-3"
+            style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.5)" }}
+          >
+            <Bell className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: AMBER }} />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold" style={{ color: AMBER }}>Seu horário está chegando!</p>
+              <p className="text-xs text-muted-foreground">Faltam 15 minutos ou menos para o seu agendamento.</p>
+            </div>
+          </div>
+        )}
 
         {isNew && !cancelled && !locked && (
           <>
