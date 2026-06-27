@@ -510,8 +510,19 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 <Input
                   id="phone-step0"
                   data-testid="input-booking-phone"
+                  type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    let masked = digits;
+                    if (digits.length > 2) {
+                      masked = `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                      if (digits.length > 7) {
+                        masked = `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                      }
+                    }
+                    setFormData({ ...formData, phone: masked });
+                  }}
                   placeholder="(11) 99999-9999"
                   className="h-11"
                 />
@@ -520,7 +531,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <button
               type="button"
               data-testid="button-continue-step0"
-              disabled={!formData.name || !formData.phone}
+              disabled={!formData.name.trim() || formData.name.trim().split(/\s+/).filter(Boolean).length < 2 || formData.phone.replace(/\D/g, "").length < 10}
               onClick={() => setStep(1)}
               className="w-full rounded-xl text-center font-semibold transition-opacity"
               style={{
@@ -528,8 +539,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 backgroundColor: AMBER_DEEP,
                 color: "hsl(0 0% 100%)",
                 border: "none",
-                cursor: formData.name && formData.phone ? "pointer" : "not-allowed",
-                opacity: formData.name && formData.phone ? 1 : 0.55,
+                cursor: formData.name.trim() && formData.name.trim().split(/\s+/).filter(Boolean).length >= 2 && formData.phone.replace(/\D/g, "").length >= 10 ? "pointer" : "not-allowed",
+                opacity: formData.name.trim() && formData.name.trim().split(/\s+/).filter(Boolean).length >= 2 && formData.phone.replace(/\D/g, "").length >= 10 ? 1 : 0.55,
               }}
             >
               Continuar
