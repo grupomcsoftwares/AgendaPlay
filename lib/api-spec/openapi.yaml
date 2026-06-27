@@ -1904,6 +1904,9 @@ components:
         discountType:
           type: string
           enum: [percent, value]
+        timeDiscountMinutes:
+          type: integer
+          description: "Economia de tempo em minutos ao combinar serviços (ex: 5)"
         createdAt:
           type: string
 
@@ -1922,3 +1925,6 @@ components:
         discountType:
           type: string
           enum: [percent, value]
+        timeDiscountMinutes:
+          type: integer
+          description: "Economia de tempo em minutos ao combinar serviços (ex: 5)"

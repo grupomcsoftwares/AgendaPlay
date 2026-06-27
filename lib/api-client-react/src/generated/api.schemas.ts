@@ -540,6 +540,8 @@ export interface ComboDiscount {
   serviceIds: number[];
   discountPercent: number;
   discountType: ComboDiscountDiscountType;
+  /** Economia de tempo em minutos ao combinar serviços (ex: 5) */
+  timeDiscountMinutes?: number;
   createdAt?: string;
 }
 
@@ -556,6 +558,8 @@ export interface ComboDiscountInput {
   serviceIds: number[];
   discountPercent: number;
   discountType: ComboDiscountInputDiscountType;
+  /** Economia de tempo em minutos ao combinar serviços (ex: 5) */
+  timeDiscountMinutes?: number;
 }
 
 export type ListClientsParams = {

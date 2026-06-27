@@ -125,7 +125,7 @@ export default function Settings() {
 
   const [comboOpen, setComboOpen] = useState(false);
   const [editingComboId, setEditingComboId] = useState<number | null>(null);
-  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10, discountType: "percent" as "percent" | "value" });
+  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10, discountType: "percent" as "percent" | "value", timeDiscountMinutes: 0 });
 
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
@@ -390,7 +390,7 @@ export default function Settings() {
     }
     const autoName = comboForm.name.trim() ||
       comboForm.serviceIds.map((id) => services?.find((s) => s.id === id)?.name || `#${id}`).join(" + ");
-    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent, discountType: comboForm.discountType };
+    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent, discountType: comboForm.discountType, timeDiscountMinutes: comboForm.timeDiscountMinutes };
     if (editingComboId) {
       updateComboMut.mutate(
         { id: editingComboId, data: payload },
@@ -399,7 +399,7 @@ export default function Settings() {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
             setEditingComboId(null);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
             toast({ title: "Combo atualizado" });
           },
         },
@@ -411,7 +411,7 @@ export default function Settings() {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
+            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
             toast({ title: "Combo criado" });
           },
         },
@@ -805,7 +805,7 @@ export default function Settings() {
             className="gap-1.5 shrink-0 h-8 text-xs"
             onClick={() => {
               setEditingComboId(null);
-              setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent" });
+              setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
               setComboOpen(true);
             }}
           >
@@ -834,6 +834,7 @@ export default function Settings() {
                         {c.discountType === "value"
                           ? `R$ ${Number(c.discountPercent).toFixed(2)} de desconto`
                           : `${c.discountPercent}% de desconto`}
+                        {(c.timeDiscountMinutes ?? 0) > 0 ? ` · Economia de ${c.timeDiscountMinutes} min` : ""}
                       </p>
                     </div>
                     <div className="flex gap-1">
@@ -847,6 +848,7 @@ export default function Settings() {
                             serviceIds: c.serviceIds as number[],
                             discountPercent: c.discountPercent,
                             discountType: (c.discountType as "percent" | "value") ?? "percent",
+                            timeDiscountMinutes: c.timeDiscountMinutes ?? 0,
                           });
                           setComboOpen(true);
                         }}
@@ -951,6 +953,27 @@ export default function Settings() {
                     className="h-9 pl-9"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Economia de tempo (minutos)</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                    min
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={comboForm.timeDiscountMinutes}
+                    onChange={(e) => setComboForm({ ...comboForm, timeDiscountMinutes: Number(e.target.value) })}
+                    className="h-9 pl-10"
+                    placeholder="0"
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Ex: corte 35 min + barba 25 min = 60 min. Economia de 5 min = 55 min no agendamento.
+                </p>
               </div>
 
               <div className="flex gap-2 justify-end">

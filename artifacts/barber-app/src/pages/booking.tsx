@@ -292,16 +292,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     [eligibleServicesAll, formData.serviceIds]
   );
 
-  const totalDuration = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
+  const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
-
-  // Reset useLoyaltyPoints and usePlan when navigating away from step 3+
-  useEffect(() => {
-    if (step < 3) {
-      setUseLoyaltyPoints(false);
-      setUsePlan(false);
-    }
-  }, [step]);
 
   const appliedCombo = React.useMemo(() => {
     if (!comboDiscounts || selectedServices.length < 2) return null;
@@ -318,6 +310,10 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       return vb - va;
     })[0];
   }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw]);
+
+  // Combo time discount: e.g. corte 35 min + barba 25 min = 60 min; combo saves 5 min → 55 min
+  const comboTimeDiscount = appliedCombo?.timeDiscountMinutes ?? 0;
+  const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount);
 
   // For percentage combos, apply the discount only to the services that are
   // part of the combo — not to every selected service. A fixed-value combo
