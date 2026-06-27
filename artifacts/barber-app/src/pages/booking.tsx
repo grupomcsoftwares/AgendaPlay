@@ -135,6 +135,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     date: Date;
     time: string;
     name: string;
+    lastName: string;
     phone: string;
     notes: string;
     paymentMethod: "now" | "on_site";
@@ -142,13 +143,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     try {
       const saved = localStorage.getItem(clientInfoKey);
       if (saved) {
-        const parsed = JSON.parse(saved) as { name?: string; phone?: string };
+        const parsed = JSON.parse(saved) as { name?: string; lastName?: string; phone?: string };
         return {
           serviceIds: [],
           barberId: "",
           date: new Date(),
           time: "",
           name: parsed.name ?? "",
+          lastName: parsed.lastName ?? "",
           phone: parsed.phone ?? "",
           notes: "",
           paymentMethod: "on_site",
@@ -161,6 +163,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       date: new Date(),
       time: "",
       name: "",
+      lastName: "",
       phone: "",
       notes: "",
       paymentMethod: "on_site",
@@ -184,7 +187,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     createAppointment.mutate(
       { data: {
         ...(shopId ? { shopId } : {}),
-        clientName: formData.name,
+        clientName: `${formData.name.trim()} ${formData.lastName.trim()}`.trim(),
         serviceName: combinedName,
         servicePrice: comboTotalPrice,
         serviceDuration: totalDuration,
@@ -205,7 +208,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           // Persist name+phone so the client doesn't have to retype next visit
           if (formData.name && formData.phone) {
             try {
-              localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, phone: formData.phone }));
+              localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, lastName: formData.lastName, phone: formData.phone }));
             } catch { /* ignore */ }
           }
           setConfirmed(true);
@@ -488,7 +491,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name-step0" className="text-sm font-semibold">Nome Completo</Label>
+                <Label htmlFor="name-step0" className="text-sm font-semibold">Nome</Label>
                 <div className="relative">
                   <User
                     className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
@@ -499,11 +502,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     data-testid="input-booking-name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="João Silva"
+                    placeholder="João"
                     className="pl-9 h-11"
                     autoFocus
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastname-step0" className="text-sm font-semibold">Sobrenome</Label>
+                <Input
+                  id="lastname-step0"
+                  data-testid="input-booking-lastname"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  placeholder="Silva"
+                  className="h-11"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone-step0" className="text-sm font-semibold">Telefone</Label>
@@ -531,7 +545,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <button
               type="button"
               data-testid="button-continue-step0"
-              disabled={!formData.name.trim() || formData.name.trim().split(/\s+/).filter(Boolean).length < 2 || formData.phone.replace(/\D/g, "").length < 10}
+              disabled={!formData.name.trim() || !formData.lastName.trim() || formData.phone.replace(/\D/g, "").length < 10}
               onClick={() => setStep(1)}
               className="w-full rounded-xl text-center font-semibold transition-opacity"
               style={{
@@ -539,8 +553,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 backgroundColor: AMBER_DEEP,
                 color: "hsl(0 0% 100%)",
                 border: "none",
-                cursor: formData.name.trim() && formData.name.trim().split(/\s+/).filter(Boolean).length >= 2 && formData.phone.replace(/\D/g, "").length >= 10 ? "pointer" : "not-allowed",
-                opacity: formData.name.trim() && formData.name.trim().split(/\s+/).filter(Boolean).length >= 2 && formData.phone.replace(/\D/g, "").length >= 10 ? 1 : 0.55,
+                cursor: formData.name.trim() && formData.lastName.trim() && formData.phone.replace(/\D/g, "").length >= 10 ? "pointer" : "not-allowed",
+                opacity: formData.name.trim() && formData.lastName.trim() && formData.phone.replace(/\D/g, "").length >= 10 ? 1 : 0.55,
               }}
             >
               Continuar
