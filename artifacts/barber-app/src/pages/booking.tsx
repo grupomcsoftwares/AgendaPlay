@@ -413,9 +413,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         return prev;
       }
       const svc = services?.find(s => s.id === serviceId);
-      // If the service is redeemable with points, show the confirmation modal.
+      // A paid service must already be in the cart for the points modal to appear.
       const isRedeemable = svc && loyaltyBalance?.enabled && loyaltyAvailableDiscount >= svc.price && svc.price > 0;
-      if (isRedeemable) {
+      const hasPaidService = prev.serviceIds.some(id => {
+        const s = services?.find(x => x.id === id);
+        return s && s.price > 0 && !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price);
+      });
+      if (isRedeemable && hasPaidService) {
         setPointsModal({ open: true, serviceId, serviceName: svc.name, servicePrice: svc.price });
         return prev;
       }
@@ -714,8 +718,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
-                // This service can be redeemed with points (visual badge / border / modal)
-                const redeemableWithPoints = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
+                // This service can be redeemed with points (for visual badge/border)
+                const canRedeemNow = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
+                // Points modal only triggers when a paid service is already in cart
+                const hasPaidServiceInCart = formData.serviceIds.some(id => {
+                  const s = services?.find(x => x.id === id);
+                  return s && s.price > 0 && !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price);
+                });
+                const redeemableWithPoints = canRedeemNow && (hasPaidServiceInCart || isSelected);
                 const isBlocked = !isSelected && serviceExclusions.some(pair =>
                   formData.serviceIds.some(selectedId =>
                     (pair[0] === selectedId && pair[1] === service.id) ||
