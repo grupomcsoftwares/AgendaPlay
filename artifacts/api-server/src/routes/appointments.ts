@@ -267,7 +267,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
 
   // Extract phone from notes once — used for both redemption and earning.
   const notesStr = parsed.data.notes ?? "";
-  const phoneMatch = notesStr.match(/Tel:\s*([^\s.]+)/);
+  const phoneMatch = notesStr.match(/Tel:\s*([\d\s()\-+.]+)/);
   const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
 
   // Load loyalty config if there is a phone (needed for earning even without redemption).

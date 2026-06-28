@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useListSubscriptionPlans, getListSubscriptionPlansQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useCreateSubscription } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     { query: { queryKey: getListBarbersQueryKey({ activeOnly: true, ...(shopId ? { shopId } : {}) }) } }
   );
   const createAppointment = useCreateAppointment();
+  const { toast } = useToast();
 
   const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
 
@@ -221,7 +223,11 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               setLocation(`/agendamento/${created.cancelToken}?novo=1${shopParam}`);
             }
           }, 2200);
-        }
+        },
+        onError: (err: any) => {
+          const msg = err?.response?.data?.error || err?.message || "Erro ao confirmar agendamento";
+          toast({ title: msg, variant: "destructive" });
+        },
       }
     );
   };
