@@ -38,7 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
       if (res.ok) {
-        const data = await res.json();
+        let data = await res.json();
+        // If subscription is active but due date is missing, sync with Stripe first
+        if (data.hasActiveSubscription && data.subscriptionDaysLeft == null) {
+          try {
+            await fetch(`${BASE}/api/stripe/sync-subscription`, { method: "POST", credentials: "include" });
+            const res2 = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
+            if (res2.ok) data = await res2.json();
+          } catch {
+            // ignore sync failure, keep original data
+          }
+        }
         setUser(data);
       } else if (res.status === 401) {
         setUser(null);
