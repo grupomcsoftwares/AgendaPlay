@@ -15,6 +15,12 @@ export interface ClientSubscription {
   clientEmail: string;
   startDate: string;
   status: ClientSubscriptionStatus;
+  /** @nullable */
+  creditsRemaining?: number | null;
+  /** @nullable */
+  creditsTotal?: number | null;
+  /** @nullable */
+  expiresAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -126,7 +126,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
   const [usePlan, setUsePlan] = useState(false);
-  const [subUsage, setSubUsage] = useState<{ active: boolean; used: number; limit: number; remaining: number } | null>(null);
+  const [subUsage, setSubUsage] = useState<{ active: boolean; creditsRemaining: number; creditsTotal: number; expiresAt: string | null } | null>(null);
 
   const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
 
@@ -259,7 +259,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     { query: { queryKey: getCheckSubscriptionQueryKey(subCheckParams), enabled: step >= 3 && normalizedPhone.length >= 8 } }
   );
 
-  // Fetch monthly usage when subscription is active
+  // Fetch subscription credits when active
   useEffect(() => {
     if (!subCheck?.active || !shopId || normalizedPhone.length < 8) {
       setSubUsage(null);
@@ -270,7 +270,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     fetch(`${BASE}/api/subscriptions/usage?${qs.toString()}`)
       .then((r) => r.json())
       .then((data) => {
-        if (data && typeof data.used === "number") setSubUsage(data);
+        if (data && typeof data.creditsRemaining === "number") setSubUsage(data);
       })
       .catch(() => setSubUsage(null));
   }, [subCheck?.active, shopId, normalizedPhone]);
@@ -1346,16 +1346,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     type="button"
                     data-testid="button-payment-plan"
                     onClick={() => {
-                      if (subUsage && subUsage.remaining <= 0) return;
+                      if (subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice) return;
                       setUsePlan(true);
                     }}
-                    disabled={!!(subUsage && subUsage.remaining <= 0)}
+                    disabled={!!(subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice)}
                     className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                     style={{
                       backgroundColor: usePlan ? "hsl(142 71% 45% / 0.12)" : "hsl(0 0% 7%)",
-                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 62% 50% / 0.5)" : "hsl(0 0% 14%)"}`,
-                      cursor: subUsage && subUsage.remaining <= 0 ? "not-allowed" : "pointer",
-                      opacity: subUsage && subUsage.remaining <= 0 ? 0.5 : 1,
+                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 62% 50% / 0.5)" : "hsl(0 0% 14%)"}`,
+                      cursor: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "not-allowed" : "pointer",
+                      opacity: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? 0.5 : 1,
                     }}
                   >
                     <div
@@ -1363,20 +1363,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                       style={{
                         width: 44,
                         height: 44,
-                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 62% 50% / 0.2)" : "hsl(0 0% 12%)",
-                        color: usePlan ? "hsl(0 0% 10%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)",
+                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 62% 50% / 0.2)" : "hsl(0 0% 12%)",
+                        color: usePlan ? "hsl(0 0% 10%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)",
                       }}
                     >
                       <BadgeCheck className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-base">Usar meu plano</p>
-                      <p className="text-xs mt-0.5" style={{ color: subUsage && subUsage.remaining <= 0 ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)" }}>
+                      <p className="text-xs mt-0.5" style={{ color: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)" }}>
                         {subCheck.planName ?? "Assinatura ativa"}
-                        {subUsage && subUsage.limit > 0
-                          ? ` \u00b7 ${subUsage.used}/${subUsage.limit} cortes este m\u00eas`
-                          : " \u00b7 coberto pelo plano"}
-                        {subUsage && subUsage.remaining <= 0 && " \u00b7 limite atingido"}
+                        {subUsage
+                          ? ` · ${subUsage.creditsRemaining}/${subUsage.creditsTotal} créditos`
+                          : " · créditos indisponíveis"}
+                        {subUsage?.expiresAt
+                          ? ` · expira ${new Date(subUsage.expiresAt).toLocaleDateString("pt-BR")}`
+                          : ""}
+                        {subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice && " · créditos insuficientes para este serviço"}
                       </p>
                     </div>
                     <div

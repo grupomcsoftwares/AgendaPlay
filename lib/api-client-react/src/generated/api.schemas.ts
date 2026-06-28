@@ -352,6 +352,8 @@ export interface SubscriptionPlan {
   description?: string | null;
   price: number;
   /** @nullable */
+  credits?: number | null;
+  /** @nullable */
   maxAppointmentsPerMonth?: number | null;
   active: boolean;
   createdAt?: string;
@@ -363,6 +365,8 @@ export interface SubscriptionPlanInput {
   description?: string | null;
   price: number;
   /** @nullable */
+  credits?: number | null;
+  /** @nullable */
   maxAppointmentsPerMonth?: number | null;
   active?: boolean;
 }
@@ -372,6 +376,8 @@ export interface SubscriptionPlanUpdate {
   /** @nullable */
   description?: string | null;
   price?: number;
+  /** @nullable */
+  credits?: number | null;
   /** @nullable */
   maxAppointmentsPerMonth?: number | null;
   active?: boolean;
@@ -394,6 +400,12 @@ export interface ClientSubscription {
   clientEmail: string;
   startDate: string;
   status: ClientSubscriptionStatus;
+  /** @nullable */
+  creditsRemaining?: number | null;
+  /** @nullable */
+  creditsTotal?: number | null;
+  /** @nullable */
+  expiresAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -425,6 +437,14 @@ export interface SubscriptionCheckResult {
   planName?: string | null;
   /** @nullable */
   subscriptionId?: number | null;
+  /** @nullable */
+  creditsRemaining?: number | null;
+  /** @nullable */
+  creditsTotal?: number | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  maxAppointmentsPerMonth?: number | null;
 }
 
 export interface Settings {
@@ -513,6 +533,7 @@ export interface SettingsUpdate {
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  /** Lista de combinações proibidas de serviços */
   serviceExclusions?: number[][];
 }
 

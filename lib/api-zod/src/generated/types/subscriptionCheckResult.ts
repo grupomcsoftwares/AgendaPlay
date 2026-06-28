@@ -12,4 +12,12 @@ export interface SubscriptionCheckResult {
   planName?: string | null;
   /** @nullable */
   subscriptionId?: number | null;
+  /** @nullable */
+  creditsRemaining?: number | null;
+  /** @nullable */
+  creditsTotal?: number | null;
+  /** @nullable */
+  expiresAt?: string | null;
+  /** @nullable */
+  maxAppointmentsPerMonth?: number | null;
 }

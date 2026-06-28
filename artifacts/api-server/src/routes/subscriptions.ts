@@ -27,7 +27,12 @@ function formatPlan(p: typeof subscriptionPlansTable.$inferSelect) {
 }
 
 function formatSubscription(s: typeof clientSubscriptionsTable.$inferSelect) {
-  return { ...s, createdAt: s.createdAt.toISOString(), updatedAt: s.updatedAt.toISOString() };
+  return {
+    ...s,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+    expiresAt: s.expiresAt?.toISOString() ?? null,
+  };
 }
 
 // ── Subscription Plans ────────────────────────────────────────────────────
@@ -64,6 +69,7 @@ router.post("/subscription-plans", requireAuth, async (req, res): Promise<void> 
     name,
     description: typeof body.description === "string" ? body.description.trim() || null : null,
     price: String(price),
+    credits: typeof body.credits === "number" && body.credits > 0 ? body.credits : null,
     maxAppointmentsPerMonth: typeof body.maxAppointmentsPerMonth === "number" && body.maxAppointmentsPerMonth > 0
       ? body.maxAppointmentsPerMonth : null,
     active: body.active !== false,
@@ -85,6 +91,11 @@ router.patch("/subscription-plans/:id", requireAuth, async (req, res): Promise<v
   if (typeof body.price !== "undefined") {
     const p = typeof body.price === "number" ? body.price : parseFloat(String(body.price));
     if (!Number.isNaN(p) && p >= 0) patch.price = String(p);
+  }
+  if (typeof body.credits === "number") {
+    patch.credits = body.credits > 0 ? body.credits : null;
+  } else if (body.credits === null) {
+    patch.credits = null;
   }
   if (typeof body.maxAppointmentsPerMonth === "number") {
     patch.maxAppointmentsPerMonth = body.maxAppointmentsPerMonth > 0 ? body.maxAppointmentsPerMonth : null;
@@ -195,9 +206,28 @@ router.patch("/subscriptions/:id", requireAuth, async (req, res): Promise<void> 
     res.status(400).json({ error: "status deve ser pending, active ou cancelled" });
     return;
   }
+
+  // When activating, load plan credits and set expiration
+  let patch: Partial<typeof clientSubscriptionsTable.$inferInsert> = { status: status as "pending" | "active" | "cancelled" };
+  if (status === "active") {
+    const [sub] = await db.select().from(clientSubscriptionsTable).where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId))).limit(1);
+    if (sub) {
+      const [plan] = await db.select({ credits: subscriptionPlansTable.credits }).from(subscriptionPlansTable).where(eq(subscriptionPlansTable.id, sub.planId)).limit(1);
+      const planCredits = plan?.credits ?? 0;
+      const expires = new Date();
+      expires.setDate(expires.getDate() + 30);
+      patch = {
+        ...patch,
+        creditsRemaining: planCredits,
+        creditsTotal: planCredits,
+        expiresAt: expires,
+      };
+    }
+  }
+
   const [updated] = await db
     .update(clientSubscriptionsTable)
-    .set({ status: status as "pending" | "active" | "cancelled" })
+    .set(patch)
     .where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId)))
     .returning();
   if (!updated) {
@@ -233,14 +263,22 @@ router.get("/subscriptions/check", async (req, res): Promise<void> => {
     return;
   }
   const [plan] = await db
-    .select({ name: subscriptionPlansTable.name, maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth })
+    .select({ name: subscriptionPlansTable.name, credits: subscriptionPlansTable.credits, maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth })
     .from(subscriptionPlansTable)
     .where(eq(subscriptionPlansTable.id, sub.planId))
     .limit(1);
-  res.json({ active: true, planName: plan?.name ?? null, subscriptionId: sub.id, maxAppointmentsPerMonth: plan?.maxAppointmentsPerMonth ?? null });
+  res.json({
+    active: true,
+    planName: plan?.name ?? null,
+    subscriptionId: sub.id,
+    creditsRemaining: sub.creditsRemaining ?? 0,
+    creditsTotal: sub.creditsTotal ?? 0,
+    expiresAt: sub.expiresAt?.toISOString() ?? null,
+    maxAppointmentsPerMonth: plan?.maxAppointmentsPerMonth ?? null,
+  });
 });
 
-// Returns how many plan-covered appointments the client has used this month
+// Returns current subscription credit usage
 router.get("/subscriptions/usage", async (req, res): Promise<void> => {
   const shopId = resolveShop(req);
   if (!shopId) { res.status(400).json({ error: "shopId obrigatório" }); return; }
@@ -257,33 +295,14 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
       eq(clientSubscriptionsTable.status, "active"),
     ))
     .limit(1);
-  if (!sub) { res.json({ active: false, used: 0, limit: 0, remaining: 0 }); return; }
+  if (!sub) { res.json({ active: false, creditsRemaining: 0, creditsTotal: 0, expiresAt: null }); return; }
 
-  const [plan] = await db
-    .select({ maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth })
-    .from(subscriptionPlansTable)
-    .where(eq(subscriptionPlansTable.id, sub.planId))
-    .limit(1);
-
-  const limit = plan?.maxAppointmentsPerMonth ?? 0;
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-  const { sql, count } = await import("drizzle-orm");
-  const [result] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(sql`appointments`)
-    .where(sql`
-      user_id = ${shopId}
-      AND client_name = ${sub.clientName}
-      AND covered_by_plan = true
-      AND status != 'cancelled'
-      AND scheduled_at >= ${monthStart.toISOString()}::timestamptz
-      AND scheduled_at < ${monthEnd.toISOString()}::timestamptz
-    `);
-  const used = result?.count ?? 0;
-  res.json({ active: true, used, limit, remaining: Math.max(0, limit - used) });
+  res.json({
+    active: true,
+    creditsRemaining: sub.creditsRemaining ?? 0,
+    creditsTotal: sub.creditsTotal ?? 0,
+    expiresAt: sub.expiresAt?.toISOString() ?? null,
+  });
 });
 
 export default router;

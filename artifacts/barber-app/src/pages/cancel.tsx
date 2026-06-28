@@ -42,9 +42,13 @@ export default function CancelBooking() {
 
   const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
 
+  const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
+    query: { queryKey: getGetAppointmentByTokenQueryKey(token), enabled: !!token },
+  });
+
   // Check appointment time and show reminder banner when 15 min left
   useEffect(() => {
-    if (!appointment || cancelled || locked) return;
+    if (!appointment || appointment.status === "cancelled" || appointment.status === "in_progress" || appointment.status === "completed") return;
     const check = () => {
       const apptTime = new Date(appointment.scheduledAt).getTime();
       const diffMin = (apptTime - Date.now()) / 60000;
@@ -55,7 +59,7 @@ export default function CancelBooking() {
     check();
     const id = setInterval(check, 60_000);
     return () => clearInterval(id);
-  }, [appointment?.scheduledAt, cancelled, locked]);
+  }, [appointment?.scheduledAt, appointment?.status]);
 
   // Ping the server every minute to trigger push reminders (autoscale-safe)
   useEffect(() => {
@@ -118,9 +122,6 @@ export default function CancelBooking() {
     shopId ? { shopId } : undefined,
     { query: { queryKey: getGetSettingsQueryKey(shopId ? { shopId } : undefined) } }
   );
-  const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
-    query: { queryKey: getGetAppointmentByTokenQueryKey(token), enabled: !!token },
-  });
   const cancelMut = useCancelAppointmentByToken();
   const rescheduleMut = useRescheduleAppointmentByToken();
 

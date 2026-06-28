@@ -12,6 +12,8 @@ export interface SubscriptionPlanInput {
   description?: string | null;
   price: number;
   /** @nullable */
+  credits?: number | null;
+  /** @nullable */
   maxAppointmentsPerMonth?: number | null;
   active?: boolean;
 }

@@ -1252,7 +1252,7 @@ export const UpdateSettingsBody = zod.object({
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
-  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)')
+  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços')
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
@@ -1442,6 +1442,7 @@ export const ListSubscriptionPlansResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "credits": zod.number().nullish(),
   "maxAppointmentsPerMonth": zod.number().nullish(),
   "active": zod.boolean(),
   "createdAt": zod.string().optional()
@@ -1456,6 +1457,7 @@ export const CreateSubscriptionPlanBody = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "credits": zod.number().nullish(),
   "maxAppointmentsPerMonth": zod.number().nullish(),
   "active": zod.boolean().optional()
 })
@@ -1472,6 +1474,7 @@ export const UpdateSubscriptionPlanBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().nullish(),
   "price": zod.number().optional(),
+  "credits": zod.number().nullish(),
   "maxAppointmentsPerMonth": zod.number().nullish(),
   "active": zod.boolean().optional()
 })
@@ -1481,6 +1484,7 @@ export const UpdateSubscriptionPlanResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "price": zod.number(),
+  "credits": zod.number().nullish(),
   "maxAppointmentsPerMonth": zod.number().nullish(),
   "active": zod.boolean(),
   "createdAt": zod.string().optional()
@@ -1506,6 +1510,9 @@ export const ListSubscriptionsResponseItem = zod.object({
   "clientEmail": zod.string(),
   "startDate": zod.string(),
   "status": zod.enum(['pending', 'active', 'cancelled']),
+  "creditsRemaining": zod.number().nullish(),
+  "creditsTotal": zod.number().nullish(),
+  "expiresAt": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -1543,6 +1550,9 @@ export const UpdateSubscriptionResponse = zod.object({
   "clientEmail": zod.string(),
   "startDate": zod.string(),
   "status": zod.enum(['pending', 'active', 'cancelled']),
+  "creditsRemaining": zod.number().nullish(),
+  "creditsTotal": zod.number().nullish(),
+  "expiresAt": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -1559,7 +1569,11 @@ export const CheckSubscriptionQueryParams = zod.object({
 export const CheckSubscriptionResponse = zod.object({
   "active": zod.boolean(),
   "planName": zod.string().nullish(),
-  "subscriptionId": zod.number().nullish()
+  "subscriptionId": zod.number().nullish(),
+  "creditsRemaining": zod.number().nullish(),
+  "creditsTotal": zod.number().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "maxAppointmentsPerMonth": zod.number().nullish()
 })
 
 

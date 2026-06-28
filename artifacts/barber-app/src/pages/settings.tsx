@@ -148,7 +148,7 @@ export default function Settings() {
 
   const [planOpen, setPlanOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
 
   const [exclusionOpen, setExclusionOpen] = useState(false);
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
@@ -457,15 +457,17 @@ export default function Settings() {
     if (!name) { toast({ title: "Nome do plano é obrigatório", variant: "destructive" }); return; }
     const price = parseFloat(planForm.price);
     if (Number.isNaN(price) || price < 0) { toast({ title: "Preço inválido", variant: "destructive" }); return; }
+    const creditsRaw = planForm.credits.trim();
+    const credits = creditsRaw ? parseInt(creditsRaw, 10) : null;
     const maxRaw = planForm.maxPerMonth.trim();
     const max = maxRaw ? parseInt(maxRaw, 10) : null;
-    const payload = { name, description: planForm.description.trim() || null, price, maxAppointmentsPerMonth: max, active: planForm.active };
+    const payload = { name, description: planForm.description.trim() || null, price, credits, maxAppointmentsPerMonth: max, active: planForm.active };
     if (editingPlanId) {
       updatePlanMut.mutate({ id: editingPlanId, data: payload }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
           setPlanOpen(false); setEditingPlanId(null);
-          setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+          setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
           toast({ title: "Plano atualizado" });
         },
       });
@@ -474,7 +476,7 @@ export default function Settings() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
           setPlanOpen(false);
-          setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+          setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
           toast({ title: "Plano criado" });
         },
       });
@@ -1263,7 +1265,7 @@ export default function Settings() {
             className="gap-1.5 shrink-0 h-8 text-xs"
             onClick={() => {
               setEditingPlanId(null);
-              setPlanForm({ name: "", description: "", price: "", maxPerMonth: "", active: true });
+              setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
               setPlanOpen(true);
             }}
           >
@@ -1297,6 +1299,18 @@ export default function Settings() {
                     value={planForm.price}
                     onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
                     placeholder="49.90"
+                    className="h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Créditos do plano (pts)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={planForm.credits}
+                    onChange={(e) => setPlanForm({ ...planForm, credits: e.target.value })}
+                    placeholder="Ex: 1000"
                     className="h-9"
                   />
                 </div>
@@ -1373,6 +1387,9 @@ export default function Settings() {
                     <span className="font-semibold text-sm">{plan.name}</span>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       R$ {plan.price.toFixed(2).replace(".", ",")}/mês
+                      {plan.credits
+                        ? ` · ${plan.credits} créditos`
+                        : ""}
                       {plan.maxAppointmentsPerMonth
                         ? ` · até ${plan.maxAppointmentsPerMonth} cortes`
                         : " · cortes ilimitados"}
@@ -1418,6 +1435,7 @@ export default function Settings() {
                         name: plan.name,
                         description: plan.description ?? "",
                         price: String(plan.price),
+                        credits: plan.credits ? String(plan.credits) : "",
                         maxPerMonth: plan.maxAppointmentsPerMonth ? String(plan.maxAppointmentsPerMonth) : "",
                         active: plan.active,
                       });
@@ -1474,6 +1492,12 @@ export default function Settings() {
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {sub.clientPhone} · {plan?.name ?? `Plano #${sub.planId}`}
+                          {sub.creditsRemaining != null && sub.creditsTotal != null
+                            ? ` · ${sub.creditsRemaining}/${sub.creditsTotal} créditos`
+                            : ""}
+                          {sub.expiresAt
+                            ? ` · expira ${new Date(sub.expiresAt).toLocaleDateString("pt-BR")}`
+                            : ""}
                         </p>
                       </div>
                       {sub.status !== "active" && (

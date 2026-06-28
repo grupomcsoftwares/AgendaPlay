@@ -1657,6 +1657,8 @@ components:
           type: ["string", "null"]
         price:
           type: number
+        credits:
+          type: ["integer", "null"]
         maxAppointmentsPerMonth:
           type: ["integer", "null"]
         active:
@@ -1674,6 +1676,8 @@ components:
           type: ["string", "null"]
         price:
           type: number
+        credits:
+          type: ["integer", "null"]
         maxAppointmentsPerMonth:
           type: ["integer", "null"]
         active:
@@ -1688,6 +1692,8 @@ components:
           type: ["string", "null"]
         price:
           type: number
+        credits:
+          type: ["integer", "null"]
         maxAppointmentsPerMonth:
           type: ["integer", "null"]
         active:
@@ -1712,6 +1718,12 @@ components:
         status:
           type: string
           enum: [pending, active, cancelled]
+        creditsRemaining:
+          type: ["integer", "null"]
+        creditsTotal:
+          type: ["integer", "null"]
+        expiresAt:
+          type: ["string", "null"]
         createdAt:
           type: string
         updatedAt:
@@ -1749,6 +1761,14 @@ components:
         planName:
           type: ["string", "null"]
         subscriptionId:
+          type: ["integer", "null"]
+        creditsRemaining:
+          type: ["integer", "null"]
+        creditsTotal:
+          type: ["integer", "null"]
+        expiresAt:
+          type: ["string", "null"]
+        maxAppointmentsPerMonth:
           type: ["integer", "null"]
 
     Settings:
@@ -1882,6 +1902,13 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
             - type: "null"
+        serviceExclusions:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+          description: "Lista de combinações proibidas de serviços"
 
     NextAvailableResult:
       type: object

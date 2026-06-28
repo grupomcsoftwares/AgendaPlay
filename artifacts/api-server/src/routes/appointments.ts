@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
@@ -318,6 +318,40 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const finalServicePrice = Math.max(0, dayBasedPrice - loyaltyDiscount);
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── Subscription credits validation ─────────────────────────────────────
+  const coveredByPlan = parsed.data.coveredByPlan ?? false;
+  let subscriptionCreditCost = 0;
+  let subscriptionCreditError: string | null = null;
+  if (coveredByPlan && loyaltyPhone) {
+    const [sub] = await db
+      .select()
+      .from(clientSubscriptionsTable)
+      .where(and(
+        eq(clientSubscriptionsTable.userId, shopId),
+        eq(clientSubscriptionsTable.clientPhone, loyaltyPhone),
+        eq(clientSubscriptionsTable.status, "active"),
+      ))
+      .limit(1);
+    if (!sub) {
+      subscriptionCreditError = "Assinatura não encontrada ou inativa";
+    } else if (sub.expiresAt && new Date() > new Date(sub.expiresAt)) {
+      subscriptionCreditError = "Créditos do plano expiraram";
+    } else {
+      const creditCost = Math.ceil(finalServicePrice);
+      const remaining = sub.creditsRemaining ?? 0;
+      if (remaining < creditCost) {
+        subscriptionCreditError = `Créditos insuficientes no plano. Necessário ${creditCost}, disponível ${remaining}.`;
+      } else {
+        subscriptionCreditCost = creditCost;
+      }
+    }
+  }
+  if (subscriptionCreditError) {
+    res.status(400).json({ error: subscriptionCreditError });
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   let conflict = false;
   let redeemConflict = false;
   const appointment = await db.transaction(async (tx) => {
@@ -376,6 +410,28 @@ router.post("/appointments", async (req, res): Promise<void> => {
       status: "pending",
       cancelToken: crypto.randomUUID(),
     }).returning();
+
+    // Atomic subscription credit deduction inside transaction
+    if (coveredByPlan && subscriptionCreditCost > 0 && loyaltyPhone) {
+      const deducted = await tx
+        .update(clientSubscriptionsTable)
+        .set({
+          creditsRemaining: sql`${clientSubscriptionsTable.creditsRemaining} - ${subscriptionCreditCost}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(clientSubscriptionsTable.userId, shopId),
+          eq(clientSubscriptionsTable.clientPhone, loyaltyPhone),
+          eq(clientSubscriptionsTable.status, "active"),
+          sql`${clientSubscriptionsTable.creditsRemaining} >= ${subscriptionCreditCost}`,
+          sql`${clientSubscriptionsTable.expiresAt} > NOW()`,
+        ))
+        .returning({ id: clientSubscriptionsTable.id });
+      if (deducted.length === 0) {
+        redeemConflict = true;
+        return null;
+      }
+    }
 
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
     const [maxResult] = await tx
