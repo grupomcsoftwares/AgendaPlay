@@ -11,6 +11,7 @@ type StripeSubscriptionEvent = {
       id: string;
       customer: string;
       status?: string;
+      current_period_end?: number;
       items?: {
         data: Array<{
           price: {
@@ -74,23 +75,26 @@ export class WebhookHandlers {
         const stripePriceId = priceItem?.price?.id ?? null;
         const productId = priceItem?.price?.product ?? null;
         const maxBarbers = productId ? await getMaxBarbersForProduct(productId) : null;
+        const periodEnd = obj?.current_period_end
+          ? new Date(obj.current_period_end * 1000)
+          : null;
 
         await db
           .update(usersTable)
-          .set({ stripeSubscriptionId: subscriptionId, stripePriceId, maxBarbers })
+          .set({ stripeSubscriptionId: subscriptionId, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
           .where(eq(usersTable.stripeCustomerId, customerId));
-        logger.info({ customerId, subscriptionId, stripePriceId, maxBarbers, type }, 'User subscription activated via webhook');
+        logger.info({ customerId, subscriptionId, stripePriceId, maxBarbers, periodEnd, type }, 'User subscription activated via webhook');
       } else if (status === 'canceled' || status === 'unpaid' || status === 'past_due') {
         await db
           .update(usersTable)
-          .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null })
+          .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null, stripeCurrentPeriodEnd: null })
           .where(eq(usersTable.stripeCustomerId, customerId));
         logger.info({ customerId, type, status }, 'User subscription cleared via webhook');
       }
     } else if (type === 'customer.subscription.deleted') {
       await db
         .update(usersTable)
-        .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null })
+        .set({ stripeSubscriptionId: null, stripePriceId: null, maxBarbers: null, stripeCurrentPeriodEnd: null })
         .where(eq(usersTable.stripeCustomerId, customerId));
       logger.info({ customerId, type }, 'User subscription deleted via webhook');
     }

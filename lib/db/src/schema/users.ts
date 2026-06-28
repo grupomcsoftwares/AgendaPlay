@@ -14,6 +14,7 @@ export const usersTable = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
+  stripeCurrentPeriodEnd: timestamp("stripe_current_period_end", { withTimezone: true }),
   maxBarbers: integer("max_barbers"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -25,6 +26,7 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   stripeCustomerId: true,
   stripeSubscriptionId: true,
   stripePriceId: true,
+  stripeCurrentPeriodEnd: true,
   maxBarbers: true,
 });
 

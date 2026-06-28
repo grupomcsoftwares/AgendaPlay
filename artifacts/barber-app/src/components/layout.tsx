@@ -113,6 +113,8 @@ function UserFooter({
   trialDaysLeft,
   trialColor,
   trialBg,
+  subscriptionDaysLeft,
+  subscriptionDueDate,
   onLogout,
 }: {
   ownerName: string;
@@ -122,10 +124,34 @@ function UserFooter({
   trialDaysLeft: number | null;
   trialColor: string;
   trialBg: string;
+  subscriptionDaysLeft: number | null;
+  subscriptionDueDate: string | null;
   onLogout: () => void;
 }) {
+  const subColor = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 3
+    ? "hsl(0 70% 55%)"
+    : "hsl(142 70% 45%)";
+  const subBg = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 3
+    ? "hsl(0 60% 10%)"
+    : "hsl(142 60% 10%)";
+
   return (
     <div className="border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
+      {subscriptionDaysLeft !== null && (
+        <div
+          className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center gap-2"
+          style={{ backgroundColor: subBg, border: `1px solid ${subColor}30` }}
+        >
+          <CreditCard className="h-3.5 w-3.5 flex-shrink-0" style={{ color: subColor }} />
+          <span className="text-xs font-medium" style={{ color: subColor }}>
+            {subscriptionDaysLeft === 0
+              ? "Mensalidade vence hoje"
+              : subscriptionDaysLeft === 1
+                ? "1 dia até o vencimento"
+                : `${subscriptionDaysLeft} dias até o vencimento`}
+          </span>
+        </div>
+      )}
       {showTrialBanner && (
         <div
           className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center gap-2"
@@ -246,6 +272,9 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
   const bookingUrl = user ? `${window.location.origin}/booking?shopId=${user.id}` : "";
 
+  const subscriptionDaysLeft = user?.subscriptionDaysLeft ?? null;
+  const subscriptionDueDate = user?.subscriptionDueDate ?? null;
+
   const footerProps = {
     ownerName,
     barbershopName,
@@ -254,6 +283,8 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     trialDaysLeft,
     trialColor,
     trialBg,
+    subscriptionDaysLeft,
+    subscriptionDueDate,
     onLogout: handleLogout,
   };
 

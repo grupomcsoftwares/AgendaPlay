@@ -11,6 +11,8 @@ export type AuthUser = {
   trialExpired: boolean;
   hasActiveSubscription: boolean;
   canAccess: boolean;
+  subscriptionDueDate?: string | null;
+  subscriptionDaysLeft?: number | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
 };

@@ -20,6 +20,7 @@ const userCols = {
   stripeCustomerId: usersTable.stripeCustomerId,
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
+  stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
@@ -138,6 +139,10 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
   const trialStarted = new Date(user.trialStartedAt);
   const daysSinceTrial = Math.floor((Date.now() - trialStarted.getTime()) / (1000 * 60 * 60 * 24));
   const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
+  const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
+  const subscriptionDaysLeft = periodEnd
+    ? Math.max(0, Math.floor((periodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
   res.json({
     hasActiveSubscription: !!user.stripeSubscriptionId,
     subscriptionId: user.stripeSubscriptionId,
@@ -146,6 +151,8 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     trialDaysLeft,
     trialExpired: trialDaysLeft === 0,
     canAccess: trialDaysLeft > 0 || !!user.stripeSubscriptionId,
+    subscriptionDueDate: periodEnd?.toISOString() ?? null,
+    subscriptionDaysLeft,
   });
 });
 
@@ -183,8 +190,14 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
         } catch { /* ignore */ }
       }
 
-      await db.update(usersTable).set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers }).where(eq(usersTable.id, userId));
-      res.json({ hasSubscription: true, subscriptionId: sub.id, stripePriceId, maxBarbers });
+      const periodEnd = (sub as any).current_period_end
+        ? new Date((sub as any).current_period_end * 1000)
+        : null;
+
+      await db.update(usersTable)
+        .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+        .where(eq(usersTable.id, userId));
+      res.json({ hasSubscription: true, subscriptionId: sub.id, stripePriceId, maxBarbers, subscriptionDueDate: periodEnd?.toISOString() ?? null });
     } else {
       res.json({ hasSubscription: false });
     }
