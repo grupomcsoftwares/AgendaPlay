@@ -16,11 +16,13 @@ import {
   useGetAvailability,
   getGetAvailabilityQueryKey,
   getGetDashboardSummaryQueryKey,
+  useGetSettings,
+  getGetSettingsQueryKey,
   ApiError,
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -91,6 +93,7 @@ export default function Appointments() {
       : `${format(dateStart, "dd/MM/yyyy")} - ${format(dateEnd, "dd/MM/yyyy")}`;
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
+  const { data: settings } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
 
   const createAppointment = useCreateAppointment();
   const updateAppointment = useUpdateAppointment();
@@ -113,6 +116,7 @@ export default function Appointments() {
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editTime, setEditTime] = useState("");
   const [editServiceIdState, setEditServiceIdState] = useState<number>(0);
+  const [receiptApt, setReceiptApt] = useState<Appointment | null>(null);
   const editDateStr = format(editDate, "yyyy-MM-dd");
   // Use the selected service in the edit modal, falling back to the original
   const effectiveEditServiceId = editServiceIdState > 0 ? editServiceIdState : (editTarget?.serviceId ?? 0);
@@ -687,6 +691,11 @@ export default function Appointments() {
                           <Check className="h-4 w-4" />
                         </Button>
                       )}
+                      {apt.status === 'completed' && (
+                        <Button variant="ghost" size="icon" title="Imprimir comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}>
+                          <Printer className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => {
                         if (confirm("Deletar este registro?")) deleteAppointment.mutate({id: apt.id}, { onSuccess: invalidate });
                       }} data-testid={`button-delete-${apt.id}`}>
@@ -838,6 +847,129 @@ export default function Appointments() {
               {updateAppointment.isPending ? "Salvando…" : "Salvar alteração"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt / Comprovante modal */}
+      <Dialog open={!!receiptApt} onOpenChange={(open) => !open && setReceiptApt(null)}>
+        <DialogContent className="sm:max-w-[420px] p-0 gap-0 overflow-hidden border-border/60">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
+            <DialogTitle className="text-xl font-semibold tracking-tight">
+              Comprovante
+            </DialogTitle>
+          </DialogHeader>
+          {receiptApt && (
+            <div id="printable-receipt" className="px-6 py-5 space-y-4">
+              {/* Shop header */}
+              <div className="text-center space-y-1">
+                {settings?.logoUrl && (
+                  <img src={settings.logoUrl} alt="" className="h-12 mx-auto mb-2 object-contain" />
+                )}
+                <h3 className="font-bold text-base">{settings?.barbershopName ?? "Barbearia"}</h3>
+                {settings?.phone && <p className="text-xs text-muted-foreground">{settings.phone}</p>}
+                {settings?.address && <p className="text-xs text-muted-foreground">{settings.address}</p>}
+              </div>
+
+              <div className="border-t border-dashed border-border pt-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cliente</span>
+                  <span className="font-medium">{receiptApt.clientName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Serviço</span>
+                  <span className="font-medium text-right">{receiptApt.serviceName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Profissional</span>
+                  <span className="font-medium">{receiptApt.barberName ?? "—"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Data</span>
+                  <span className="font-medium">{format(new Date(receiptApt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Horário</span>
+                  <span className="font-medium">{format(new Date(receiptApt.scheduledAt), "HH:mm")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duração</span>
+                  <span className="font-medium">{receiptApt.serviceDuration} min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pagamento</span>
+                  <span className="font-medium">
+                    {receiptApt.coveredByPlan
+                      ? "Plano de assinatura"
+                      : receiptApt.paymentMethod === "now"
+                        ? "Pix online"
+                        : "Na barbearia"}
+                  </span>
+                </div>
+                {receiptApt.coveredByPlan && receiptApt.creditsUsed != null && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Créditos usados</span>
+                    <span className="font-medium">{receiptApt.creditsUsed} pts</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-dashed border-border pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold">TOTAL</span>
+                  <span className="text-lg font-bold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(receiptApt.servicePrice)))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-dashed border-border pt-3 text-center text-xs text-muted-foreground space-y-1">
+                <p>Emitido em {format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                <p>Obrigado pela preferência!</p>
+              </div>
+            </div>
+          )}
+          <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
+            <Button variant="ghost" onClick={() => setReceiptApt(null)}>
+              Fechar
+            </Button>
+            <Button
+              onClick={() => {
+                const el = document.getElementById("printable-receipt");
+                if (!el) return;
+                const w = window.open("", "_blank", "width=420,height=600");
+                if (!w) return;
+                w.document.write(`
+                  <html>
+                    <head>
+                      <title>Comprovante</title>
+                      <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; max-width: 380px; margin: 0 auto; color: #000; background: #fff; }
+                        .header { text-align: center; margin-bottom: 16px; }
+                        .header img { max-height: 48px; margin-bottom: 8px; }
+                        .header h3 { margin: 0; font-size: 16px; font-weight: 700; }
+                        .header p { margin: 2px 0; font-size: 11px; color: #555; }
+                        .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px dashed #ddd; }
+                        .row:last-child { border-bottom: none; }
+                        .label { color: #666; }
+                        .value { font-weight: 500; text-align: right; }
+                        .total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 2px dashed #000; font-size: 16px; font-weight: 700; }
+                        .footer { text-align: center; margin-top: 16px; font-size: 11px; color: #666; }
+                        @media print { body { padding: 0; } }
+                      </style>
+                    </head>
+                    <body>
+                      ${el.innerHTML}
+                      <script>window.onload = () => { setTimeout(() => { window.print(); }, 300); };</script>
+                    </body>
+                  </html>
+                `);
+                w.document.close();
+              }}
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
