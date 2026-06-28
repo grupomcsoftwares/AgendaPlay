@@ -263,6 +263,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
 
   const appliedCombo = React.useMemo(() => {
+    if (useLoyaltyPoints) return null;
     if (!comboDiscounts || selectedServices.length < 2) return null;
     const selectedIds = formData.serviceIds;
     const matches = comboDiscounts.filter(c =>
@@ -276,7 +277,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       const vb = b.discountType === "value" ? b.discountPercent : (totalPriceRaw * b.discountPercent) / 100;
       return vb - va;
     })[0];
-  }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw]);
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw, useLoyaltyPoints]);
 
   // Combo time discount: e.g. corte 35 min + barba 25 min = 60 min; combo saves 5 min → 55 min
   const comboTimeDiscount = appliedCombo?.timeDiscountMinutes ?? 0;
