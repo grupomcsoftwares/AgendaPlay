@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useListSubscriptionPlans, getListSubscriptionPlansQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useCreateSubscription } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, BadgeCheck } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 const AMBER = "hsl(38 88% 55%)";
@@ -127,8 +127,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // When true, step 1 shows the barber picker instead of the service list.
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
-  const [usePlan, setUsePlan] = useState(false);
-  const [subUsage, setSubUsage] = useState<{ active: boolean; creditsRemaining: number; creditsTotal: number; expiresAt: string | null } | null>(null);
 
   const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
 
@@ -196,8 +194,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         serviceDuration: totalDuration,
         ...(barber ? { barberId: barber.id, barberName: barber.name } : {}),
         scheduledAt,
-        paymentMethod: usePlan ? "on_site" : formData.paymentMethod,
-        coveredByPlan: usePlan,
+        paymentMethod: formData.paymentMethod,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
         ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
         // Send serviceId for single-service bookings so server can resolve day-based pricing
@@ -248,62 +245,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     loyaltyQueryParams,
     { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 1 && normalizedPhone.length >= 8 } }
   );
-
-  const subPlansParams = shopId ? { shopId } : undefined;
-  const { data: subscriptionPlans } = useListSubscriptionPlans(
-    subPlansParams,
-    { query: { queryKey: getListSubscriptionPlansQueryKey(subPlansParams) } }
-  );
-  const activePlans = React.useMemo(
-    () => (subscriptionPlans ?? []).filter((p) => p.active),
-    [subscriptionPlans]
-  );
-
-  const subCheckParams = { ...(shopId ? { shopId } : {}), phone: normalizedPhone };
-  const { data: subCheck } = useCheckSubscription(
-    subCheckParams,
-    { query: { queryKey: getCheckSubscriptionQueryKey(subCheckParams), enabled: step >= 3 && normalizedPhone.length >= 8 } }
-  );
-
-  // Fetch subscription credits when active
-  useEffect(() => {
-    if (!subCheck?.active || !shopId || normalizedPhone.length < 8) {
-      setSubUsage(null);
-      return;
-    }
-    const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const qs = new URLSearchParams({ ...(shopId ? { shopId } : {}), phone: normalizedPhone });
-    fetch(`${BASE}/api/subscriptions/usage?${qs.toString()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && typeof data.creditsRemaining === "number") setSubUsage(data);
-      })
-      .catch(() => setSubUsage(null));
-  }, [subCheck?.active, shopId, normalizedPhone]);
-
-  const createSubscription = useCreateSubscription();
-  const [subModal, setSubModal] = useState<{ open: boolean; planId: number | null; planName: string }>({ open: false, planId: null, planName: "" });
-  const [subForm, setSubForm] = useState({ clientName: "", clientPhone: "", clientEmail: "" });
-  const [subDone, setSubDone] = useState(false);
-
-  const handleSubscribe = () => {
-    if (!subModal.planId) return;
-    createSubscription.mutate(
-      { data: {
-        ...(shopId ? { shopId } : {}),
-        planId: subModal.planId,
-        clientName: subForm.clientName.trim(),
-        clientPhone: subForm.clientPhone.replace(/\D/g, ""),
-        clientEmail: subForm.clientEmail.trim(),
-      } },
-      {
-        onSuccess: () => {
-          setSubDone(true);
-          setTimeout(() => { setSubModal({ open: false, planId: null, planName: "" }); setSubDone(false); setSubForm({ clientName: "", clientPhone: "", clientEmail: "" }); }, 2500);
-        },
-      }
-    );
-  };
 
   // Services this barber can perform (empty serviceIds = all services).
   const eligibleServicesAll = React.useMemo(() => {
@@ -1181,24 +1122,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   </div>
                 </div>
 
-                {subCheck?.active && (
-                  <div
-                    data-testid="badge-subscriber"
-                    className="flex items-center gap-3 rounded-xl px-4 py-3"
-                    style={{ backgroundColor: "hsl(142 71% 45% / 0.10)", border: "1px solid hsl(142 71% 45% / 0.35)" }}
-                  >
-                    <BadgeCheck className="h-5 w-5 shrink-0" style={{ color: "hsl(142 71% 45%)" }} />
-                    <div>
-                      <p className="font-semibold text-sm" style={{ color: "hsl(142 71% 45%)" }}>
-                        Assinante Ativo ✓
-                      </p>
-                      {subCheck.planName && (
-                        <p className="text-xs text-muted-foreground">{subCheck.planName}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {loyaltyBalance?.enabled && loyaltyBalance.points > 0 && loyaltyAvailableDiscount > 0 && (
                   <div
                     className="rounded-xl p-4 space-y-3"
@@ -1346,63 +1269,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               )}
 
               <div className="space-y-3">
-                {/* Plan option — only shown when client has active subscription */}
-                {subCheck?.active && (
-                  <button
-                    type="button"
-                    data-testid="button-payment-plan"
-                    onClick={() => {
-                      if (subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice) return;
-                      setUsePlan(true);
-                    }}
-                    disabled={!!(subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice)}
-                    className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
-                    style={{
-                      backgroundColor: usePlan ? "hsl(142 71% 45% / 0.12)" : "hsl(0 0% 7%)",
-                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 62% 50% / 0.5)" : "hsl(0 0% 14%)"}`,
-                      cursor: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "not-allowed" : "pointer",
-                      opacity: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? 0.5 : 1,
-                    }}
-                  >
-                    <div
-                      className="rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{
-                        width: 44,
-                        height: 44,
-                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 62% 50% / 0.2)" : "hsl(0 0% 12%)",
-                        color: usePlan ? "hsl(0 0% 10%)" : subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)",
-                      }}
-                    >
-                      <BadgeCheck className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-base">Usar meu plano</p>
-                      <p className="text-xs mt-0.5" style={{ color: subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)" }}>
-                        {subCheck.planName ?? "Assinatura ativa"}
-                        {subUsage
-                          ? ` · ${subUsage.creditsRemaining}/${subUsage.creditsTotal} créditos`
-                          : " · créditos indisponíveis"}
-                        {subUsage?.expiresAt
-                          ? ` · expira ${new Date(subUsage.expiresAt).toLocaleDateString("pt-BR")}`
-                          : ""}
-                        {subUsage && (subUsage.creditsRemaining ?? 0) < comboTotalPrice && " · créditos insuficientes para este serviço"}
-                      </p>
-                    </div>
-                    <div
-                      className="rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{
-                        width: 22,
-                        height: 22,
-                        border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 25%)"}`,
-                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : "transparent",
-                        color: "hsl(0 0% 10%)",
-                      }}
-                    >
-                      {usePlan && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
-                    </div>
-                  </button>
-                )}
-
                 {([
                   {
                     value: "now" as const,
@@ -1417,13 +1283,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     Icon: Banknote,
                   },
                 ]).filter(opt => enabledPayments.includes(opt.value)).map(({ value, title, desc, Icon }) => {
-                  const isSelected = !usePlan && formData.paymentMethod === value;
+                  const isSelected = formData.paymentMethod === value;
                   return (
                     <button
                       key={value}
                       type="button"
                       data-testid={`button-payment-${value}`}
-                      onClick={() => { setUsePlan(false); setFormData({ ...formData, paymentMethod: value }); }}
+                      onClick={() => { setFormData({ ...formData, paymentMethod: value }); }}
                       className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                       style={{
                         backgroundColor: isSelected ? AMBER_SOFT : "hsl(0 0% 7%)",
@@ -1573,9 +1439,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           <p className="bk-fade-2 text-sm text-muted-foreground mt-2">
             {formData.paymentMethod === "now"
               ? "Efetue o pagamento via Pix para garantir seu horário."
-              : usePlan
-                ? `Pago com plano · ${comboTotalPrice} créditos debitados`
-                : "Tudo certo! Te esperamos no horário marcado."}
+              : "Tudo certo! Te esperamos no horário marcado."}
           </p>
 
           {formData.paymentMethod === "now" && pixKey && (
@@ -1611,151 +1475,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         </div>
       )}
 
-      {/* ── Planos de assinatura ─────────────────────────────────────────── */}
-      {activePlans.length > 0 && !confirmed && (
-        <div className="space-y-4 pb-6">
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4" style={{ color: AMBER }} />
-            <h2 className="text-lg font-bold">Planos de Assinatura</h2>
-          </div>
-          <p className="text-sm text-muted-foreground -mt-2">
-            Assine um plano mensal e economize em cada visita.
-          </p>
-          <div className="space-y-3">
-            {activePlans.map((plan) => (
-              <div
-                key={plan.id}
-                className="rounded-2xl p-5 space-y-3"
-                style={{ backgroundColor: "hsl(0 0% 7%)", border: `1px solid ${AMBER}33` }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-base">{plan.name}</p>
-                    {plan.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5">{plan.description}</p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {plan.maxAppointmentsPerMonth
-                        ? `${plan.maxAppointmentsPerMonth} cortes por mês`
-                        : "Cortes ilimitados por mês"}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xl font-bold" style={{ color: AMBER }}>
-                      R$ {plan.price.toFixed(2).replace(".", ",")}
-                    </p>
-                    <p className="text-xs text-muted-foreground">/mês</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSubModal({ open: true, planId: plan.id, planName: plan.name });
-                    setSubForm({ clientName: "", clientPhone: "", clientEmail: "" });
-                    setSubDone(false);
-                  }}
-                  className="w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-85"
-                  style={{ backgroundColor: AMBER, color: "hsl(0 0% 10%)", border: "none", cursor: "pointer" }}
-                >
-                  Assinar
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal de assinatura ──────────────────────────────────────────── */}
-      {subModal.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.75)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setSubModal({ open: false, planId: null, planName: "" }); }}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl p-6 space-y-5"
-            style={{ backgroundColor: "hsl(0 0% 9%)", border: `1px solid ${AMBER}4D` }}
-          >
-            {subDone ? (
-              <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <div
-                  className="rounded-full flex items-center justify-center"
-                  style={{ width: 56, height: 56, backgroundColor: "hsl(142 71% 45% / 0.15)", border: "2px solid hsl(142 71% 45%)" }}
-                >
-                  <Check className="w-6 h-6" style={{ color: "hsl(142 71% 45%)" }} />
-                </div>
-                <p className="font-bold text-lg">Solicitação enviada!</p>
-                <p className="text-sm text-muted-foreground">
-                  Aguarde a confirmação da barbearia para ativar seu plano.
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <p className="font-bold text-base">{subModal.planName}</p>
-                  <button
-                    type="button"
-                    onClick={() => setSubModal({ open: false, planId: null, planName: "" })}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "hsl(0 0% 50%)" }}
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Nome completo *</Label>
-                    <Input
-                      value={subForm.clientName}
-                      onChange={(e) => setSubForm({ ...subForm, clientName: e.target.value })}
-                      placeholder="João Silva"
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Telefone *</Label>
-                    <Input
-                      value={subForm.clientPhone}
-                      onChange={(e) => setSubForm({ ...subForm, clientPhone: e.target.value })}
-                      placeholder="(11) 99999-9999"
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">E-mail *</Label>
-                    <Input
-                      type="email"
-                      value={subForm.clientEmail}
-                      onChange={(e) => setSubForm({ ...subForm, clientEmail: e.target.value })}
-                      placeholder="joao@email.com"
-                      className="h-10"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={
-                    !subForm.clientName.trim() ||
-                    !subForm.clientPhone.replace(/\D/g, "") ||
-                    !subForm.clientEmail.trim() ||
-                    createSubscription.isPending
-                  }
-                  onClick={handleSubscribe}
-                  className="w-full rounded-xl py-3 text-sm font-semibold transition-opacity"
-                  style={{
-                    backgroundColor: AMBER_DEEP,
-                    color: "hsl(0 0% 100%)",
-                    border: "none",
-                    cursor: subForm.clientName.trim() && subForm.clientPhone && subForm.clientEmail.trim() ? "pointer" : "not-allowed",
-                    opacity: subForm.clientName.trim() && subForm.clientPhone && subForm.clientEmail.trim() ? 1 : 0.5,
-                  }}
-                >
-                  {createSubscription.isPending ? "Enviando..." : "Solicitar assinatura"}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
