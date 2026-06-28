@@ -267,8 +267,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   }, [services, selectedBarber]);
 
   const selectedServices = React.useMemo(
-    () => eligibleServicesAll.filter(s => formData.serviceIds.includes(s.id)),
-    [eligibleServicesAll, formData.serviceIds]
+    () => (services ?? []).filter(s => formData.serviceIds.includes(s.id)),
+    [services, formData.serviceIds]
   );
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
@@ -863,10 +863,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               >
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {selectedServices.length} serviço{selectedServices.length > 1 ? "s" : ""}
+                    {formData.serviceIds.length} serviço{formData.serviceIds.length > 1 ? "s" : ""}
                   </span>
                   <span style={{ color: AMBER, fontWeight: 600 }}>
-                    {totalDuration} min · R$ {totalPriceRaw.toFixed(2).replace(".", ",")}
+                    {(() => {
+                      const d = formData.serviceIds.reduce((acc, id) => acc + ((services?.find(s => s.id === id)?.durationMinutes) ?? 0), 0);
+                      const p = formData.serviceIds.reduce((acc, id) => acc + ((services?.find(s => s.id === id)?.price) ?? 0), 0);
+                      return `${Math.max(5, d)} min · R$ ${p.toFixed(2).replace(".", ",")}`;
+                    })()}
                   </span>
                 </div>
                 {appliedCombo && (
