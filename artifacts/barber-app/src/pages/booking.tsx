@@ -301,7 +301,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const loyaltyAvailableDiscount = loyaltyBalance?.enabled && loyaltyBalance.pointsPerRedemptionUnit > 0
     ? Math.floor(loyaltyBalance.points / loyaltyBalance.pointsPerRedemptionUnit)
     : 0;
-  const loyaltyDiscountAmount = useLoyaltyPoints ? Math.min(loyaltyAvailableDiscount, comboTotalPrice) : 0;
+  const loyaltyDiscountAmount = useLoyaltyPoints ? Math.min(loyaltyAvailableDiscount, totalPriceRaw) : 0;
   const loyaltyPointsToSpend = useLoyaltyPoints && loyaltyBalance?.pointsPerRedemptionUnit
     ? loyaltyDiscountAmount * loyaltyBalance.pointsPerRedemptionUnit
     : 0;
@@ -1122,6 +1122,60 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   </div>
                 </div>
 
+                {selectedServices.length > 0 && (
+                  <div
+                    className="rounded-xl p-4 space-y-2"
+                    style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
+                  >
+                    {(() => {
+                      let remainingDiscount = loyaltyDiscountAmount;
+                      return selectedServices.map(sv => {
+                        const redeemable = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= sv.price && sv.price > 0;
+                        const discountHere = useLoyaltyPoints && redeemable
+                          ? Math.min(sv.price, remainingDiscount)
+                          : 0;
+                        remainingDiscount = Math.max(0, remainingDiscount - discountHere);
+                        const finalPrice = sv.price - discountHere;
+                        return (
+                          <div key={sv.id} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{sv.name}</span>
+                            <span className="font-semibold">
+                              {discountHere > 0 && (
+                                <>
+                                  <span className="line-through text-muted-foreground mr-1" style={{ opacity: 0.6 }}>
+                                    R$ {sv.price.toFixed(2).replace(".", ",")}
+                                  </span>
+                                  <span style={{ color: AMBER }}>
+                                    R$ {finalPrice.toFixed(2).replace(".", ",")} ⭐
+                                  </span>
+                                </>
+                              )}
+                              {discountHere === 0 && (
+                                <>R$ {sv.price.toFixed(2).replace(".", ",")}</>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                    {appliedCombo && (
+                      <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
+                        <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
+                        <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
+                      </div>
+                    )}
+                    <div
+                      className="flex items-center justify-between pt-2 mt-1 border-t"
+                      style={{ borderColor: "hsl(0 0% 14%)" }}
+                    >
+                      <span className="font-semibold">Total</span>
+                      <span className="font-bold" style={{ color: AMBER }}>
+                        R$ {totalPrice.toFixed(2).replace(".", ",")}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {loyaltyBalance?.enabled && loyaltyBalance.points > 0 && loyaltyAvailableDiscount > 0 && (
                   <div
                     className="rounded-xl p-4 space-y-3"
@@ -1158,7 +1212,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                           >
                             {useLoyaltyPoints
                               ? `✓ Usando ${loyaltyPointsToSpend} pontos — R$ ${loyaltyDiscountAmount.toFixed(2).replace(".", ",")} de desconto`
-                              : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, comboTotalPrice).toFixed(2).replace(".", ",")} de desconto)`}
+                              : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, totalPriceRaw).toFixed(2).replace(".", ",")} de desconto)`}
                           </button>
                           {pointsDisabled && (
                             <p className="text-xs" style={{ color: "hsl(0 70% 55%)" }}>
@@ -1235,53 +1289,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   Como você prefere pagar?
                 </p>
               </div>
-
-              {selectedServices.length > 0 && (
-                <div
-                  className="rounded-xl p-4 space-y-2"
-                  style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
-                >
-                  {selectedServices.map(sv => (
-                    <div key={sv.id} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{sv.name}</span>
-                      <span className="font-semibold">R$ {sv.price.toFixed(2).replace(".", ",")}</span>
-                    </div>
-                  ))}
-                  {appliedCombo && (
-                    <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
-                      <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
-                      <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
-                    </div>
-                  )}
-                  {useLoyaltyPoints && loyaltyDiscountAmount > 0 && (
-                    <div className="flex items-center justify-between text-sm" style={{ color: AMBER }}>
-                      <span>⭐ Pontos de fidelidade ({loyaltyPointsToSpend} pts)</span>
-                      <span className="font-semibold">- R$ {loyaltyDiscountAmount.toFixed(2).replace(".", ",")}</span>
-                    </div>
-                  )}
-                  {selectedBarber && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Profissional</span>
-                      <span className="font-semibold">{selectedBarber.name}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Data e hora</span>
-                    <span className="font-semibold">
-                      {formData.date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} · {formData.time}
-                    </span>
-                  </div>
-                  <div
-                    className="flex items-center justify-between pt-2 mt-2 border-t"
-                    style={{ borderColor: "hsl(0 0% 14%)" }}
-                  >
-                    <span className="font-semibold">Total</span>
-                    <span className="text-xl font-bold" style={{ color: AMBER }}>
-                      R$ {totalPrice.toFixed(2).replace(".", ",")}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-3">
                 {([
