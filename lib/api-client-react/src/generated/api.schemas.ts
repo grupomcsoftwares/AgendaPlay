@@ -191,6 +191,8 @@ export interface Appointment {
   paymentMethod?: AppointmentPaymentMethod;
   coveredByPlan?: boolean;
   /** @nullable */
+  creditsUsed?: number | null;
+  /** @nullable */
   notes?: string | null;
   /** @nullable */
   cancelToken?: string | null;
@@ -445,6 +447,8 @@ export interface SubscriptionCheckResult {
   expiresAt?: string | null;
   /** @nullable */
   maxAppointmentsPerMonth?: number | null;
+  /** @nullable */
+  creditsUsedThisPeriod?: number | null;
 }
 
 export interface Settings {

@@ -1355,6 +1355,8 @@ components:
           enum: [now, on_site]
         coveredByPlan:
           type: boolean
+        creditsUsed:
+          type: ["integer", "null"]
         notes:
           type: ["string", "null"]
         cancelToken:
@@ -1769,6 +1771,8 @@ components:
         expiresAt:
           type: ["string", "null"]
         maxAppointmentsPerMonth:
+          type: ["integer", "null"]
+        creditsUsedThisPeriod:
           type: ["integer", "null"]
 
     Settings:

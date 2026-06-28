@@ -1493,7 +1493,10 @@ export default function Settings() {
                         <p className="text-xs text-muted-foreground">
                           {sub.clientPhone} · {plan?.name ?? `Plano #${sub.planId}`}
                           {sub.creditsRemaining != null && sub.creditsTotal != null
-                            ? ` · ${sub.creditsRemaining}/${sub.creditsTotal} créditos`
+                            ? ` · ${sub.creditsRemaining}/${sub.creditsTotal} créditos restantes`
+                            : ""}
+                          {(sub as any).creditsUsedThisPeriod != null
+                            ? ` · ${(sub as any).creditsUsedThisPeriod} usados`
                             : ""}
                           {sub.expiresAt
                             ? ` · expira ${new Date(sub.expiresAt).toLocaleDateString("pt-BR")}`

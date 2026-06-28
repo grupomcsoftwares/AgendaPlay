@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, subscriptionPlansTable, clientSubscriptionsTable } from "@workspace/db";
+import { eq, and, gte, sql } from "drizzle-orm";
+import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
@@ -297,11 +297,21 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
     .limit(1);
   if (!sub) { res.json({ active: false, creditsRemaining: 0, creditsTotal: 0, expiresAt: null }); return; }
 
+  const totalUsed = await db
+    .select({ sum: sql<number>`COALESCE(SUM(${appointmentsTable.creditsUsed}), 0)` })
+    .from(appointmentsTable)
+    .where(and(
+      eq(appointmentsTable.userId, shopId),
+      eq(appointmentsTable.clientName, sub.clientName),
+      eq(appointmentsTable.coveredByPlan, true),
+      gte(appointmentsTable.createdAt, sub.createdAt),
+    ));
   res.json({
     active: true,
     creditsRemaining: sub.creditsRemaining ?? 0,
     creditsTotal: sub.creditsTotal ?? 0,
     expiresAt: sub.expiresAt?.toISOString() ?? null,
+    creditsUsedThisPeriod: totalUsed[0]?.sum ?? 0,
   });
 });
 

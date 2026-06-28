@@ -269,6 +269,11 @@ export default function CancelBooking() {
                 <p className="text-xs text-muted-foreground">
                   Salve esta página nos favoritos para mudar o horário ou cancelar depois.
                 </p>
+                {appointment?.creditsUsed != null && (
+                  <p className="text-xs" style={{ color: "hsl(142 70% 55%)" }}>
+                    Pago com plano · {appointment.creditsUsed} créditos debitados
+                  </p>
+                )}
               </div>
             </div>
             {pushState === "idle" && (

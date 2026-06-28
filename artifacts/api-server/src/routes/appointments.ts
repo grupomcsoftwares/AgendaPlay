@@ -409,6 +409,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
       scheduledAt: scheduledAtDate,
       status: "pending",
       cancelToken: crypto.randomUUID(),
+      creditsUsed: coveredByPlan ? subscriptionCreditCost : null,
     }).returning();
 
     // Atomic subscription credit deduction inside transaction

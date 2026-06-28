@@ -20,4 +20,6 @@ export interface SubscriptionCheckResult {
   expiresAt?: string | null;
   /** @nullable */
   maxAppointmentsPerMonth?: number | null;
+  /** @nullable */
+  creditsUsedThisPeriod?: number | null;
 }

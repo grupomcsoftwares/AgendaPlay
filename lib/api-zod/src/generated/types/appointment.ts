@@ -26,6 +26,8 @@ export interface Appointment {
   paymentMethod?: AppointmentPaymentMethod;
   coveredByPlan?: boolean;
   /** @nullable */
+  creditsUsed?: number | null;
+  /** @nullable */
   notes?: string | null;
   /** @nullable */
   cancelToken?: string | null;

@@ -1567,7 +1567,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           <p className="bk-fade-2 text-sm text-muted-foreground mt-2">
             {formData.paymentMethod === "now"
               ? "Efetue o pagamento via Pix para garantir seu horário."
-              : "Tudo certo! Te esperamos no horário marcado."}
+              : usePlan
+                ? `Pago com plano · ${comboTotalPrice} créditos debitados`
+                : "Tudo certo! Te esperamos no horário marcado."}
           </p>
 
           {formData.paymentMethod === "now" && pixKey && (

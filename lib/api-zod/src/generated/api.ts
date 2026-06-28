@@ -253,6 +253,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -302,6 +303,7 @@ export const GetAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -342,6 +344,7 @@ export const UpdateAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -377,6 +380,7 @@ export const StartAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -404,6 +408,7 @@ export const CompleteAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -431,6 +436,7 @@ export const CancelAppointmentResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -458,6 +464,7 @@ export const GetAppointmentByTokenResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -485,6 +492,7 @@ export const CancelAppointmentByTokenResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -517,6 +525,7 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -644,6 +653,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -662,6 +672,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "status": zod.string(),
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
@@ -1573,7 +1584,8 @@ export const CheckSubscriptionResponse = zod.object({
   "creditsRemaining": zod.number().nullish(),
   "creditsTotal": zod.number().nullish(),
   "expiresAt": zod.string().nullish(),
-  "maxAppointmentsPerMonth": zod.number().nullish()
+  "maxAppointmentsPerMonth": zod.number().nullish(),
+  "creditsUsedThisPeriod": zod.number().nullish()
 })
 
 
