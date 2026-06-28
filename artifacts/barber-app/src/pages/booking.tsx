@@ -246,13 +246,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
   const normalizedPhone = formData.phone.replace(/\D/g, "");
   const loyaltyQueryParams = { ...(shopId ? { shopId } : {}), phone: normalizedPhone };
+  // Pre-load loyalty and subscription data as soon as phone is valid so they're
+  // ready when the user reaches step 1 — prevents the points modal from failing
+  // to open on the first service click due to stale undefined balance.
   const { data: loyaltyBalance } = useGetLoyaltyBalance(
     loyaltyQueryParams,
-    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 1 && normalizedPhone.length >= 8 } }
+    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: normalizedPhone.length >= 8 } }
   );
   const { data: subscriptionCheck } = useCheckSubscription(
     { ...(shopId ? { shopId } : {}), phone: normalizedPhone },
-    { query: { queryKey: getCheckSubscriptionQueryKey({ ...(shopId ? { shopId } : {}), phone: normalizedPhone }), enabled: step >= 1 && normalizedPhone.length >= 8 } }
+    { query: { queryKey: getCheckSubscriptionQueryKey({ ...(shopId ? { shopId } : {}), phone: normalizedPhone }), enabled: normalizedPhone.length >= 8 } }
   );
 
   // Services this barber can perform (empty serviceIds = all services).
