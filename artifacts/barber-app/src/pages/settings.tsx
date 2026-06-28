@@ -5,6 +5,8 @@ import {
   useListServices, getListServicesQueryKey,
   useListLoyaltyClients, getListLoyaltyClientsQueryKey,
   useDeleteAccount,
+  useListSubscriptionPlans, useCreateSubscriptionPlan, useUpdateSubscriptionPlan, useDeleteSubscriptionPlan, getListSubscriptionPlansQueryKey,
+  useListSubscriptions, getListSubscriptionsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff } from "lucide-react";
@@ -138,6 +140,16 @@ export default function Settings() {
 
   const [exclusionOpen, setExclusionOpen] = useState(false);
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
+
+  const { data: plans } = useListSubscriptionPlans(undefined, { query: { queryKey: getListSubscriptionPlansQueryKey() } });
+  const createPlan = useCreateSubscriptionPlan();
+  const updatePlanMut = useUpdateSubscriptionPlan();
+  const deletePlan = useDeleteSubscriptionPlan();
+  const { data: subscriptions } = useListSubscriptions({ query: { queryKey: getListSubscriptionsQueryKey() } });
+
+  const [planOpen, setPlanOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [planForm, setPlanForm] = useState({ name: "", description: "", price: 0, credits: 0, maxAppointmentsPerMonth: 0, active: true });
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteEmail, setDeleteEmail] = useState("");
@@ -435,6 +447,53 @@ export default function Settings() {
     deleteCombo.mutate(
       { id },
       { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
+    );
+  };
+
+  const handlePlanSave = () => {
+    if (!planForm.name.trim()) {
+      toast({ title: "Nome do plano é obrigatório", variant: "destructive" });
+      return;
+    }
+    const body = {
+      name: planForm.name.trim(),
+      description: planForm.description.trim() || null,
+      price: Number(planForm.price),
+      credits: planForm.credits > 0 ? Number(planForm.credits) : null,
+      maxAppointmentsPerMonth: planForm.maxAppointmentsPerMonth > 0 ? Number(planForm.maxAppointmentsPerMonth) : null,
+      active: planForm.active,
+    };
+    if (editingPlanId) {
+      updatePlanMut.mutate(
+        { id: editingPlanId, data: body },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
+            setPlanOpen(false);
+            toast({ title: "Plano atualizado" });
+          },
+          onError: () => toast({ title: "Erro ao atualizar plano", variant: "destructive" }),
+        },
+      );
+    } else {
+      createPlan.mutate(
+        { data: body },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
+            setPlanOpen(false);
+            toast({ title: "Plano criado" });
+          },
+          onError: () => toast({ title: "Erro ao criar plano", variant: "destructive" }),
+        },
+      );
+    }
+  };
+
+  const handlePlanDelete = (id: number) => {
+    deletePlan.mutate(
+      { id },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() }) },
     );
   };
 
@@ -1191,6 +1250,242 @@ export default function Settings() {
         </CardContent>
       </Card>
       </div>{/* end Row 3 grid */}
+
+      {/* ── Row 3.5: Planos de Assinatura ─────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
+        {/* Planos */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle className="text-base">Planos de Assinatura</CardTitle>
+              <CardDescription className="text-xs">
+                Planos com créditos consumíveis para clientes
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 shrink-0 h-8 text-xs"
+              onClick={() => {
+                setEditingPlanId(null);
+                setPlanForm({ name: "", description: "", price: 0, credits: 0, maxAppointmentsPerMonth: 0, active: true });
+                setPlanOpen(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" /> Novo plano
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!plans || plans.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                Nenhum plano configurado. Clique em "Novo plano" para criar.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {plans.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between border border-border rounded-lg px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{p.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        R$ {p.price.toFixed(2).replace(".", ",")}
+                        {p.credits ? ` · ${p.credits} créditos` : ""}
+                        {p.maxAppointmentsPerMonth ? ` · ${p.maxAppointmentsPerMonth} cortes/mês` : ""}
+                        {!p.active && " · Inativo"}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingPlanId(p.id);
+                          setPlanForm({
+                            name: p.name,
+                            description: p.description ?? "",
+                            price: p.price,
+                            credits: p.credits ?? 0,
+                            maxAppointmentsPerMonth: p.maxAppointmentsPerMonth ?? 0,
+                            active: p.active,
+                          });
+                          setPlanOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handlePlanDelete(p.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {planOpen && (
+              <div className="border border-border rounded-lg p-4 space-y-4 bg-muted/20 mt-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">
+                    {editingPlanId ? "Editar plano" : "Novo plano"}
+                  </p>
+                  <Button variant="ghost" size="icon" onClick={() => setPlanOpen(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome do plano</Label>
+                    <Input
+                      value={planForm.name}
+                      onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                      className="h-9"
+                      placeholder="Ex: Plano Ouro"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Descrição</Label>
+                    <Input
+                      value={planForm.description}
+                      onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
+                      className="h-9"
+                      placeholder="Ex: 1000 créditos por mês"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Preço (R$)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={planForm.price}
+                        onChange={(e) => setPlanForm({ ...planForm, price: Number(e.target.value) })}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Créditos (pts)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={planForm.credits}
+                        onChange={(e) => setPlanForm({ ...planForm, credits: Number(e.target.value) })}
+                        className="h-9"
+                        placeholder="Ex: 1000"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">Plano ativo</p>
+                      <p className="text-xs text-muted-foreground">Disponível para novas assinaturas</p>
+                    </div>
+                    <Switch
+                      checked={planForm.active}
+                      onCheckedChange={(v) => setPlanForm({ ...planForm, active: v })}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" onClick={() => setPlanOpen(false)}>Cancelar</Button>
+                  <Button
+                    size="sm"
+                    onClick={handlePlanSave}
+                    disabled={createPlan.isPending || updatePlanMut.isPending || !planForm.name.trim()}
+                  >
+                    {createPlan.isPending || updatePlanMut.isPending ? "Salvando..." : "Salvar plano"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Assinantes */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Assinantes</CardTitle>
+            <CardDescription className="text-xs">
+              Clientes com planos ativos e créditos restantes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!subscriptions || subscriptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                Nenhum assinante ainda.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {subscriptions.map((sub) => {
+                  const plan = plans?.find(p => p.id === sub.planId);
+                  const isExpired = sub.expiresAt ? new Date(sub.expiresAt) < new Date() : false;
+                  return (
+                    <div
+                      key={sub.id}
+                      className="flex items-center justify-between border border-border rounded-lg px-4 py-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{sub.clientName}</p>
+                        <p className="text-xs text-muted-foreground">{sub.clientPhone}</p>
+                        <p className="text-xs" style={{ color: isExpired ? "hsl(0 70% 55%)" : "hsl(38 88% 55%)" }}>
+                          {plan?.name ?? `Plano #${sub.planId}`}
+                          {sub.status === "active" && !isExpired && sub.creditsRemaining !== null && sub.creditsTotal !== null && (
+                            <> · {sub.creditsRemaining}/{sub.creditsTotal} créditos</>
+                          )}
+                          {sub.status === "active" && isExpired && (
+                            <> · <span style={{ color: "hsl(0 70% 55%)" }}>Expirado</span></>
+                          )}
+                          {sub.status === "pending" && " · Pendente"}
+                          {sub.status === "cancelled" && " · Cancelado"}
+                          {sub.expiresAt && sub.status === "active" && !isExpired && (
+                            <> · expira {new Date(sub.expiresAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        {sub.status === "pending" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              // Activation happens via PATCH /subscriptions/:id
+                              // We'll need the updateSubscription mutation but it requires auth
+                              // For now just show toast that backend handles activation
+                              toast({ title: "Ative via API admin", description: `PATCH /subscriptions/${sub.id} com status=active` });
+                            }}
+                          >
+                            Ativar
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            // Would need a delete subscription endpoint; for now just toast
+                            toast({ title: "Exclusão via API admin", description: `DELETE /subscriptions/${sub.id}` });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex justify-end max-w-5xl">
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">

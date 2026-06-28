@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +108,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const createAppointment = useCreateAppointment();
   const { toast } = useToast();
 
-  const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+  const [redeemedServiceIds, setRedeemedServiceIds] = useState<number[]>([]);
+  const [pointsModal, setPointsModal] = useState<{ open: boolean; serviceId: number | null; serviceName: string; servicePrice: number }>({ open: false, serviceId: null, serviceName: "", servicePrice: 0 });
 
   const [step, setStep] = useState<number>(() => {
     try {
@@ -140,6 +141,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     phone: string;
     notes: string;
     paymentMethod: "now" | "on_site";
+    usePlan: boolean;
   }>(() => {
     try {
       const saved = localStorage.getItem(clientInfoKey);
@@ -155,6 +157,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           phone: parsed.phone ?? "",
           notes: "",
           paymentMethod: "on_site",
+          usePlan: false,
         };
       }
     } catch { /* ignore */ }
@@ -168,6 +171,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       phone: "",
       notes: "",
       paymentMethod: "on_site",
+      usePlan: false,
     };
   });
 
@@ -197,6 +201,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         paymentMethod: formData.paymentMethod,
         notes: formData.phone ? `Tel: ${formData.phone}. ${formData.notes}` : formData.notes,
         ...(loyaltyPointsToSpend > 0 ? { loyaltyPointsRedeemed: loyaltyPointsToSpend } : {}),
+        ...(formData.usePlan ? { coveredByPlan: true } : {}),
         // Send serviceId for single-service bookings so server can resolve day-based pricing
         ...(selectedServices.length === 1 ? { serviceId: selectedServices[0]!.id } : {}),
       }},
@@ -245,6 +250,10 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     loyaltyQueryParams,
     { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: step >= 1 && normalizedPhone.length >= 8 } }
   );
+  const { data: subscriptionCheck } = useCheckSubscription(
+    { ...(shopId ? { shopId } : {}), phone: normalizedPhone },
+    { query: { queryKey: getCheckSubscriptionQueryKey({ ...(shopId ? { shopId } : {}), phone: normalizedPhone }), enabled: step >= 1 && normalizedPhone.length >= 8 } }
+  );
 
   // Services this barber can perform (empty serviceIds = all services).
   const eligibleServicesAll = React.useMemo(() => {
@@ -261,6 +270,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
+
+  // Pre-declare loyalty state for combo dependency
+  const useLoyaltyPoints = redeemedServiceIds.length > 0;
 
   const appliedCombo = React.useMemo(() => {
     if (useLoyaltyPoints) return null;
@@ -302,11 +314,35 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const loyaltyAvailableDiscount = loyaltyBalance?.enabled && loyaltyBalance.pointsPerRedemptionUnit > 0
     ? Math.floor(loyaltyBalance.points / loyaltyBalance.pointsPerRedemptionUnit)
     : 0;
-  const loyaltyDiscountAmount = useLoyaltyPoints ? Math.min(loyaltyAvailableDiscount, totalPriceRaw) : 0;
+  // Auto-clear plan selection when loyalty is active (can't combine)
+  useEffect(() => {
+    if (useLoyaltyPoints && formData.usePlan) {
+      setFormData(prev => ({ ...prev, usePlan: false }));
+    }
+  }, [useLoyaltyPoints, formData.usePlan]);
+  const loyaltyDiscountAmount = useLoyaltyPoints
+    ? Math.min(
+        loyaltyAvailableDiscount,
+        selectedServices
+          .filter(s => redeemedServiceIds.includes(s.id))
+          .reduce((acc, s) => acc + s.price, 0)
+      )
+    : 0;
   const loyaltyPointsToSpend = useLoyaltyPoints && loyaltyBalance?.pointsPerRedemptionUnit
     ? loyaltyDiscountAmount * loyaltyBalance.pointsPerRedemptionUnit
     : 0;
-  const totalPrice = Math.max(0, comboTotalPrice - loyaltyDiscountAmount);
+  const totalPriceRawLoyalty = Math.max(0, comboTotalPrice - loyaltyDiscountAmount);
+
+  // Subscription plan logic
+  const hasActivePlan = subscriptionCheck?.active === true;
+  const planCredits = subscriptionCheck?.creditsRemaining ?? 0;
+  const planTotal = subscriptionCheck?.creditsTotal ?? 0;
+  const planExpired = subscriptionCheck?.expiresAt ? new Date(subscriptionCheck.expiresAt) < new Date() : false;
+  const planCreditCost = Math.ceil(totalPriceRawLoyalty);
+  const planEnoughCredits = planCredits >= planCreditCost;
+  // When using plan, price is 0 (covered by subscription credits). Cannot combine with loyalty points.
+  const usePlan = formData.usePlan && hasActivePlan && !planExpired && planEnoughCredits && redeemedServiceIds.length === 0;
+  const totalPrice = usePlan ? 0 : totalPriceRawLoyalty;
 
   // Backend already filters to active barbers via activeOnly=true.
   const activeBarbers = barbers ?? [];
@@ -355,6 +391,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       const alreadySelected = prev.serviceIds.includes(serviceId);
       if (alreadySelected) {
         const ids = prev.serviceIds.filter(id => id !== serviceId);
+        setRedeemedServiceIds(r => r.filter(id => id !== serviceId));
         return { ...prev, serviceIds: ids, time: "" };
       }
       // Check if any currently selected service is excluded from this one
@@ -368,6 +405,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         const blockedName = services?.find(s => s.id === serviceId)?.name ?? "Esse serviço";
         const currentName = services?.find(s => s.id === blockedBy)?.name ?? "o serviço selecionado";
         alert(`Não é possível escolher ${blockedName} junto com ${currentName}. Remova ${currentName} primeiro.`);
+        return prev;
+      }
+      const svc = services?.find(s => s.id === serviceId);
+      const redeemable = svc && loyaltyBalance?.enabled && loyaltyAvailableDiscount >= svc.price && svc.price > 0;
+      if (redeemable) {
+        setPointsModal({ open: true, serviceId, serviceName: svc.name, servicePrice: svc.price });
         return prev;
       }
       return { ...prev, serviceIds: [...prev.serviceIds, serviceId], time: "" };
@@ -735,7 +778,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                                 Seleção inválida
                               </span>
                             )}
-                            {redeemableWithPoints && (
+                            {isSelected && redeemedServiceIds.includes(service.id) && (
+                              <span
+                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }}
+                              >
+                                ⭐ Pago com pontos
+                              </span>
+                            )}
+                            {isSelected && redeemableWithPoints && !redeemedServiceIds.includes(service.id) && (
+                              <span
+                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: "hsl(0 0% 14%)", color: "hsl(0 0% 50%)", border: "1px solid hsl(0 0% 22%)" }}
+                              >
+                                Pago normalmente
+                              </span>
+                            )}
+                            {!isSelected && redeemableWithPoints && (
                               <span
                                 className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
                                 style={{ backgroundColor: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }}
@@ -1177,52 +1236,75 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   </div>
                 )}
 
-                {loyaltyBalance?.enabled && loyaltyBalance.points > 0 && loyaltyAvailableDiscount > 0 && (
+                {redeemedServiceIds.length > 0 && loyaltyBalance?.enabled && (
                   <div
-                    className="rounded-xl p-4 space-y-3"
+                    className="rounded-xl p-4 space-y-2"
                     style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: `1px solid ${AMBER}4D` }}
                   >
-                    <div className="flex items-center gap-2">
-                      <span style={{ fontSize: "1.2rem" }}>⭐</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm">Programa de Fidelidade</p>
-                        <p className="text-xs" style={{ color: "hsl(0 0% 65%)" }}>
-                          Você tem <strong style={{ color: AMBER }}>{loyaltyBalance.points} pontos</strong>
-                          {" "}(= R$ {loyaltyAvailableDiscount.toFixed(2).replace(".", ",")} de desconto)
-                        </p>
+                    <p className="font-semibold text-sm">⭐ Pontos de Fidelidade usados</p>
+                    {selectedServices
+                      .filter(s => redeemedServiceIds.includes(s.id))
+                      .map(sv => (
+                        <div key={sv.id} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">{sv.name}</span>
+                          <span className="font-semibold" style={{ color: AMBER }}>
+                            R$ {sv.price.toFixed(2).replace(".", ",")} ⭐
+                          </span>
+                        </div>
+                      ))}
+                    <div className="flex items-center justify-between text-sm pt-1 border-t" style={{ borderColor: `${AMBER}33` }}>
+                      <span className="text-muted-foreground">Total de pontos</span>
+                      <span className="font-semibold" style={{ color: AMBER }}>
+                        {loyaltyPointsToSpend} pts
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Subscription plan banner */}
+                {hasActivePlan && redeemedServiceIds.length === 0 && (
+                  <div
+                    className="rounded-xl p-4 space-y-2"
+                    style={{
+                      backgroundColor: usePlan ? "hsl(210 80% 55% / 0.08)" : "hsl(0 0% 9%)",
+                      border: `1px solid ${usePlan ? "hsl(210 80% 55% / 0.3)" : "hsl(0 0% 14%)"}`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span style={{ fontSize: "1.1rem" }}>🏅</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">Plano {subscriptionCheck?.planName}</p>
+                          <p className="text-xs" style={{ color: "hsl(0 0% 65%)" }}>
+                            {planCredits}/{planTotal} créditos
+                            {subscriptionCheck?.expiresAt && (
+                              <> · expira {new Date(subscriptionCheck.expiresAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    {(() => {
-                      const hasPaidService = selectedServices.some(s => !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price && s.price > 0));
-                      const pointsDisabled = !hasPaidService;
-                      return (
-                        <>
-                          <button
-                            type="button"
-                            data-testid="button-toggle-loyalty"
-                            disabled={pointsDisabled}
-                            onClick={() => { if (!pointsDisabled) setUseLoyaltyPoints(v => !v); }}
-                            className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
-                            style={{
-                              backgroundColor: useLoyaltyPoints ? AMBER : "hsl(0 0% 11%)",
-                              color: useLoyaltyPoints ? "hsl(0 0% 10%)" : "hsl(0 0% 75%)",
-                              border: `1px solid ${useLoyaltyPoints ? AMBER : "hsl(0 0% 18%)"}`,
-                              cursor: pointsDisabled ? "not-allowed" : "pointer",
-                              opacity: pointsDisabled ? 0.5 : 1,
-                            }}
-                          >
-                            {useLoyaltyPoints
-                              ? `✓ Usando ${loyaltyPointsToSpend} pontos — R$ ${loyaltyDiscountAmount.toFixed(2).replace(".", ",")} de desconto`
-                              : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, totalPriceRaw).toFixed(2).replace(".", ",")} de desconto)`}
-                          </button>
-                          {pointsDisabled && (
-                            <p className="text-xs" style={{ color: "hsl(0 70% 55%)" }}>
-                              ⚠️ Adicione pelo menos um serviço pago ao agendamento para poder resgatar pontos.
-                            </p>
-                          )}
-                        </>
-                      );
-                    })()}
+                    <button
+                      type="button"
+                      disabled={planExpired || !planEnoughCredits}
+                      onClick={() => { setFormData(prev => ({ ...prev, usePlan: !prev.usePlan })); }}
+                      className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
+                      style={{
+                        backgroundColor: usePlan ? "hsl(210 80% 55%)" : "hsl(0 0% 11%)",
+                        color: usePlan ? "hsl(0 0% 100%)" : "hsl(0 0% 75%)",
+                        border: `1px solid ${usePlan ? "hsl(210 80% 55%)" : "hsl(0 0% 18%)"}`,
+                        cursor: planExpired || !planEnoughCredits ? "not-allowed" : "pointer",
+                        opacity: planExpired || !planEnoughCredits ? 0.5 : 1,
+                      }}
+                    >
+                      {usePlan
+                        ? `✓ Usando plano — ${planCreditCost} créditos`
+                        : planExpired
+                          ? "Plano expirado"
+                          : !planEnoughCredits
+                            ? `Créditos insuficientes (${planCredits} < ${planCreditCost})`
+                            : `Usar plano (${planCreditCost} créditos)`}
+                    </button>
                   </div>
                 )}
 
@@ -1495,6 +1577,67 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Points confirmation modal */}
+      {pointsModal.open && pointsModal.serviceId !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ backgroundColor: "hsl(0 0% 4% / 0.85)", backdropFilter: "blur(4px)" }}
+          onClick={() => setPointsModal({ open: false, serviceId: null, serviceName: "", servicePrice: 0 })}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 space-y-5"
+            style={{ backgroundColor: "hsl(0 0% 8%)", border: "1px solid hsl(0 0% 18%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center space-y-2">
+              <span style={{ fontSize: "2rem" }}>⭐</span>
+              <h3 className="text-lg font-bold">Usar pontos de fidelidade?</h3>
+              <p className="text-sm text-muted-foreground">
+                Deseja pagar <strong>{pointsModal.serviceName}</strong> usando seus pontos?
+              </p>
+              <p className="text-xs" style={{ color: AMBER }}>
+                Preço: R$ {pointsModal.servicePrice.toFixed(2).replace(".", ",")} ⭐
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setPointsModal({ open: false, serviceId: null, serviceName: "", servicePrice: 0 });
+                  setFormData(prev => ({ ...prev, serviceIds: [...prev.serviceIds, pointsModal.serviceId!], time: "" }));
+                }}
+                className="flex-1 rounded-lg py-3 text-sm font-semibold transition-opacity"
+                style={{
+                  backgroundColor: "hsl(0 0% 14%)",
+                  color: "hsl(0 0% 65%)",
+                  border: "1px solid hsl(0 0% 22%)",
+                  cursor: "pointer",
+                }}
+              >
+                Pagar normalmente
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPointsModal({ open: false, serviceId: null, serviceName: "", servicePrice: 0 });
+                  setFormData(prev => ({ ...prev, serviceIds: [...prev.serviceIds, pointsModal.serviceId!], time: "" }));
+                  setRedeemedServiceIds(prev => [...prev, pointsModal.serviceId!]);
+                }}
+                className="flex-1 rounded-lg py-3 text-sm font-semibold transition-opacity"
+                style={{
+                  backgroundColor: AMBER,
+                  color: "hsl(0 0% 10%)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Usar pontos ⭐
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
