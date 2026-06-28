@@ -898,19 +898,11 @@ export default function Appointments() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Pagamento</span>
                   <span className="font-medium">
-                    {receiptApt.coveredByPlan
-                      ? "Plano de assinatura"
-                      : receiptApt.paymentMethod === "now"
-                        ? "Pix online"
-                        : "Na barbearia"}
+                    {receiptApt.paymentMethod === "now"
+                      ? "Pix online"
+                      : "Na barbearia"}
                   </span>
                 </div>
-                {receiptApt.coveredByPlan && receiptApt.creditsUsed != null && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Créditos usados</span>
-                    <span className="font-medium">{receiptApt.creditsUsed} pts</span>
-                  </div>
-                )}
               </div>
 
               <div className="border-t border-dashed border-border pt-3">
