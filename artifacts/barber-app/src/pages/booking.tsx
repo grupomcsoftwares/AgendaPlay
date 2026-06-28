@@ -671,20 +671,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     (pair[0] === service.id && pair[1] === selectedId)
                   )
                 );
+                const hasPaidServiceSelected = selectedServices.some(s => !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price && s.price > 0));
+                const pointsBlocked = !isSelected && redeemableWithPoints && !hasPaidServiceSelected;
                 return (
                   <div key={service.id} className="relative">
                     <button
                       type="button"
                       data-testid={`button-service-${service.id}`}
                       onClick={() => {
-                        if (!isSelected && !isBlocked) handleToggleService(service.id);
+                        if (!isSelected && !isBlocked && !pointsBlocked) handleToggleService(service.id);
                       }}
                       className="w-full text-left rounded-2xl p-4 transition-all"
                       style={{
-                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : isBlocked ? "hsl(0 0% 5%)" : "hsl(0 0% 7%)",
-                        border: `2px solid ${isSelected ? AMBER : isBlocked ? "hsl(0 80% 35%)" : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
-                        cursor: isSelected ? "default" : isBlocked ? "not-allowed" : "pointer",
-                        opacity: isBlocked ? 0.6 : 1,
+                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : (isBlocked || pointsBlocked) ? "hsl(0 0% 5%)" : "hsl(0 0% 7%)",
+                        border: `2px solid ${isSelected ? AMBER : (isBlocked || pointsBlocked) ? "hsl(0 80% 35%)" : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
+                        cursor: isSelected ? "default" : (isBlocked || pointsBlocked) ? "not-allowed" : "pointer",
+                        opacity: (isBlocked || pointsBlocked) ? 0.6 : 1,
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -734,7 +736,15 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                                 Seleção inválida
                               </span>
                             )}
-                            {redeemableWithPoints && (
+                            {pointsBlocked && (
+                              <span
+                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                                style={{ backgroundColor: "hsl(0 60% 25%)", color: "hsl(0 70% 55%)", border: "1px solid hsl(0 60% 35%)" }}
+                              >
+                                Selecione um serviço pago primeiro
+                              </span>
+                            )}
+                            {redeemableWithPoints && !pointsBlocked && (
                               <span
                                 className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
                                 style={{ backgroundColor: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }}
