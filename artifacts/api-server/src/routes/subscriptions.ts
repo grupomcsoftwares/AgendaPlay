@@ -233,11 +233,57 @@ router.get("/subscriptions/check", async (req, res): Promise<void> => {
     return;
   }
   const [plan] = await db
-    .select({ name: subscriptionPlansTable.name })
+    .select({ name: subscriptionPlansTable.name, maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth })
     .from(subscriptionPlansTable)
     .where(eq(subscriptionPlansTable.id, sub.planId))
     .limit(1);
-  res.json({ active: true, planName: plan?.name ?? null, subscriptionId: sub.id });
+  res.json({ active: true, planName: plan?.name ?? null, subscriptionId: sub.id, maxAppointmentsPerMonth: plan?.maxAppointmentsPerMonth ?? null });
+});
+
+// Returns how many plan-covered appointments the client has used this month
+router.get("/subscriptions/usage", async (req, res): Promise<void> => {
+  const shopId = resolveShop(req);
+  if (!shopId) { res.status(400).json({ error: "shopId obrigatório" }); return; }
+  const rawPhone = typeof req.query.phone === "string" ? req.query.phone.trim() : "";
+  if (!rawPhone) { res.status(400).json({ error: "phone obrigatório" }); return; }
+  const phone = normalizePhone(rawPhone);
+
+  const [sub] = await db
+    .select()
+    .from(clientSubscriptionsTable)
+    .where(and(
+      eq(clientSubscriptionsTable.userId, shopId),
+      eq(clientSubscriptionsTable.clientPhone, phone),
+      eq(clientSubscriptionsTable.status, "active"),
+    ))
+    .limit(1);
+  if (!sub) { res.json({ active: false, used: 0, limit: 0, remaining: 0 }); return; }
+
+  const [plan] = await db
+    .select({ maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth })
+    .from(subscriptionPlansTable)
+    .where(eq(subscriptionPlansTable.id, sub.planId))
+    .limit(1);
+
+  const limit = plan?.maxAppointmentsPerMonth ?? 0;
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const { sql, count } = await import("drizzle-orm");
+  const [result] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(sql`appointments`)
+    .where(sql`
+      user_id = ${shopId}
+      AND client_name = ${sub.clientName}
+      AND covered_by_plan = true
+      AND status != 'cancelled'
+      AND scheduled_at >= ${monthStart.toISOString()}::timestamptz
+      AND scheduled_at < ${monthEnd.toISOString()}::timestamptz
+    `);
+  const used = result?.count ?? 0;
+  res.json({ active: true, used, limit, remaining: Math.max(0, limit - used) });
 });
 
 export default router;

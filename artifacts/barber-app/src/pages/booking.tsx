@@ -126,6 +126,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
   const [usePlan, setUsePlan] = useState(false);
+  const [subUsage, setSubUsage] = useState<{ active: boolean; used: number; limit: number; remaining: number } | null>(null);
 
   const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
 
@@ -257,6 +258,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     subCheckParams,
     { query: { queryKey: getCheckSubscriptionQueryKey(subCheckParams), enabled: step >= 3 && normalizedPhone.length >= 8 } }
   );
+
+  // Fetch monthly usage when subscription is active
+  useEffect(() => {
+    if (!subCheck?.active || !shopId || normalizedPhone.length < 8) {
+      setSubUsage(null);
+      return;
+    }
+    const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const qs = new URLSearchParams({ ...(shopId ? { shopId } : {}), phone: normalizedPhone });
+    fetch(`${BASE}/api/subscriptions/usage?${qs.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && typeof data.used === "number") setSubUsage(data);
+      })
+      .catch(() => setSubUsage(null));
+  }, [subCheck?.active, shopId, normalizedPhone]);
 
   const createSubscription = useCreateSubscription();
   const [subModal, setSubModal] = useState<{ open: boolean; planId: number | null; planName: string }>({ open: false, planId: null, planName: "" });
@@ -1328,12 +1345,17 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   <button
                     type="button"
                     data-testid="button-payment-plan"
-                    onClick={() => setUsePlan(true)}
+                    onClick={() => {
+                      if (subUsage && subUsage.remaining <= 0) return;
+                      setUsePlan(true);
+                    }}
+                    disabled={!!(subUsage && subUsage.remaining <= 0)}
                     className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                     style={{
                       backgroundColor: usePlan ? "hsl(142 71% 45% / 0.12)" : "hsl(0 0% 7%)",
-                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 14%)"}`,
-                      cursor: "pointer",
+                      border: `2px solid ${usePlan ? "hsl(142 71% 45%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 62% 50% / 0.5)" : "hsl(0 0% 14%)"}`,
+                      cursor: subUsage && subUsage.remaining <= 0 ? "not-allowed" : "pointer",
+                      opacity: subUsage && subUsage.remaining <= 0 ? 0.5 : 1,
                     }}
                   >
                     <div
@@ -1341,16 +1363,20 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                       style={{
                         width: 44,
                         height: 44,
-                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : "hsl(0 0% 12%)",
-                        color: usePlan ? "hsl(0 0% 10%)" : "hsl(142 71% 45%)",
+                        backgroundColor: usePlan ? "hsl(142 71% 45%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 62% 50% / 0.2)" : "hsl(0 0% 12%)",
+                        color: usePlan ? "hsl(0 0% 10%)" : subUsage && subUsage.remaining <= 0 ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)",
                       }}
                     >
                       <BadgeCheck className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-base">Usar meu plano</p>
-                      <p className="text-xs mt-0.5" style={{ color: "hsl(142 71% 45%)" }}>
-                        {subCheck.planName ?? "Assinatura ativa"} · coberto pelo plano
+                      <p className="text-xs mt-0.5" style={{ color: subUsage && subUsage.remaining <= 0 ? "hsl(0 70% 65%)" : "hsl(142 71% 45%)" }}>
+                        {subCheck.planName ?? "Assinatura ativa"}
+                        {subUsage && subUsage.limit > 0
+                          ? ` \u00b7 ${subUsage.used}/${subUsage.limit} cortes este m\u00eas`
+                          : " \u00b7 coberto pelo plano"}
+                        {subUsage && subUsage.remaining <= 0 && " \u00b7 limite atingido"}
                       </p>
                     </div>
                     <div
