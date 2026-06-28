@@ -249,13 +249,15 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Pre-load loyalty and subscription data as soon as phone is valid so they're
   // ready when the user reaches step 1 — prevents the points modal from failing
   // to open on the first service click due to stale undefined balance.
+  // Only query loyalty/subscription when shopId is resolved (public links load
+  // shopId asynchronously from slug resolution; querying before causes 400).
   const { data: loyaltyBalance } = useGetLoyaltyBalance(
     loyaltyQueryParams,
-    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: normalizedPhone.length >= 8 } }
+    { query: { queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams), enabled: normalizedPhone.length >= 8 && !!shopId } }
   );
   const { data: subscriptionCheck } = useCheckSubscription(
     { ...(shopId ? { shopId } : {}), phone: normalizedPhone },
-    { query: { queryKey: getCheckSubscriptionQueryKey({ ...(shopId ? { shopId } : {}), phone: normalizedPhone }), enabled: normalizedPhone.length >= 8 } }
+    { query: { queryKey: getCheckSubscriptionQueryKey({ ...(shopId ? { shopId } : {}), phone: normalizedPhone }), enabled: normalizedPhone.length >= 8 && !!shopId } }
   );
 
   // Services this barber can perform (empty serviceIds = all services).
@@ -717,13 +719,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
-                const canRedeemNow = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
+                // This service can be redeemed with points (for visual badge/border)
+                const isRedeemable = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid service is already in cart
                 const hasPaidServiceInCart = formData.serviceIds.some(id => {
                   const s = services?.find(x => x.id === id);
                   return s && s.price > 0 && !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price);
                 });
-                const redeemableWithPoints = canRedeemNow && (hasPaidServiceInCart || isSelected);
+                const redeemableWithPoints = isRedeemable && (hasPaidServiceInCart || isSelected);
                 const isBlocked = !isSelected && serviceExclusions.some(pair =>
                   formData.serviceIds.some(selectedId =>
                     (pair[0] === selectedId && pair[1] === service.id) ||
