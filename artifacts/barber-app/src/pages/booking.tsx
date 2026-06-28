@@ -671,22 +671,20 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     (pair[0] === service.id && pair[1] === selectedId)
                   )
                 );
-                const hasPaidServiceSelected = selectedServices.some(s => !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price && s.price > 0));
-                const pointsBlocked = !isSelected && redeemableWithPoints && !hasPaidServiceSelected;
                 return (
                   <div key={service.id} className="relative">
                     <button
                       type="button"
                       data-testid={`button-service-${service.id}`}
                       onClick={() => {
-                        if (!isSelected && !isBlocked && !pointsBlocked) handleToggleService(service.id);
+                        if (!isSelected && !isBlocked) handleToggleService(service.id);
                       }}
                       className="w-full text-left rounded-2xl p-4 transition-all"
                       style={{
-                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : (isBlocked || pointsBlocked) ? "hsl(0 0% 5%)" : "hsl(0 0% 7%)",
-                        border: `2px solid ${isSelected ? AMBER : (isBlocked || pointsBlocked) ? "hsl(0 80% 35%)" : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
-                        cursor: isSelected ? "default" : (isBlocked || pointsBlocked) ? "not-allowed" : "pointer",
-                        opacity: (isBlocked || pointsBlocked) ? 0.6 : 1,
+                        backgroundColor: isSelected ? "hsl(0 0% 10%)" : isBlocked ? "hsl(0 0% 5%)" : "hsl(0 0% 7%)",
+                        border: `2px solid ${isSelected ? AMBER : isBlocked ? "hsl(0 80% 35%)" : redeemableWithPoints ? `${AMBER}60` : "hsl(0 0% 14%)"}`,
+                        cursor: isSelected ? "default" : isBlocked ? "not-allowed" : "pointer",
+                        opacity: isBlocked ? 0.6 : 1,
                       }}
                     >
                       <div className="flex items-start gap-3">
@@ -736,15 +734,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                                 Seleção inválida
                               </span>
                             )}
-                            {pointsBlocked && (
-                              <span
-                                className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                                style={{ backgroundColor: "hsl(0 60% 25%)", color: "hsl(0 70% 55%)", border: "1px solid hsl(0 60% 35%)" }}
-                              >
-                                Selecione um serviço pago primeiro
-                              </span>
-                            )}
-                            {redeemableWithPoints && !pointsBlocked && (
+                            {redeemableWithPoints && (
                               <span
                                 className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
                                 style={{ backgroundColor: `${AMBER}22`, color: AMBER, border: `1px solid ${AMBER}55` }}
@@ -1147,22 +1137,37 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                         </p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      data-testid="button-toggle-loyalty"
-                      onClick={() => setUseLoyaltyPoints(v => !v)}
-                      className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
-                      style={{
-                        backgroundColor: useLoyaltyPoints ? AMBER : "hsl(0 0% 11%)",
-                        color: useLoyaltyPoints ? "hsl(0 0% 10%)" : "hsl(0 0% 75%)",
-                        border: `1px solid ${useLoyaltyPoints ? AMBER : "hsl(0 0% 18%)"}`,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {useLoyaltyPoints
-                        ? `✓ Usando ${loyaltyPointsToSpend} pontos — R$ ${loyaltyDiscountAmount.toFixed(2).replace(".", ",")} de desconto`
-                        : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, comboTotalPrice).toFixed(2).replace(".", ",")} de desconto)`}
-                    </button>
+                    {(() => {
+                      const hasPaidService = selectedServices.some(s => !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price && s.price > 0));
+                      const pointsDisabled = !hasPaidService;
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            data-testid="button-toggle-loyalty"
+                            disabled={pointsDisabled}
+                            onClick={() => { if (!pointsDisabled) setUseLoyaltyPoints(v => !v); }}
+                            className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
+                            style={{
+                              backgroundColor: useLoyaltyPoints ? AMBER : "hsl(0 0% 11%)",
+                              color: useLoyaltyPoints ? "hsl(0 0% 10%)" : "hsl(0 0% 75%)",
+                              border: `1px solid ${useLoyaltyPoints ? AMBER : "hsl(0 0% 18%)"}`,
+                              cursor: pointsDisabled ? "not-allowed" : "pointer",
+                              opacity: pointsDisabled ? 0.5 : 1,
+                            }}
+                          >
+                            {useLoyaltyPoints
+                              ? `✓ Usando ${loyaltyPointsToSpend} pontos — R$ ${loyaltyDiscountAmount.toFixed(2).replace(".", ",")} de desconto`
+                              : `Usar pontos (R$ ${Math.min(loyaltyAvailableDiscount, comboTotalPrice).toFixed(2).replace(".", ",")} de desconto)`}
+                          </button>
+                          {pointsDisabled && (
+                            <p className="text-xs" style={{ color: "hsl(0 70% 55%)" }}>
+                              ⚠️ Adicione pelo menos um serviço pago ao agendamento para poder resgatar pontos.
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 )}
 

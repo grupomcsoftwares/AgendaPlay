@@ -303,6 +303,11 @@ router.post("/appointments", async (req, res): Promise<void> => {
     }
     // Authoritative discount: integer R$ (server-computed, not from client)
     loyaltyDiscount = Math.floor(loyaltyPointsRedeemed / loyaltyConfig.pointsPerRedemptionUnit);
+    // Require at least one paid service when redeeming points
+    if (loyaltyDiscount >= parsed.data.servicePrice) {
+      res.status(400).json({ error: "É obrigatório incluir pelo menos um serviço pago ao resgatar pontos" });
+      return;
+    }
   }
 
   // Resolve day-based pricing if applicable
