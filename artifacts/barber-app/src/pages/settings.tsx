@@ -148,7 +148,7 @@ export default function Settings() {
 
   const [planOpen, setPlanOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [planForm, setPlanForm] = useState({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
+  const [planForm, setPlanForm] = useState({ name: "", price: "", credits: "", active: true });
 
   const [exclusionOpen, setExclusionOpen] = useState(false);
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
@@ -459,15 +459,13 @@ export default function Settings() {
     if (Number.isNaN(price) || price < 0) { toast({ title: "Preço inválido", variant: "destructive" }); return; }
     const creditsRaw = planForm.credits.trim();
     const credits = creditsRaw ? parseInt(creditsRaw, 10) : null;
-    const maxRaw = planForm.maxPerMonth.trim();
-    const max = maxRaw ? parseInt(maxRaw, 10) : null;
-    const payload = { name, description: planForm.description.trim() || null, price, credits, maxAppointmentsPerMonth: max, active: planForm.active };
+    const payload = { name, price, credits, active: planForm.active };
     if (editingPlanId) {
       updatePlanMut.mutate({ id: editingPlanId, data: payload }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
           setPlanOpen(false); setEditingPlanId(null);
-          setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
+          setPlanForm({ name: "", price: "", credits: "", active: true });
           toast({ title: "Plano atualizado" });
         },
       });
@@ -476,7 +474,7 @@ export default function Settings() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListSubscriptionPlansQueryKey() });
           setPlanOpen(false);
-          setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
+          setPlanForm({ name: "", price: "", credits: "", active: true });
           toast({ title: "Plano criado" });
         },
       });
@@ -1265,7 +1263,7 @@ export default function Settings() {
             className="gap-1.5 shrink-0 h-8 text-xs"
             onClick={() => {
               setEditingPlanId(null);
-              setPlanForm({ name: "", description: "", price: "", credits: "", maxPerMonth: "", active: true });
+              setPlanForm({ name: "", price: "", credits: "", active: true });
               setPlanOpen(true);
             }}
           >
@@ -1311,27 +1309,6 @@ export default function Settings() {
                     value={planForm.credits}
                     onChange={(e) => setPlanForm({ ...planForm, credits: e.target.value })}
                     placeholder="Ex: 1000"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Máx. cortes/mês (vazio = ilimitado)</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={planForm.maxPerMonth}
-                    onChange={(e) => setPlanForm({ ...planForm, maxPerMonth: e.target.value })}
-                    placeholder="4"
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Descrição / benefícios</Label>
-                  <Input
-                    value={planForm.description}
-                    onChange={(e) => setPlanForm({ ...planForm, description: e.target.value })}
-                    placeholder="Ex: 4 cortes por mês, prioridade na agenda"
                     className="h-9"
                   />
                 </div>
@@ -1390,10 +1367,6 @@ export default function Settings() {
                       {plan.credits
                         ? ` · ${plan.credits} créditos`
                         : ""}
-                      {plan.maxAppointmentsPerMonth
-                        ? ` · até ${plan.maxAppointmentsPerMonth} cortes`
-                        : " · cortes ilimitados"}
-                      {plan.description ? ` · ${plan.description}` : ""}
                     </p>
                   </div>
                   {/* 1-click active toggle */}
@@ -1433,10 +1406,8 @@ export default function Settings() {
                       setEditingPlanId(plan.id);
                       setPlanForm({
                         name: plan.name,
-                        description: plan.description ?? "",
                         price: String(plan.price),
                         credits: plan.credits ? String(plan.credits) : "",
-                        maxPerMonth: plan.maxAppointmentsPerMonth ? String(plan.maxAppointmentsPerMonth) : "",
                         active: plan.active,
                       });
                       setPlanOpen(true);
