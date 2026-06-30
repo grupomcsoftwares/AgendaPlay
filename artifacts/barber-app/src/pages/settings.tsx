@@ -719,44 +719,42 @@ export default function Settings() {
               </div>
               <Switch checked={formData.smartSlots} onCheckedChange={(v) => setFormData({ ...formData, smartSlots: v })} />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Notificações Push */}
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Notificações Push</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
-              <div>
-                <p className="text-sm font-medium">Receber alertas no dispositivo</p>
-                <p className="text-xs text-muted-foreground">
-                  {pushEnabled
-                    ? "Você receberá notificações de novos agendamentos e reagendamentos"
-                    : "Ative para receber notificações de novos agendamentos e reagendamentos"}
-                </p>
+            {/* Notificações Push (dentro de Regras) */}
+            <div className="pt-2 border-t border-border space-y-3">
+              <p className="text-sm font-medium">Notificações Push</p>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium">Receber alertas no dispositivo</p>
+                  <p className="text-xs text-muted-foreground">
+                    {pushEnabled
+                      ? "Você receberá notificações de novos agendamentos e reagendamentos"
+                      : "Ative para receber notificações de novos agendamentos e reagendamentos"}
+                  </p>
+                </div>
+                <Button
+                  variant={pushEnabled ? "default" : "outline"}
+                  size="sm"
+                  className="shrink-0 gap-1.5 h-8 text-xs"
+                  disabled={pushLoading}
+                  onClick={handlePushToggle}
+                >
+                  {pushLoading ? (
+                    <span className="animate-pulse">…</span>
+                  ) : pushEnabled ? (
+                    <><BellOff className="h-3.5 w-3.5" /> Desativar</>
+                  ) : (
+                    <><Bell className="h-3.5 w-3.5" /> Ativar</>
+                  )}
+                </Button>
               </div>
-              <Button
-                variant={pushEnabled ? "default" : "outline"}
-                size="sm"
-                className="shrink-0 gap-1.5 h-8 text-xs"
-                disabled={pushLoading}
-                onClick={handlePushToggle}
-              >
-                {pushLoading ? (
-                  <span className="animate-pulse">…</span>
-                ) : pushEnabled ? (
-                  <><BellOff className="h-3.5 w-3.5" /> Desativar</>
-                ) : (
-                  <><Bell className="h-3.5 w-3.5" /> Ativar</>
-                )}
-              </Button>
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Impressão de Comprovantes */}
+      {/* ── Row 2: Impressão de Comprovantes (sozinho, 1 coluna) ─ */}
+      <div className="max-w-5xl">
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
