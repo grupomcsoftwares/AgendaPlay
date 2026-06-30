@@ -488,7 +488,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 1: Info + Horário ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
         {/* Informações Gerais */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
@@ -623,7 +623,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 2: Pagamento + Regras (side by side) ──────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Formas de Pagamento</CardTitle>
@@ -814,7 +814,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 3: Combo + Fidelidade ─────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
       <Card className="bg-card border-border">
         <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
           <div>
