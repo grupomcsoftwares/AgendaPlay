@@ -648,10 +648,6 @@ export default function Settings() {
             })}
           </CardContent>
         </Card>
-      </div>
-
-      {/* ── Row 2: Regras de Agendamento ──────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Regras de Agendamento</CardTitle>
@@ -725,10 +721,8 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* ── Row 2.5: Notificações Push ────────────────────────── */}
-      <div className="max-w-5xl">
+        {/* Notificações Push */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Notificações Push</CardTitle>
@@ -761,10 +755,8 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* ── Row 2.75: Impressão de Comprovantes ───────────────── */}
-      <div className="max-w-5xl">
+        {/* Impressão de Comprovantes */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
