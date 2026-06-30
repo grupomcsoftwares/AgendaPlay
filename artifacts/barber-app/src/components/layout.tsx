@@ -14,6 +14,9 @@ import {
   Menu,
   Activity,
   RefreshCw,
+  Mail,
+  MessageCircle,
+  Instagram,
 } from "lucide-react";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useAuth } from "../context/AuthContext";
