@@ -140,6 +140,7 @@ export default function Settings() {
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
   const [deleteEmail, setDeleteEmail] = useState("");
   const [deletePassword, setDeletePassword] = useState("");
 
@@ -1248,6 +1249,7 @@ export default function Settings() {
           onClick={() => {
             setDeleteEmail("");
             setDeletePassword("");
+            setDeleteStep(1);
             setDeleteDialogOpen(true);
           }}
         >
@@ -1257,65 +1259,107 @@ export default function Settings() {
       </div>
 
       <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
-        if (!deleteAccount.isPending) setDeleteDialogOpen(open);
+        if (!deleteAccount.isPending) {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteStep(1);
+        }
       }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Excluir barbearia
-            </DialogTitle>
-            <DialogDescription>
-              Esta ação é <strong>irreversível</strong>. Todos os seus dados serão excluídos permanentemente —
-              agendamentos, serviços, clientes, histórico financeiro e configurações.
-              Você poderá criar uma nova conta usando o mesmo e-mail após a exclusão.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="delete-email">E-mail da conta</Label>
-              <Input
-                id="delete-email"
-                type="email"
-                placeholder="seu@email.com"
-                value={deleteEmail}
-                onChange={(e) => setDeleteEmail(e.target.value)}
-                disabled={deleteAccount.isPending}
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="delete-password">Senha</Label>
-              <Input
-                id="delete-password"
-                type="password"
-                placeholder="••••••••"
-                value={deletePassword}
-                onChange={(e) => setDeletePassword(e.target.value)}
-                disabled={deleteAccount.isPending}
-                autoComplete="current-password"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleDeleteAccount();
-                }}
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={deleteAccount.isPending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteAccount}
-              disabled={deleteAccount.isPending || !deleteEmail.trim() || !deletePassword}
-            >
-              {deleteAccount.isPending ? "Excluindo..." : "Excluir permanentemente"}
-            </Button>
-          </DialogFooter>
+          {deleteStep === 1 ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Aviso Importante
+                </DialogTitle>
+                <DialogDescription className="text-sm leading-relaxed">
+                  Você está prestes a <strong className="text-destructive">excluir permanentemente</strong> sua conta e todos os dados da barbearia.
+                  <br /><br />
+                  Isso inclui:
+                  <ul className="list-disc pl-4 mt-1 space-y-0.5 text-muted-foreground">
+                    <li>Todos os agendamentos e histórico</li>
+                    <li>Serviços e preços cadastrados</li>
+                    <li>Lista de clientes</li>
+                    <li>Configurações e preferências</li>
+                  </ul>
+                  <br />
+                  <strong className="text-foreground">Esta ação é irreversível.</strong> Após a exclusão, você poderá criar uma nova conta com o mesmo e-mail.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0 mt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialogOpen(false)}
+                  disabled={deleteAccount.isPending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteStep(2)}
+                >
+                  Entendi, quero continuar
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Confirmar Exclusão
+                </DialogTitle>
+                <DialogDescription>
+                  Digite seu e-mail e senha para confirmar a exclusão permanente da conta.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="delete-email">E-mail da conta</Label>
+                  <Input
+                    id="delete-email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={deleteEmail}
+                    onChange={(e) => setDeleteEmail(e.target.value)}
+                    disabled={deleteAccount.isPending}
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="delete-password">Senha</Label>
+                  <Input
+                    id="delete-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    disabled={deleteAccount.isPending}
+                    autoComplete="current-password"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleDeleteAccount();
+                    }}
+                  />
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteStep(1)}
+                  disabled={deleteAccount.isPending}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteAccount.isPending || !deleteEmail.trim() || !deletePassword}
+                >
+                  {deleteAccount.isPending ? "Excluindo..." : "Excluir permanentemente"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
