@@ -198,6 +198,17 @@ function UserFooter({
         </div>
       </div>
 
+      {/* MC Softwares — Desenvolvedor */}
+      <div className="mx-3 mb-2 px-2 py-2 rounded-lg text-center" style={{ border: "1px solid hsl(var(--sidebar-border) / 0.5)" }}>
+        <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--sidebar-foreground) / 0.35)" }}>Desenvolvido por</p>
+        <img
+          src="/mc-softwares-logo.png"
+          alt="Grupo MC Softwares"
+          className="mx-auto"
+          style={{ width: 140, height: "auto", objectFit: "contain" }}
+        />
+      </div>
+
       <div className="p-4 flex items-center gap-3">
         <div
           className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
@@ -368,6 +379,17 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
             <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
             <UserFooter {...footerProps} />
+
+            {/* MC Softwares — Mobile drawer */}
+            <div className="px-4 py-3 border-t text-center" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
+              <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--sidebar-foreground) / 0.35)" }}>Desenvolvido por</p>
+              <img
+                src="/mc-softwares-logo.png"
+                alt="Grupo MC Softwares"
+                className="mx-auto"
+                style={{ width: 130, height: "auto", objectFit: "contain" }}
+              />
+            </div>
           </SheetContent>
         </Sheet>
 

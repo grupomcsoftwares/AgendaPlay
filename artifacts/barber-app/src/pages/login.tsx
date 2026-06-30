@@ -130,6 +130,19 @@ export default function Login() {
             </Link>
           </p>
         </form>
+
+        {/* Desenvolvido por MC Softwares */}
+        <div className="text-center space-y-2 pt-6">
+          <p className="text-[10px] uppercase tracking-widest" style={{ color: "hsl(0 0% 40%)" }}>
+            Desenvolvido por
+          </p>
+          <img
+            src="/mc-softwares-logo.png"
+            alt="Grupo MC Softwares"
+            className="mx-auto"
+            style={{ width: 180, height: "auto", objectFit: "contain" }}
+          />
+        </div>
       </div>
     </div>
   );
