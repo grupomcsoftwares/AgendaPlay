@@ -380,16 +380,6 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
             <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
             <UserFooter {...footerProps} />
 
-            {/* MC Softwares — Mobile drawer */}
-            <div className="px-4 py-3 border-t text-center" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
-              <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--sidebar-foreground) / 0.35)" }}>Desenvolvido por</p>
-              <img
-                src="/mc-softwares-logo.png"
-                alt="Grupo MC Softwares"
-                className="mx-auto"
-                style={{ width: 130, height: "auto", objectFit: "contain" }}
-              />
-            </div>
           </SheetContent>
         </Sheet>
 
