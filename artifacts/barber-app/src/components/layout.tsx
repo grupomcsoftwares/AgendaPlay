@@ -192,7 +192,7 @@ function UserFooter({
           <a href="https://wa.me/5575999351449" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-[10px] py-1.5 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </a>
-          <a href="https://instagram.com/agendaplay_" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-[10px] py-1.5 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
+          <a href="https://www.instagram.com/agendaplay_" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-[10px] py-1.5 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
             <Instagram className="h-3.5 w-3.5" /> Instagram
           </a>
         </div>
