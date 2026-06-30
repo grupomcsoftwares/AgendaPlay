@@ -1236,40 +1236,25 @@ export default function Settings() {
         </Button>
       </div>
 
-      <Card className="max-w-7xl border-destructive/40">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            Zona de Perigo
-          </CardTitle>
-          <CardDescription>
-            Ações irreversíveis que afetam sua conta e todos os dados da barbearia.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-            <div>
-              <p className="text-sm font-medium">Excluir barbearia</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Remove permanentemente sua conta, agendamentos, serviços e todos os dados associados.
-              </p>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="shrink-0 ml-4"
-              onClick={() => {
-                setDeleteEmail("");
-                setDeletePassword("");
-                setDeleteDialogOpen(true);
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-1.5" />
-              Excluir conta
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-7xl flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <span className="text-sm text-destructive font-medium">Excluir barbearia</span>
+        </div>
+        <Button
+          variant="destructive"
+          size="sm"
+          className="shrink-0"
+          onClick={() => {
+            setDeleteEmail("");
+            setDeletePassword("");
+            setDeleteDialogOpen(true);
+          }}
+        >
+          <Trash2 className="h-4 w-4 mr-1.5" />
+          Excluir conta
+        </Button>
+      </div>
 
       <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
         if (!deleteAccount.isPending) setDeleteDialogOpen(open);
