@@ -580,6 +580,34 @@ export default function Settings() {
               <Label className="text-xs">Mensagem de Boas-vindas</Label>
               <Textarea value={formData.bookingPageMessage} onChange={e => setFormData({...formData, bookingPageMessage: e.target.value})} placeholder="Olá! Seja bem-vindo…" rows={2} className="text-sm resize-none" />
             </div>
+
+            {/* Formas de Pagamento (dentro de Informações Gerais) */}
+            <div className="pt-2 border-t border-border space-y-3">
+              <p className="text-sm font-medium">Formas de Pagamento</p>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium">Pagar agora (Pix)</p>
+                  <p className="text-xs text-muted-foreground">Cliente paga no momento do agendamento</p>
+                </div>
+                <Switch data-testid="switch-payment-now" checked={formData.paymentEnableNow} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })} />
+              </div>
+              {formData.paymentEnableNow && (
+                <div className="space-y-1.5 px-1">
+                  <Label className="text-xs">Chave Pix</Label>
+                  <Input data-testid="input-pix-key" value={formData.pixKey} onChange={(e) => setFormData((prev) => ({ ...prev, pixKey: e.target.value }))} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" className="h-8 text-sm" />
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                <div>
+                  <p className="text-sm font-medium">Pagar depois</p>
+                  <p className="text-xs text-muted-foreground">Cliente paga na barbearia</p>
+                </div>
+                <Switch data-testid="switch-payment-on-site" checked={formData.paymentEnableOnSite} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableOnSite: v })} />
+              </div>
+              {!formData.paymentEnableNow && !formData.paymentEnableOnSite && (
+                <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>Pelo menos uma forma de pagamento precisa estar ativa.</p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -622,39 +650,8 @@ export default function Settings() {
         </Card>
       </div>
 
-      {/* ── Row 2: Pagamento + Regras (side by side) ──────────── */}
+      {/* ── Row 2: Regras de Agendamento ──────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Formas de Pagamento</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
-              <div>
-                <p className="text-sm font-medium">Pagar agora (Pix)</p>
-                <p className="text-xs text-muted-foreground">Cliente paga no momento do agendamento</p>
-              </div>
-              <Switch data-testid="switch-payment-now" checked={formData.paymentEnableNow} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableNow: v })} />
-            </div>
-            {formData.paymentEnableNow && (
-              <div className="space-y-1.5 px-1">
-                <Label className="text-xs">Chave Pix</Label>
-                <Input data-testid="input-pix-key" value={formData.pixKey} onChange={(e) => setFormData((prev) => ({ ...prev, pixKey: e.target.value }))} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" className="h-8 text-sm" />
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
-              <div>
-                <p className="text-sm font-medium">Pagar depois</p>
-                <p className="text-xs text-muted-foreground">Cliente paga na barbearia</p>
-              </div>
-              <Switch data-testid="switch-payment-on-site" checked={formData.paymentEnableOnSite} onCheckedChange={(v) => setFormData({ ...formData, paymentEnableOnSite: v })} />
-            </div>
-            {!formData.paymentEnableNow && !formData.paymentEnableOnSite && (
-              <p className="text-xs" style={{ color: "hsl(0 70% 65%)" }}>Pelo menos uma forma de pagamento precisa estar ativa.</p>
-            )}
-          </CardContent>
-        </Card>
-
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Regras de Agendamento</CardTitle>
