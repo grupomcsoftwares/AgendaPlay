@@ -928,25 +928,47 @@ export default function Appointments() {
               onClick={() => {
                 const el = document.getElementById("printable-receipt");
                 if (!el) return;
-                const w = window.open("", "_blank", "width=420,height=600");
+
+                // Largura baseada no tamanho da impressora selecionado nas configurações
+                const size = settings?.receiptPrinterSize ?? "80mm";
+                const sizeMap: Record<string, { popupW: number; bodyMaxW: number; padding: number; fontBase: number }> = {
+                  "50mm": { popupW: 240,  bodyMaxW: 190,  padding: 8,  fontBase: 11 },
+                  "58mm": { popupW: 270,  bodyMaxW: 220,  padding: 10, fontBase: 12 },
+                  "80mm": { popupW: 360,  bodyMaxW: 310,  padding: 16, fontBase: 13 },
+                  "A4":   { popupW: 850,  bodyMaxW: 750,  padding: 24, fontBase: 14 },
+                };
+                const cfg = sizeMap[size] ?? sizeMap["80mm"];
+
+                const w = window.open("", "_blank", `width=${cfg.popupW},height=600`);
                 if (!w) return;
                 w.document.write(`
                   <html>
                     <head>
                       <title>Comprovante</title>
                       <style>
-                        body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; max-width: 380px; margin: 0 auto; color: #000; background: #fff; }
-                        .header { text-align: center; margin-bottom: 16px; }
-                        .header img { max-height: 48px; margin-bottom: 8px; }
-                        .header h3 { margin: 0; font-size: 16px; font-weight: 700; }
-                        .header p { margin: 2px 0; font-size: 11px; color: #555; }
-                        .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px dashed #ddd; }
+                        @page { size: auto; margin: 0; }
+                        body {
+                          font-family: system-ui, -apple-system, sans-serif;
+                          padding: ${cfg.padding}px;
+                          max-width: ${cfg.bodyMaxW}px;
+                          margin: 0 auto;
+                          color: #000;
+                          background: #fff;
+                          font-size: ${cfg.fontBase}px;
+                        }
+                        .header { text-align: center; margin-bottom: 12px; }
+                        .header img { max-height: 40px; margin-bottom: 6px; }
+                        .header h3 { margin: 0; font-size: ${cfg.fontBase + 3}px; font-weight: 700; }
+                        .header p { margin: 2px 0; font-size: ${cfg.fontBase - 2}px; color: #555; }
+                        .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: ${cfg.fontBase - 1}px; border-bottom: 1px dashed #ddd; }
                         .row:last-child { border-bottom: none; }
                         .label { color: #666; }
                         .value { font-weight: 500; text-align: right; }
-                        .total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 8px; border-top: 2px dashed #000; font-size: 16px; font-weight: 700; }
-                        .footer { text-align: center; margin-top: 16px; font-size: 11px; color: #666; }
-                        @media print { body { padding: 0; } }
+                        .total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 6px; border-top: 2px dashed #000; font-size: ${cfg.fontBase + 2}px; font-weight: 700; }
+                        .footer { text-align: center; margin-top: 12px; font-size: ${cfg.fontBase - 2}px; color: #666; }
+                        @media print {
+                          body { padding: 4px; margin: 0; max-width: 100%; }
+                        }
                       </style>
                     </head>
                     <body>
