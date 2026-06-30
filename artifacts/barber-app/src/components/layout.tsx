@@ -182,6 +182,22 @@ function UserFooter({
         </div>
       )}
 
+      {/* Suporte — Contato com o criador */}
+      <div className="mx-3 mb-2 px-3 py-2.5 rounded-lg" style={{ backgroundColor: "hsl(var(--sidebar-accent))", border: "1px solid hsl(var(--sidebar-border))" }}>
+        <p className="text-[10px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "hsl(var(--sidebar-foreground) / 0.5)" }}>Suporte AgendaPlay</p>
+        <div className="flex flex-col gap-1">
+          <a href="mailto:suporte@agendaplay.net" className="flex items-center gap-2 text-xs py-1 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
+            <Mail className="h-3 w-3 flex-shrink-0" /> Email
+          </a>
+          <a href="https://wa.me/5575999351449" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs py-1 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
+            <MessageCircle className="h-3 w-3 flex-shrink-0" /> WhatsApp
+          </a>
+          <a href="https://instagram.com/agendaplay" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs py-1 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
+            <Instagram className="h-3 w-3 flex-shrink-0" /> Instagram
+          </a>
+        </div>
+      </div>
+
       <div className="p-4 flex items-center gap-3">
         <div
           className="h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
