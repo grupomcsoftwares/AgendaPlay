@@ -31,6 +31,8 @@ const MENU_ITEMS = [
   { id: "settings",     label: "Configura\u00e7\u00f5es",   icon: "settings" as const,    url: `${PROD_BASE}/settings` },
 ];
 
+const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings");
+
 // TV remote D-pad handler
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -75,7 +77,8 @@ export default function DashboardScreen() {
   const [cookieReady, setCookieReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
 
-  const selectedItem = MENU_ITEMS.find((i) => i.id === selectedId) ?? MENU_ITEMS[0];
+  const activeMenu = isTV ? TV_MENU_ITEMS : MENU_ITEMS;
+  const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
@@ -83,22 +86,29 @@ export default function DashboardScreen() {
     if (!isTablet && !isTV) setMenuOpen(false);
   }, [isTablet, isTV]);
 
+  // Reset selection to first TV item when switching to TV mode
+  useEffect(() => {
+    if (isTV && selectedId === "settings") {
+      setSelectedId(TV_MENU_ITEMS[0].id);
+    }
+  }, [isTV, selectedId]);
+
   // TV remote
   useTVRemote((type) => {
     if (type === "up") {
       setFocusedIdx((prev) => {
         const next = Math.max(0, prev - 1);
-        setFocusedId(MENU_ITEMS[next]?.id ?? null);
+        setFocusedId(activeMenu[next]?.id ?? null);
         return next;
       });
     } else if (type === "down") {
       setFocusedIdx((prev) => {
-        const next = Math.min(MENU_ITEMS.length - 1, prev + 1);
-        setFocusedId(MENU_ITEMS[next]?.id ?? null);
+        const next = Math.min(activeMenu.length - 1, prev + 1);
+        setFocusedId(activeMenu[next]?.id ?? null);
         return next;
       });
     } else if (type === "select") {
-      const item = MENU_ITEMS[focusedIdx];
+      const item = activeMenu[focusedIdx];
       if (item) handlePress(item);
     } else if (type === "back" || type === "menu") {
       router.back();
@@ -148,7 +158,7 @@ export default function DashboardScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.menu}>
-            {MENU_ITEMS.map((item, idx) => {
+            {activeMenu.map((item, idx) => {
               const isSelected = selectedId === item.id;
               const isFocused = focusedId === item.id;
 
