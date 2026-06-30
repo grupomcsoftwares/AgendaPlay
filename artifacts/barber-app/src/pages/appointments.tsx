@@ -860,63 +860,67 @@ export default function Appointments() {
           </DialogHeader>
           {receiptApt && (
             <div id="printable-receipt" className="px-6 py-5 space-y-4">
-              {/* Shop header */}
+              {/* ── Shop header ── */}
               <div className="text-center space-y-1">
                 {settings?.logoUrl && (
-                  <img src={settings.logoUrl} alt="" className="h-12 mx-auto mb-2 object-contain" />
+                  <img src={settings.logoUrl} alt="" className="h-10 mx-auto mb-1 object-contain" />
                 )}
-                <h3 className="font-bold text-base">{settings?.barbershopName ?? "Barbearia"}</h3>
-                {settings?.phone && <p className="text-xs text-muted-foreground">{settings.phone}</p>}
-                {settings?.address && <p className="text-xs text-muted-foreground">{settings.address}</p>}
+                <h3 className="font-bold text-sm uppercase tracking-wide">{settings?.barbershopName ?? "Barbearia"}</h3>
+                {settings?.phone && <p className="text-[11px] text-muted-foreground">{settings.phone}</p>}
+                {settings?.address && <p className="text-[11px] text-muted-foreground">{settings.address}</p>}
               </div>
 
-              <div className="border-t border-dashed border-border pt-3 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cliente</span>
-                  <span className="font-medium">{receiptApt.clientName}</span>
+              {/* ── Divider ── */}
+              <div className="border-t-2 border-dashed border-border" />
+
+              {/* ── Receipt details ── */}
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Cliente</span>
+                  <span className="font-medium text-sm">{receiptApt.clientName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Serviço</span>
-                  <span className="font-medium text-right">{receiptApt.serviceName}</span>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Serviço</span>
+                  <span className="font-medium text-sm text-right max-w-[60%]">{receiptApt.serviceName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Profissional</span>
-                  <span className="font-medium">{receiptApt.barberName ?? "—"}</span>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Profissional</span>
+                  <span className="font-medium text-sm">{receiptApt.barberName ?? "—"}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Data</span>
-                  <span className="font-medium">{format(new Date(receiptApt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Data</span>
+                  <span className="font-medium text-sm">{format(new Date(receiptApt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Horário</span>
-                  <span className="font-medium">{format(new Date(receiptApt.scheduledAt), "HH:mm")}</span>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Horário</span>
+                  <span className="font-medium text-sm">{format(new Date(receiptApt.scheduledAt), "HH:mm")}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Duração</span>
-                  <span className="font-medium">{receiptApt.serviceDuration} min</span>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Duração</span>
+                  <span className="font-medium text-sm">{receiptApt.serviceDuration} min</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pagamento</span>
-                  <span className="font-medium">
-                    {receiptApt.paymentMethod === "now"
-                      ? "Pix online"
-                      : "Na barbearia"}
+                <div className="flex justify-between items-baseline">
+                  <span className="text-muted-foreground text-xs">Pagamento</span>
+                  <span className="font-medium text-sm">
+                    {receiptApt.paymentMethod === "now" ? "Pix online" : "Na barbearia"}
                   </span>
                 </div>
               </div>
 
-              <div className="border-t border-dashed border-border pt-3">
+              {/* ── Divider + Total ── */}
+              <div className="border-t-2 border-dashed border-border pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold">TOTAL</span>
+                  <span className="text-sm font-semibold uppercase tracking-wide">Total</span>
                   <span className="text-lg font-bold">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(receiptApt.servicePrice)))}
                   </span>
                 </div>
               </div>
 
-              <div className="border-t border-dashed border-border pt-3 text-center text-xs text-muted-foreground space-y-1">
+              {/* ── Footer ── */}
+              <div className="border-t border-dashed border-border pt-3 text-center text-[11px] text-muted-foreground space-y-1">
                 <p>Emitido em {format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
-                <p>Obrigado pela preferência!</p>
+                <p className="font-medium">Obrigado pela preferência!</p>
               </div>
             </div>
           )}
@@ -947,6 +951,7 @@ export default function Appointments() {
                       <title>Comprovante</title>
                       <style>
                         @page { size: auto; margin: 0; }
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
                         body {
                           font-family: system-ui, -apple-system, sans-serif;
                           padding: ${cfg.padding}px;
@@ -955,19 +960,44 @@ export default function Appointments() {
                           color: #000;
                           background: #fff;
                           font-size: ${cfg.fontBase}px;
+                          line-height: 1.4;
                         }
-                        .header { text-align: center; margin-bottom: 12px; }
-                        .header img { max-height: 40px; margin-bottom: 6px; }
-                        .header h3 { margin: 0; font-size: ${cfg.fontBase + 3}px; font-weight: 700; }
-                        .header p { margin: 2px 0; font-size: ${cfg.fontBase - 2}px; color: #555; }
-                        .row { display: flex; justify-content: space-between; padding: 3px 0; font-size: ${cfg.fontBase - 1}px; border-bottom: 1px dashed #ddd; }
-                        .row:last-child { border-bottom: none; }
-                        .label { color: #666; }
-                        .value { font-weight: 500; text-align: right; }
-                        .total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 6px; border-top: 2px dashed #000; font-size: ${cfg.fontBase + 2}px; font-weight: 700; }
-                        .footer { text-align: center; margin-top: 12px; font-size: ${cfg.fontBase - 2}px; color: #666; }
+                        /* Tailwind overrides for copied HTML */
+                        .text-center { text-align: center; }
+                        .space-y-1 > * + * { margin-top: 4px; }
+                        .space-y-4 > * + * { margin-top: 16px; }
+                        .space-y-1\.5 > * + * { margin-top: 6px; }
+                        .mx-auto { margin-left: auto; margin-right: auto; }
+                        .mb-1 { margin-bottom: 4px; }
+                        .mb-2 { margin-bottom: 8px; }
+                        .font-bold { font-weight: 700; }
+                        .font-semibold { font-weight: 600; }
+                        .font-medium { font-weight: 500; }
+                        .uppercase { text-transform: uppercase; }
+                        .tracking-wide { letter-spacing: 0.05em; }
+                        .text-sm { font-size: ${cfg.fontBase}px; }
+                        .text-xs { font-size: ${cfg.fontBase - 2}px; }
+                        .text-\[11px\] { font-size: ${Math.max(9, cfg.fontBase - 2)}px; }
+                        .text-lg { font-size: ${cfg.fontBase + 4}px; }
+                        .text-muted-foreground { color: #666; }
+                        .text-right { text-align: right; }
+                        .max-w-\[60\%\] { max-width: 60%; }
+                        .flex { display: flex; }
+                        .justify-between { justify-content: space-between; }
+                        .items-center { align-items: center; }
+                        .items-baseline { align-items: baseline; }
+                        .border-t-2 { border-top: 2px dashed #000; }
+                        .border-t { border-top: 1px dashed #ccc; }
+                        .border-border { border-color: #ccc; }
+                        .pt-3 { padding-top: 12px; }
+                        .px-6 { padding-left: 0; padding-right: 0; }
+                        .py-5 { padding-top: 0; padding-bottom: 0; }
+                        img { max-width: 100%; height: auto; max-height: 48px; display: block; margin: 0 auto 6px; object-fit: contain; }
+                        h3 { font-size: ${cfg.fontBase + 2}px; }
+                        p { margin: 2px 0; }
+                        .total { font-size: ${cfg.fontBase + 4}px; font-weight: 700; }
                         @media print {
-                          body { padding: 4px; margin: 0; max-width: 100%; }
+                          body { padding: ${Math.max(4, cfg.padding - 4)}px; margin: 0; max-width: 100%; }
                         }
                       </style>
                     </head>
