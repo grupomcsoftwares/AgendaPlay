@@ -7,7 +7,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff } from "lucide-react";
+import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,6 +166,7 @@ export default function Settings() {
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
     serviceExclusions: number[][];
+    receiptPrinterSize: "50mm" | "58mm" | "80mm" | "A4";
   }>({
     barbershopName: "",
     ownerName: "",
@@ -186,6 +187,7 @@ export default function Settings() {
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
     serviceExclusions: [],
+    receiptPrinterSize: "80mm",
   });
 
   useEffect(() => {
@@ -219,6 +221,7 @@ export default function Settings() {
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
         serviceExclusions: (settings.serviceExclusions as number[][] | undefined) ?? [],
+        receiptPrinterSize: ((settings as any).receiptPrinterSize as "50mm" | "58mm" | "80mm" | "A4") || "80mm",
       });
     }
   }, [settings]);
@@ -457,6 +460,7 @@ export default function Settings() {
           pointsPerReal: formData.loyaltyPointsPerReal,
           pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
         },
+        receiptPrinterSize: formData.receiptPrinterSize,
       } },
       {
         onSuccess: (saved) => {
@@ -757,6 +761,53 @@ export default function Settings() {
                   <><Bell className="h-3.5 w-3.5" /> Ativar</>
                 )}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Row 2.75: Impressão de Comprovantes ───────────────── */}
+      <div className="max-w-5xl">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Printer className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Impressão de Comprovantes</CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              O comprovante será ajustado para o tamanho selecionado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { value: "50mm", label: "Térmica 50mm", desc: "Mini impressora (2 polegadas)" },
+                { value: "58mm", label: "Térmica 58mm", desc: "Bobina pequena (mini impressoras)" },
+                { value: "80mm", label: "Térmica 80mm", desc: "Bobina padrão (cupom fiscal)" },
+                { value: "A4", label: "Folha A4", desc: "Impressora comum de papel" },
+              ].map((opt) => {
+                const selected = formData.receiptPrinterSize === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, receiptPrinterSize: opt.value as "50mm" | "58mm" | "80mm" | "A4" })}
+                    className="rounded-xl p-3 text-left transition-all"
+                    style={{
+                      backgroundColor: selected ? "hsl(var(--sidebar-primary) / 0.15)" : "hsl(0 0% 9%)",
+                      border: selected ? "2px solid hsl(var(--sidebar-primary))" : "1px solid hsl(0 0% 16%)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <p className="text-sm font-semibold" style={{ color: selected ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 85%)" }}>
+                      {opt.label}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "hsl(0 0% 55%)" }}>
+                      {opt.desc}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -451,6 +451,19 @@ export interface SubscriptionCheckResult {
   creditsUsedThisPeriod?: number | null;
 }
 
+/**
+ * Tamanho da impressora para comprovantes.
+ */
+export type SettingsReceiptPrinterSize = typeof SettingsReceiptPrinterSize[keyof typeof SettingsReceiptPrinterSize];
+
+
+export const SettingsReceiptPrinterSize = {
+  '50mm': '50mm',
+  '58mm': '58mm',
+  '80mm': '80mm',
+  A4: 'A4',
+} as const;
+
 export interface Settings {
   id: number;
   barbershopName: string;
@@ -488,6 +501,8 @@ export interface Settings {
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos) */
   serviceExclusions?: number[][];
+  /** Tamanho da impressora para comprovantes. */
+  receiptPrinterSize?: SettingsReceiptPrinterSize;
 }
 
 export interface AccountDeletion {
@@ -507,6 +522,19 @@ export interface SlugUpdate {
 export interface UserSlugResponse {
   slug: string;
 }
+
+/**
+ * Tamanho da impressora para comprovantes.
+ */
+export type SettingsUpdateReceiptPrinterSize = typeof SettingsUpdateReceiptPrinterSize[keyof typeof SettingsUpdateReceiptPrinterSize];
+
+
+export const SettingsUpdateReceiptPrinterSize = {
+  '50mm': '50mm',
+  '58mm': '58mm',
+  '80mm': '80mm',
+  A4: 'A4',
+} as const;
 
 export interface SettingsUpdate {
   barbershopName?: string;
@@ -539,6 +567,8 @@ export interface SettingsUpdate {
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: number[][];
+  /** Tamanho da impressora para comprovantes. */
+  receiptPrinterSize?: SettingsUpdateReceiptPrinterSize;
 }
 
 export interface NextAvailableResult {

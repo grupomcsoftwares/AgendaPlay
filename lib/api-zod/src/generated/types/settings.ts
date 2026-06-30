@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LoyaltyConfig } from './loyaltyConfig';
+import type { SettingsReceiptPrinterSize } from './settingsReceiptPrinterSize';
 import type { WeeklySchedule } from './weeklySchedule';
 
 export interface Settings {
@@ -45,4 +46,6 @@ export interface Settings {
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos) */
   serviceExclusions?: number[][];
+  /** Tamanho da impressora para comprovantes. */
+  receiptPrinterSize?: SettingsReceiptPrinterSize;
 }

@@ -1834,6 +1834,11 @@ components:
             items:
               type: integer
           description: "Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)"
+        receiptPrinterSize:
+          type: string
+          enum: ["50mm", "58mm", "80mm", "A4"]
+          default: "80mm"
+          description: "Tamanho da impressora para comprovantes."
 
     AccountDeletion:
       type: object
@@ -1913,6 +1918,11 @@ components:
             items:
               type: integer
           description: "Lista de combinações proibidas de serviços"
+        receiptPrinterSize:
+          type: string
+          enum: ["50mm", "58mm", "80mm", "A4"]
+          default: "80mm"
+          description: "Tamanho da impressora para comprovantes."
 
     NextAvailableResult:
       type: object
