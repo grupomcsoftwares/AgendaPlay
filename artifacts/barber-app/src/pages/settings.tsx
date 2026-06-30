@@ -475,7 +475,7 @@ export default function Settings() {
     return (
       <div className="p-8 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-48 w-full max-w-5xl" />
+        <Skeleton className="h-48 w-full max-w-7xl" />
       </div>
     );
   }
@@ -488,7 +488,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 1: Info + Horário ─────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl">
         {/* Informações Gerais */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
@@ -754,7 +754,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 2: Impressão de Comprovantes (sozinho, 1 coluna) ─ */}
-      <div className="max-w-5xl">
+      <div className="max-w-7xl">
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -801,7 +801,7 @@ export default function Settings() {
       </div>
 
       {/* ── Row 3: Combo + Fidelidade ─────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl">
       <Card className="bg-card border-border">
         <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
           <div>
@@ -1230,13 +1230,13 @@ export default function Settings() {
       </Card>
       </div>{/* end Row 3 grid */}
 
-      <div className="flex justify-end max-w-5xl">
+      <div className="flex justify-end max-w-7xl">
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">
           <Save className="h-4 w-4" /> Salvar Configurações
         </Button>
       </div>
 
-      <Card className="max-w-5xl border-destructive/40">
+      <Card className="max-w-7xl border-destructive/40">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
