@@ -22,7 +22,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -115,6 +115,7 @@ export default function Appointments() {
   const [editTarget, setEditTarget] = useState<Appointment | null>(null);
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editTime, setEditTime] = useState("");
+  const [notifyTarget, setNotifyTarget] = useState<{ id: number; clientName: string; clientId: number | null; scheduledAt: string; serviceName: string } | null>(null);
   const [editServiceIdState, setEditServiceIdState] = useState<number>(0);
   const [receiptApt, setReceiptApt] = useState<Appointment | null>(null);
   const editDateStr = format(editDate, "yyyy-MM-dd");
@@ -305,6 +306,20 @@ export default function Appointments() {
         },
       }
     );
+  };
+
+  const sendWhatsAppReminder = (apt: Appointment) => {
+    const client = apt.clientId ? clients?.find((c) => c.id === apt.clientId) : null;
+    const phone = client?.phone?.replace(/\D/g, "");
+    if (!phone) {
+      toast({ variant: "destructive", title: "Telefone não encontrado", description: "O cliente não possui telefone cadastrado." });
+      return;
+    }
+    const date = format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR });
+    const time = format(new Date(apt.scheduledAt), "HH:mm");
+    const msg = `Olá ${apt.clientName}! Passando para lembrar do seu agendamento na ${settings?.barbershopName || "barbearia"} para ${date} às ${time}. Serviço: ${apt.serviceName}. Até lá! ✨`;
+    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
   };
 
   const confirmCancel = () => {
@@ -680,6 +695,9 @@ export default function Appointments() {
                         <>
                           <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}>
                             <Play className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Enviar lembrete WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}>
+                            <MessageCircle className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}>
                             <X className="h-4 w-4" />
