@@ -986,6 +986,8 @@ export default function Appointments() {
                           line-height: 1.3;
                           word-break: break-word;
                           overflow-wrap: break-word;
+                          font-weight: 600;
+                          -webkit-font-smoothing: antialiased;
                         }
                         /* Tailwind overrides for copied HTML */
                         .text-center { text-align: center; }
