@@ -959,9 +959,9 @@ export default function Appointments() {
                 // Largura baseada no tamanho da impressora selecionado nas configurações
                 const size = settings?.receiptPrinterSize ?? "80mm";
                 const sizeMap: Record<string, { popupW: number; bodyMaxW: number; padding: number; fontBase: number }> = {
-                  "50mm": { popupW: 240,  bodyMaxW: 190,  padding: 8,  fontBase: 11 },
-                  "58mm": { popupW: 270,  bodyMaxW: 220,  padding: 10, fontBase: 12 },
-                  "80mm": { popupW: 360,  bodyMaxW: 310,  padding: 16, fontBase: 13 },
+                  "50mm": { popupW: 210,  bodyMaxW: 140,  padding: 4,  fontBase: 9 },
+                  "58mm": { popupW: 250,  bodyMaxW: 175,  padding: 6,  fontBase: 10 },
+                  "80mm": { popupW: 380,  bodyMaxW: 300,  padding: 14, fontBase: 12 },
                   "A4":   { popupW: 850,  bodyMaxW: 750,  padding: 24, fontBase: 14 },
                 };
                 const cfg = sizeMap[size] ?? sizeMap["80mm"];
@@ -983,7 +983,9 @@ export default function Appointments() {
                           color: #000;
                           background: #fff;
                           font-size: ${cfg.fontBase}px;
-                          line-height: 1.4;
+                          line-height: 1.3;
+                          word-break: break-word;
+                          overflow-wrap: break-word;
                         }
                         /* Tailwind overrides for copied HTML */
                         .text-center { text-align: center; }
@@ -1004,9 +1006,9 @@ export default function Appointments() {
                         .text-lg { font-size: ${cfg.fontBase + 4}px; }
                         .text-muted-foreground { color: #666; }
                         .text-right { text-align: right; }
-                        .max-w-\[60\%\] { max-width: 60%; }
+                        .max-w-\[60\%\] { max-width: 60%; word-break: break-word; overflow-wrap: break-word; }
                         .flex { display: flex; }
-                        .justify-between { justify-content: space-between; }
+                        .justify-between { justify-content: space-between; flex-wrap: wrap; gap: 2px; }
                         .items-center { align-items: center; }
                         .items-baseline { align-items: baseline; }
                         .border-t-2 { border-top: 2px dashed #000; }
