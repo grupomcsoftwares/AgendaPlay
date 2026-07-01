@@ -62,7 +62,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { hasUpdate, currentVersion, latestVersion, dismiss } = useUpdateCheck();
+  const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
@@ -178,7 +178,9 @@ export default function HomeScreen() {
         visible={hasUpdate}
         currentVersion={currentVersion}
         latestVersion={latestVersion}
+        apkUrl={apkUrl ?? undefined}
         onDismiss={dismiss}
+        onUpdate={() => apkUrl && require("expo-web-browser").openBrowserAsync(apkUrl)}
       />
     </View>
   );

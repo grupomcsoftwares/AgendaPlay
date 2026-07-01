@@ -43,10 +43,15 @@ export function useUpdateCheck(): UpdateInfo {
 
   const hasUpdate = latestVersion !== APP_VERSION && latestVersion !== skipped;
 
+  const apkUrl = hasUpdate
+    ? `${API_BASE.replace("/api", "")}/downloads/agendaplay-${latestVersion}.apk`
+    : null;
+
   return {
     hasUpdate,
     currentVersion: APP_VERSION,
     latestVersion,
+    apkUrl,
     dismiss,
   };
 }

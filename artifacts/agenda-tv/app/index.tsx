@@ -22,7 +22,7 @@ const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}
 export default function LoginScreen() {
   const router = useRouter();
   const { user, login, loading } = useAuth();
-  const { hasUpdate, currentVersion, latestVersion, dismiss } = useUpdateCheck();
+  const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -130,7 +130,9 @@ export default function LoginScreen() {
         visible={hasUpdate}
         currentVersion={currentVersion}
         latestVersion={latestVersion}
+        apkUrl={apkUrl ?? undefined}
         onDismiss={dismiss}
+        onUpdate={() => apkUrl && require("expo-web-browser").openBrowserAsync(apkUrl)}
       />
     </KeyboardAvoidingView>
   );
