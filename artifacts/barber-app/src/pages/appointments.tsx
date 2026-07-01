@@ -309,7 +309,12 @@ export default function Appointments() {
   };
 
   const sendWhatsAppReminder = (apt: Appointment) => {
-    const client = apt.clientId ? clients?.find((c) => c.id === apt.clientId) : null;
+    // Primeiro tenta pelo ID cadastrado no agendamento
+    let client = apt.clientId ? clients?.find((c) => c.id === apt.clientId) : undefined;
+    // Fallback: busca pelo nome do cliente (caso tenha sido cadastrado depois)
+    if (!client) {
+      client = clients?.find((c) => c.name.trim().toLowerCase() === apt.clientName.trim().toLowerCase());
+    }
     const phone = client?.phone?.replace(/\D/g, "");
     if (!phone) {
       toast({ variant: "destructive", title: "Telefone não encontrado", description: "O cliente não possui telefone cadastrado." });
