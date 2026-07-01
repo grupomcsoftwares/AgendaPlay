@@ -624,29 +624,29 @@ export default function Settings() {
               return (
                 <div key={key} className="py-2 border-b border-border/50 last:border-0" data-testid={`schedule-day-${key}`}>
                   {/* Row 1: Switch + day name */}
-                  <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1">
                     <Switch id={`closed-${key}`} data-testid={`switch-open-${key}`} checked={!day.closed} onCheckedChange={(v) => updateDay(key, { closed: !v })} className="shrink-0 scale-90" />
                     <span className={`text-sm font-medium ${day.closed ? "text-muted-foreground" : ""}`}>{short}</span>
                     {day.closed && <span className="text-xs text-muted-foreground italic ml-auto">Fechado</span>}
                   </div>
-                  {/* Row 2: 4 time fields */}
+                  {/* Row 2: 4 columns always side-by-side */}
                   {!day.closed && (
-                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">Início</span>
-                        <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-[78px] px-1.5" />
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Início</p>
+                        <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">Almoço</span>
-                        <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-[78px] px-1.5" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Almoço</p>
+                        <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">Volta</span>
-                        <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-[78px] px-1.5" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Volta</p>
+                        <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">Fechado</span>
-                        <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-[78px] px-1.5" />
+                      <div>
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Fechamento</p>
+                        <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                     </div>
                   )}
