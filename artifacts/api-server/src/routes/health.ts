@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.0.2";
 
 const router: IRouter = Router();
 

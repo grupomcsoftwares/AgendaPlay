@@ -12,10 +12,12 @@ export type UpdateDialogProps = {
   visible: boolean;
   currentVersion: string;
   latestVersion: string;
+  apkUrl?: string;
   onDismiss: () => void;
+  onUpdate?: () => void;
 };
 
-export default function UpdateDialog({ visible, currentVersion, latestVersion, onDismiss }: UpdateDialogProps) {
+export default function UpdateDialog({ visible, currentVersion, latestVersion, apkUrl, onDismiss, onUpdate }: UpdateDialogProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
       <View style={styles.overlay}>
@@ -38,9 +40,15 @@ export default function UpdateDialog({ visible, currentVersion, latestVersion, o
             <Text style={styles.versionNew}>{latestVersion}</Text>
           </View>
 
-          <TouchableOpacity style={styles.btnPrimary} onPress={onDismiss}>
-            <Text style={styles.btnPrimaryText}>Baixar atualização</Text>
-          </TouchableOpacity>
+          {apkUrl ? (
+            <TouchableOpacity style={styles.btnPrimary} onPress={onUpdate}>
+              <Text style={styles.btnPrimaryText}>Baixar atualização</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.btnPrimary} onPress={onDismiss}>
+              <Text style={styles.btnPrimaryText}>OK, entendi</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.btnSecondary} onPress={onDismiss}>
             <Text style={styles.btnSecondaryText}>Lembrar depois</Text>
