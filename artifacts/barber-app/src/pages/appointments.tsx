@@ -959,8 +959,8 @@ export default function Appointments() {
                 // Largura baseada no tamanho da impressora selecionado nas configurações
                 const size = settings?.receiptPrinterSize ?? "80mm";
                 const sizeMap: Record<string, { popupW: number; bodyMaxW: number; padding: number; fontBase: number }> = {
-                  "50mm": { popupW: 210,  bodyMaxW: 140,  padding: 4,  fontBase: 9 },
-                  "58mm": { popupW: 250,  bodyMaxW: 175,  padding: 6,  fontBase: 10 },
+                  "50mm": { popupW: 180,  bodyMaxW: 172,  padding: 2,  fontBase: 10 },
+                  "58mm": { popupW: 220,  bodyMaxW: 212,  padding: 3,  fontBase: 11 },
                   "80mm": { popupW: 380,  bodyMaxW: 300,  padding: 14, fontBase: 12 },
                   "A4":   { popupW: 850,  bodyMaxW: 750,  padding: 24, fontBase: 14 },
                 };
@@ -1024,7 +1024,8 @@ export default function Appointments() {
                         p { margin: 2px 0; }
                         .total { font-size: ${cfg.fontBase + 4}px; font-weight: 700; }
                         @media print {
-                          body { padding: ${Math.max(4, cfg.padding - 4)}px; margin: 0; max-width: 100%; }
+                          @page { size: auto; margin: 0; }
+                          body { padding: ${Math.max(2, cfg.padding - 2)}px; margin: 0; max-width: 100%; width: 100%; }
                         }
                       </style>
                     </head>
