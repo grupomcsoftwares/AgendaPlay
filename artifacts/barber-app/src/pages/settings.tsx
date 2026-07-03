@@ -465,6 +465,7 @@ export default function Settings() {
       } },
       {
         onSuccess: (saved) => {
+          queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
           queryClient.setQueryData(getGetSettingsQueryKey(), saved);
           toast({ title: "Configurações salvas com sucesso" });
         }
