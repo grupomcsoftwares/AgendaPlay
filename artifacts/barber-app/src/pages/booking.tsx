@@ -59,7 +59,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // shopIdProp takes priority (used by public slug-based pages).
   // Falls back to URL query string (?shopId=<userId>) for the admin-fresh link.
   // Admin users arriving without shopId rely on their session cookie instead.
-  const shopId = shopIdProp ?? new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+  const searchParams = new URLSearchParams(window.location.search);
+  const shopId = shopIdProp ?? searchParams.get("shopId") ?? undefined;
+  const isNewBooking = searchParams.get("novo") === "1";
 
   // ── Existing-appointment redirect ──────────────────────────────────────────
   // After a successful booking the token is saved to localStorage. Next time
@@ -67,7 +69,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // upcoming we send them straight to the cancel/reschedule page.
   const storageKey = `barber_pending_token_${shopId ?? "admin"}`;
   const [pendingToken, setPendingToken] = useState<string | null>(() =>
-    localStorage.getItem(storageKey)
+    isNewBooking ? null : localStorage.getItem(storageKey)
   );
   const { data: pendingAppt, isError: pendingError } = useGetAppointmentByToken(
     pendingToken ?? "",

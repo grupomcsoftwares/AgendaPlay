@@ -11,7 +11,7 @@ import {
   getGetSettingsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playRescheduled } from "@/lib/sounds";
 
@@ -378,36 +378,58 @@ export default function CancelBooking() {
             onConfirm={handleReschedule}
           />
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-3">
+            {/* Agendar outro corte (ex: do filho) — abre em nova aba */}
             <button
               type="button"
-              onClick={openReschedule}
-              data-testid="button-reschedule"
-              className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+              onClick={() => {
+                const publicUrl = shopId
+                  ? `${window.location.origin}/booking?shopId=${shopId}&novo=1`
+                  : null;
+                if (publicUrl) window.open(publicUrl, "_blank");
+              }}
+              className="w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
               style={{
-                backgroundColor: "hsl(0 0% 9%)",
-                border: `1px solid ${AMBER}`,
-                color: AMBER,
+                backgroundColor: "hsl(142 70% 45% / 0.12)",
+                border: "1px solid hsl(142 70% 45% / 0.4)",
+                color: "hsl(142 70% 55%)",
                 cursor: "pointer",
               }}
             >
-              <CalendarClock className="w-4 h-4" />
-              Mudar horário
+              <Plus className="w-4 h-4" />
+              Agendar outro corte
             </button>
-            <button
-              type="button"
-              onClick={() => setConfirming(true)}
-              data-testid="button-cancel"
-              className="rounded-xl py-3 text-sm font-semibold"
-              style={{
-                backgroundColor: "hsl(0 0% 9%)",
-                border: "1px solid hsl(0 62% 50% / 0.4)",
-                color: "hsl(0 70% 65%)",
-                cursor: "pointer",
-              }}
-            >
-              Cancelar
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={openReschedule}
+                data-testid="button-reschedule"
+                className="rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: "hsl(0 0% 9%)",
+                  border: `1px solid ${AMBER}`,
+                  color: AMBER,
+                  cursor: "pointer",
+                }}
+              >
+                <CalendarClock className="w-4 h-4" />
+                Mudar horário
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirming(true)}
+                data-testid="button-cancel"
+                className="rounded-xl py-3 text-sm font-semibold"
+                style={{
+                  backgroundColor: "hsl(0 0% 9%)",
+                  border: "1px solid hsl(0 62% 50% / 0.4)",
+                  color: "hsl(0 70% 65%)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         )}
       </div>
