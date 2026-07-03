@@ -35,6 +35,13 @@ export default defineConfig({
     runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.js",
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "robots.txt"],
       manifest: {
         name: "BarberApp — Agendamentos",
@@ -52,17 +59,6 @@ export default defineConfig({
           { src: "pwa-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "maskable-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
-        navigateFallbackDenylist: [/^\/api\//],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.includes("/api/"),
-            handler: "NetworkOnly",
-          },
         ],
       },
       devOptions: {

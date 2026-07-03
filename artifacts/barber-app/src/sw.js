@@ -1,10 +1,19 @@
+import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
+import { clientsClaim } from "workbox-core";
+
+self.skipWaiting();
+clientsClaim();
+
+// Injected by VitePWA during build
+precacheAndRoute(self.__WB_MANIFEST);
+cleanupOutdatedCaches();
+
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "AgendaPlay";
   const body  = data.body  || "Você tem uma notificação.";
   const icon  = data.icon  || "/favicon.ico";
 
-  // Tell every open tab which sound to play (admin: "new" or "rescheduled")
   const notifyClients = self.clients
     .matchAll({ type: "window", includeUncontrolled: true })
     .then((list) => {
