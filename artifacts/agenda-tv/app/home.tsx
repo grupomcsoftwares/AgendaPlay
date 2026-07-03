@@ -64,19 +64,22 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
+  const isTV = Platform.isTV || false;
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
+
+  const visibleModes = isTV ? MODES.filter((m) => m.id === "queue") : MODES;
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);
 
   const handlePress = useCallback((mode: HomeMode) => {
-    if (mode.id === "management" && !Platform.isTV) {
-      // Phone/tablet: show native menu (web sidebar hidden on narrow screens)
+    if (mode.id === "management") {
+      // Phone/tablet only: show native menu
       router.push({ pathname: "/dashboard" });
       return;
     }
-    // TV or queue mode: go directly to WebView
+    // Queue mode: go directly to WebView
     router.push({ pathname: "/viewer", params: { url: mode.url, title: mode.title } });
   }, [router]);
 
@@ -84,17 +87,17 @@ export default function HomeScreen() {
     if (type === "up") {
       setFocusedIdx((prev) => {
         const next = Math.max(0, prev - 1);
-        setFocusedId(MODES[next]?.id ?? null);
+        setFocusedId(visibleModes[next]?.id ?? null);
         return next;
       });
     } else if (type === "down") {
       setFocusedIdx((prev) => {
-        const next = Math.min(MODES.length - 1, prev + 1);
-        setFocusedId(MODES[next]?.id ?? null);
+        const next = Math.min(visibleModes.length - 1, prev + 1);
+        setFocusedId(visibleModes[next]?.id ?? null);
         return next;
       });
     } else if (type === "select") {
-      const mode = MODES[focusedIdx];
+      const mode = visibleModes[focusedIdx];
       if (mode) handlePress(mode);
     }
   });
@@ -110,14 +113,16 @@ export default function HomeScreen() {
             <Feather name="scissors" size={30} color="#c9a84c" />
             <Text style={styles.appName}>AgendaPlay</Text>
           </View>
-          <Text style={styles.tagline}>Escolha o modo de exibição</Text>
+          <Text style={styles.tagline}>
+            {isTV ? "Painel de fila da barbearia" : "Escolha o modo de exibição"}
+          </Text>
           {user?.barbershopName ? (
             <Text style={styles.shopName}>{user.barbershopName}</Text>
           ) : null}
         </View>
 
         <View style={styles.cards}>
-          {MODES.map((mode, idx) => {
+          {visibleModes.map((mode, idx) => {
             const isFocused = focusedId === mode.id;
             return (
               <Pressable
