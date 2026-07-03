@@ -11,7 +11,6 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useKeepAwake } from "expo-keep-awake";
 import { useAuth } from "@/hooks/useAuth";
 
 function useTVRemote(onEvent: (type: string) => void) {
@@ -34,7 +33,6 @@ function useTVRemote(onEvent: (type: string) => void) {
 }
 
 export default function ViewerScreen() {
-  useKeepAwake();
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();

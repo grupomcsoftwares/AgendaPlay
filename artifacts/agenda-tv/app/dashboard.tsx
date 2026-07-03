@@ -13,7 +13,6 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { useKeepAwake } from "expo-keep-awake";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
@@ -59,7 +58,6 @@ function useIsTablet() {
 }
 
 export default function DashboardScreen() {
-  useKeepAwake();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, getSessionCookie } = useAuth();
