@@ -111,9 +111,14 @@ export default function ViewerScreen() {
         <>
           <WebView
             ref={webViewRef}
-            source={{ uri: url ?? "" }}
+            source={{ uri: (() => {
+              if (!url) return "";
+              const u = new URL(url);
+              u.searchParams.set("view", "mobile");
+              return u.toString();
+            })() }}
             style={styles.webview}
-            injectedJavaScript={injectedCookie || ""}
+            injectedJavaScript={[`window.__AGENDAPLAY_MOBILE__ = true;`, injectedCookie || ""].filter(Boolean).join("\n")}
             onLoadStart={() => {
               setLoading(true);
               setError(false);

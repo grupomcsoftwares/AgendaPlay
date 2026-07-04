@@ -224,9 +224,13 @@ export default function DashboardScreen() {
         )}
         {cookieReady && (
           <WebView
-            source={{ uri: selectedItem.url }}
+            source={{ uri: (() => {
+              const u = new URL(selectedItem.url);
+              u.searchParams.set("view", "mobile");
+              return u.toString();
+            })() }}
             style={styles.webview}
-            injectedJavaScript={injectedCookie || ""}
+            injectedJavaScript={[`window.__AGENDAPLAY_MOBILE__ = true;`, injectedCookie || ""].filter(Boolean).join("\n")}
             javaScriptEnabled
             domStorageEnabled
             onLoadEnd={() => setLoading(false)}
