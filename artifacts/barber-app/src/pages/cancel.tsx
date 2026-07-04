@@ -34,6 +34,9 @@ export default function CancelBooking() {
   const [confirming, setConfirming] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reschedOpen, setReschedOpen] = useState(false);
+  const [childModal, setChildModal] = useState(false);
+  const [childName, setChildName] = useState("");
+  const [childLastName, setChildLastName] = useState("");
   const [pushState, setPushState] = useState<"unknown" | "denied" | "subscribed" | "idle">("unknown");
   const [reminderBanner, setReminderBanner] = useState(false);
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -379,26 +382,75 @@ export default function CancelBooking() {
           />
         ) : (
           <div className="space-y-3">
-            {/* Agendar outro corte (ex: do filho) — abre em nova aba */}
-            <button
-              type="button"
-              onClick={() => {
-                const publicUrl = shopId
-                  ? `${window.location.origin}/booking?shopId=${shopId}&novo=1`
-                  : null;
-                if (publicUrl) window.open(publicUrl, "_blank");
-              }}
-              className="w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
-              style={{
-                backgroundColor: "hsl(142 70% 45% / 0.12)",
-                border: "1px solid hsl(142 70% 45% / 0.4)",
-                color: "hsl(142 70% 55%)",
-                cursor: "pointer",
-              }}
-            >
-              <Plus className="w-4 h-4" />
-              Agendar outro corte
-            </button>
+            {/* Agendar outro corte — pede nome antes de abrir */}
+            {!childModal ? (
+              <button
+                type="button"
+                onClick={() => { setChildName(""); setChildLastName(""); setChildModal(true); }}
+                className="w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: "hsl(142 70% 45% / 0.12)",
+                  border: "1px solid hsl(142 70% 45% / 0.4)",
+                  color: "hsl(142 70% 55%)",
+                  cursor: "pointer",
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                Agendar outro corte
+              </button>
+            ) : (
+              <div className="rounded-2xl p-4 space-y-3" style={{ backgroundColor: "hsl(0 0% 10%)", border: "1px solid hsl(142 70% 45% / 0.3)" }}>
+                <p className="text-sm font-semibold" style={{ color: "hsl(142 70% 55%)" }}>Nome de quem vai cortar</p>
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={childName}
+                    onChange={e => setChildName(e.target.value)}
+                    placeholder="Nome"
+                    autoFocus
+                    className="w-full rounded-xl px-3 text-sm outline-none"
+                    style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "#fff", height: 44 }}
+                  />
+                  <input
+                    type="text"
+                    value={childLastName}
+                    onChange={e => setChildLastName(e.target.value)}
+                    placeholder="Sobrenome"
+                    className="w-full rounded-xl px-3 text-sm outline-none"
+                    style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "#fff", height: 44 }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChildModal(false)}
+                    className="rounded-xl py-2.5 text-sm font-semibold"
+                    style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(0 0% 65%)", cursor: "pointer" }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!childName.trim() || !childLastName.trim()}
+                    onClick={() => {
+                      if (!shopId) return;
+                      const url = `${window.location.origin}/booking?shopId=${shopId}&novo=1&cn=${encodeURIComponent(childName.trim())}&cls=${encodeURIComponent(childLastName.trim())}`;
+                      window.open(url, "_blank");
+                      setChildModal(false);
+                    }}
+                    className="rounded-xl py-2.5 text-sm font-semibold"
+                    style={{
+                      backgroundColor: childName.trim() && childLastName.trim() ? "hsl(142 60% 40%)" : "hsl(142 60% 40% / 0.4)",
+                      border: "none",
+                      color: "#fff",
+                      cursor: childName.trim() && childLastName.trim() ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    Agendar
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

@@ -62,6 +62,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const searchParams = new URLSearchParams(window.location.search);
   const shopId = shopIdProp ?? searchParams.get("shopId") ?? undefined;
   const isNewBooking = searchParams.get("novo") === "1";
+  // Pre-filled child name from "Agendar outro corte" flow — skips step 0
+  const urlChildName = searchParams.get("cn") ?? "";
+  const urlChildLastName = searchParams.get("cls") ?? "";
 
   // ── Existing-appointment redirect ──────────────────────────────────────────
   // After a successful booking the token is saved to localStorage. Next time
@@ -114,6 +117,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const [pointsModal, setPointsModal] = useState<{ open: boolean; serviceId: number | null; serviceName: string; servicePrice: number }>({ open: false, serviceId: null, serviceName: "", servicePrice: 0 });
 
   const [step, setStep] = useState<number>(() => {
+    // If child name came via URL, jump straight to step 1 (no phone needed)
+    if (urlChildName) return 1;
     try {
       const key = `barber_client_info_${shopId ?? "public"}`;
       const saved = localStorage.getItem(key);
@@ -145,6 +150,21 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     paymentMethod: "now" | "on_site";
     usePlan: boolean;
   }>(() => {
+    // Child booking via "Agendar outro corte" — use URL-provided name, no phone
+    if (urlChildName) {
+      return {
+        serviceIds: [],
+        barberId: "",
+        date: new Date(),
+        time: "",
+        name: urlChildName,
+        lastName: urlChildLastName,
+        phone: "",
+        notes: "",
+        paymentMethod: "on_site",
+        usePlan: false,
+      };
+    }
     try {
       const saved = localStorage.getItem(clientInfoKey);
       if (saved) {
@@ -586,7 +606,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           <div className="space-y-4">
             <button
               type="button"
-              onClick={() => setStep(0)}
+              onClick={() => { if (!urlChildName) setStep(0); }}
               data-testid="button-back-barber-to-step0"
               className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
               style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
@@ -665,7 +685,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             ) : (
               <button
                 type="button"
-                onClick={() => setStep(0)}
+                onClick={() => { if (!urlChildName) setStep(0); }}
                 data-testid="button-back-service-to-step0"
                 className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
                 style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
