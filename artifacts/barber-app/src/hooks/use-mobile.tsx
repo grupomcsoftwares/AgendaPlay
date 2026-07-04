@@ -17,7 +17,8 @@ function hasMobileParam(): boolean {
 
 export function useIsMobile() {
   const uaMobile = React.useMemo(() => isMobileUA() || hasMobileParam(), [])
-  const [isMobile, setIsMobile] = React.useState<boolean>(uaMobile)
+  // Default to TRUE (mobile) so sidebar never flashes on phones
+  const [isMobile, setIsMobile] = React.useState<boolean>(uaMobile !== false)
 
   React.useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)

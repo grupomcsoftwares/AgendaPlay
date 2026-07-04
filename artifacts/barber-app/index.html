@@ -22,6 +22,19 @@
         }
       })();
     </script>
+    <style>
+      html.mobile-view aside,
+      html.mobile-view [data-slot="sidebar"],
+      html.mobile-view [data-slot="sidebar-gap"],
+      html.mobile-view [data-slot="sidebar-container"],
+      html.mobile-view [data-sidebar="sidebar"] {
+        display: none !important;
+      }
+      html.mobile-view .md\:peer-data-\[variant\=inset\]\:m-2,
+      html.mobile-view .md\:peer-data-\[variant\=inset\]\:ml-0 {
+        margin: 0 !important;
+      }
+    </style>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content="Agenda Play — Agendamentos" />
     <meta property="og:description" content="Agende seu horário na barbearia em poucos toques. Escolha o profissional, o serviço e o melhor horário." />
