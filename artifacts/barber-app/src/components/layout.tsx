@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useAuth } from "../context/AuthContext";
-import { useIsMobile } from "../hooks/use-mobile";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 
 type NavItem = {
@@ -260,7 +259,6 @@ function UserFooter({
 export function Sidebar({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [, setLocation] = useLocation();
-  const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: ["settings"] } });
@@ -299,9 +297,6 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
         : trialDaysLeft > 0
           ? "hsl(38 60% 10%)"
           : "hsl(0 60% 10%)";
-
-  const bookingUrl = user ? `${window.location.origin}/booking?shopId=${user.id}` : "";
-
   const subscriptionDaysLeft = user?.subscriptionDaysLeft ?? null;
   const subscriptionDueDate = user?.subscriptionDueDate ?? null;
 
@@ -318,121 +313,71 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     onLogout: handleLogout,
   };
 
-  if (isMobile) {
-    return (
-      <div className="flex flex-col h-screen w-full bg-background text-foreground">
-        {/* Mobile top bar */}
-        <header
-          className="h-14 flex items-center justify-between px-4 flex-shrink-0"
-          style={{
-            backgroundColor: "hsl(var(--sidebar))",
-            borderBottom: "1px solid hsl(var(--sidebar-border))",
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
-            <span
-              className="font-semibold text-base tracking-tight"
-              style={{ color: "hsl(var(--sidebar-foreground))" }}
-            >
-              {barbershopName}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => window.location.reload()}
-              title="Atualizar página"
-              className="rounded-md p-2 transition-colors"
-              style={{ color: "hsl(var(--sidebar-foreground) / 0.55)" }}
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setDrawerOpen(true)}
-              className="rounded-md p-2 transition-colors"
-              style={{ color: "hsl(var(--sidebar-foreground))" }}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* Mobile drawer */}
-        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <SheetContent
-            side="left"
-            className="p-0 flex flex-col w-64"
-            style={{
-              backgroundColor: "hsl(var(--sidebar))",
-              borderRight: "1px solid hsl(var(--sidebar-border))",
-            }}
-          >
-            <SheetHeader className="h-14 flex flex-row items-center justify-between px-5 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
-              <SheetTitle
-                className="flex items-center gap-2 font-semibold text-base tracking-tight"
-                style={{ color: "hsl(var(--sidebar-foreground))" }}
-              >
-                <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
-                {barbershopName}
-              </SheetTitle>
-            </SheetHeader>
-
-            <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
-            <UserFooter {...footerProps} />
-
-          </SheetContent>
-        </Sheet>
-
-        {/* Page content */}
-        <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen w-full bg-background text-foreground">
-      <aside
-        className="w-60 flex-shrink-0 flex flex-col"
+    <div className="flex flex-col h-screen w-full bg-background text-foreground">
+      {/* Top bar */}
+      <header
+        className="h-14 flex items-center justify-between px-4 flex-shrink-0"
         style={{
           backgroundColor: "hsl(var(--sidebar))",
-          borderRight: "1px solid hsl(var(--sidebar-border))",
+          borderBottom: "1px solid hsl(var(--sidebar-border))",
         }}
       >
-        <div
-          className="h-14 flex items-center justify-between px-5 border-b"
-          style={{ borderColor: "hsl(var(--sidebar-border))" }}
-        >
-          <div className="flex items-center gap-2">
-            <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
-            <span
-              className="font-semibold text-base tracking-tight"
-              style={{ color: "hsl(var(--sidebar-foreground))" }}
-            >
-              {barbershopName}
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
+          <span
+            className="font-semibold text-base tracking-tight"
+            style={{ color: "hsl(var(--sidebar-foreground))" }}
+          >
+            {barbershopName}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
           <button
             onClick={() => window.location.reload()}
             title="Atualizar página"
-            className="rounded-md p-1.5 transition-colors"
-            style={{ color: "hsl(var(--sidebar-foreground) / 0.45)" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
-              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground))";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.backgroundColor = "";
-              (e.currentTarget as HTMLElement).style.color = "hsl(var(--sidebar-foreground) / 0.45)";
-            }}
+            className="rounded-md p-2 transition-colors"
+            style={{ color: "hsl(var(--sidebar-foreground) / 0.55)" }}
           >
             <RefreshCw className="h-4 w-4" />
           </button>
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="rounded-md p-2 transition-colors"
+            style={{ color: "hsl(var(--sidebar-foreground))" }}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
+      </header>
 
-        <NavLinks location={location} />
-        <UserFooter {...footerProps} />
-      </aside>
+      {/* Drawer */}
+      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <SheetContent
+          side="left"
+          className="p-0 flex flex-col w-64"
+          style={{
+            backgroundColor: "hsl(var(--sidebar))",
+            borderRight: "1px solid hsl(var(--sidebar-border))",
+          }}
+        >
+          <SheetHeader className="h-14 flex flex-row items-center justify-between px-5 border-b flex-shrink-0" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
+            <SheetTitle
+              className="flex items-center gap-2 font-semibold text-base tracking-tight"
+              style={{ color: "hsl(var(--sidebar-foreground))" }}
+            >
+              <Scissors className="h-5 w-5" style={{ color: "hsl(var(--sidebar-primary))" }} />
+              {barbershopName}
+            </SheetTitle>
+          </SheetHeader>
 
+          <NavLinks location={location} onNavigate={() => setDrawerOpen(false)} />
+          <UserFooter {...footerProps} />
+
+        </SheetContent>
+      </Sheet>
+
+      {/* Page content */}
       <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
     </div>
   );
