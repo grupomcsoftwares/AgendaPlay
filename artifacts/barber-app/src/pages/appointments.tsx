@@ -998,15 +998,15 @@ export default function Appointments() {
                         .mb-1 { margin-bottom: 4px; }
                         .mb-2 { margin-bottom: 8px; }
                         .font-bold { font-weight: 700; }
-                        .font-semibold { font-weight: 600; }
-                        .font-medium { font-weight: 500; }
+                        .font-semibold { font-weight: 700; }
+                        .font-medium { font-weight: 700; }
                         .uppercase { text-transform: uppercase; }
                         .tracking-wide { letter-spacing: 0.05em; }
                         .text-sm { font-size: ${cfg.fontBase}px; }
                         .text-xs { font-size: ${cfg.fontBase - 2}px; }
                         .text-\[11px\] { font-size: ${Math.max(9, cfg.fontBase - 2)}px; }
                         .text-lg { font-size: ${cfg.fontBase + 4}px; }
-                        .text-muted-foreground { color: #666; }
+                        .text-muted-foreground { color: #000; font-weight: 700; }
                         .text-right { text-align: right; }
                         .max-w-\[60\%\] { max-width: 60%; word-break: break-word; overflow-wrap: break-word; }
                         .flex { display: flex; }
