@@ -11,6 +11,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Agenda Play" />
+    <script>
+      (function() {
+        var ua = navigator.userAgent.toLowerCase();
+        var isMobileUA = /android|iphone|ipad|ipod|mobile|webos|blackberry|opera mini/i.test(ua);
+        var hasParam = window.location.search.includes("view=mobile");
+        var hasFlag = window.__AGENDAPLAY_MOBILE__ === true;
+        if (isMobileUA || hasParam || hasFlag) {
+          document.documentElement.classList.add("mobile-view");
+        }
+      })();
+    </script>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta property="og:title" content="Agenda Play — Agendamentos" />
     <meta property="og:description" content="Agende seu horário na barbearia em poucos toques. Escolha o profissional, o serviço e o melhor horário." />

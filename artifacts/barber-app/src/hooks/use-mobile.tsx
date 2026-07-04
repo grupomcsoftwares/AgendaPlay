@@ -10,7 +10,9 @@ function isMobileUA(): boolean {
 
 function hasMobileParam(): boolean {
   if (typeof window === "undefined") return false
-  return window.location.search.includes("view=mobile") || !!(window as any).__AGENDAPLAY_MOBILE__
+  return window.location.search.includes("view=mobile") ||
+    !!(window as any).__AGENDAPLAY_MOBILE__ ||
+    document.documentElement.classList.contains("mobile-view")
 }
 
 export function useIsMobile() {

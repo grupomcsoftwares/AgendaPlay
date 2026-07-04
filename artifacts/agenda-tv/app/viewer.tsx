@@ -118,7 +118,8 @@ export default function ViewerScreen() {
               return u.toString();
             })() }}
             style={styles.webview}
-            injectedJavaScript={[`window.__AGENDAPLAY_MOBILE__ = true;`, injectedCookie || ""].filter(Boolean).join("\n")}
+            injectedJavaScriptBeforeContentLoaded="window.__AGENDAPLAY_MOBILE__ = true;"
+            injectedJavaScript={injectedCookie || ""}
             onLoadStart={() => {
               setLoading(true);
               setError(false);
