@@ -227,11 +227,8 @@ export default function Settings() {
     }
   }, [settings]);
 
-  // Auto-save: debounced save when formData changes after initialization
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
-
   // Silent auto-save: saves in the background after 800ms of inactivity
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!initializedRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -252,11 +249,6 @@ export default function Settings() {
           onSuccess: (saved) => {
             queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
             queryClient.setQueryData(getGetSettingsQueryKey(), saved);
-            setSaveStatus("saved");
-            setTimeout(() => setSaveStatus("idle"), 2000);
-          },
-          onError: () => {
-            setSaveStatus("idle");
           },
         }
       );
@@ -1277,12 +1269,7 @@ export default function Settings() {
       </Card>
       </div>{/* end Row 3 grid */}
 
-      <div className="flex justify-end max-w-7xl items-center gap-3">
-        {saveStatus === "saved" && (
-          <span className="text-xs" style={{ color: "hsl(142 70% 55%)" }}>
-            Salvo automaticamente
-          </span>
-        )}
+      <div className="flex justify-end max-w-7xl">
         <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">
           <Save className="h-4 w-4" /> Salvar Configurações
         </Button>
