@@ -511,7 +511,7 @@ export default function Appointments() {
                       const v = e.target.value;
                       setFormData({ ...formData, clientId: v, clientName: v === "new" ? formData.clientName : "" });
                     }}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="client-select h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     data-testid="select-client"
                   >
                     <option value="new">+ Novo Cliente (Sem cadastro)</option>
@@ -519,6 +519,16 @@ export default function Appointments() {
                       <option key={c.id} value={c.id.toString()}>{c.name}</option>
                     ))}
                   </select>
+                  <style>{`
+                    .client-select option {
+                      background-color: hsl(var(--background)) !important;
+                      color: hsl(var(--foreground)) !important;
+                    }
+                    .client-select option:checked {
+                      background-color: hsl(var(--primary)) !important;
+                      color: hsl(var(--primary-foreground)) !important;
+                    }
+                  `}</style>
                 </div>
 
                 {formData.clientId === "new" && (
