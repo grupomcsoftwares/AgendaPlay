@@ -7,7 +7,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Save, Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
+import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -231,6 +231,10 @@ export default function Settings() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!initializedRef.current) return;
+    // Require at least one payment method to be active before saving
+    if (!formData.paymentEnableNow && !formData.paymentEnableOnSite) {
+      return;
+    }
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       updateSettings.mutate(
@@ -470,37 +474,6 @@ export default function Settings() {
     deleteCombo.mutate(
       { id },
       { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
-    );
-  };
-
-  const handleSave = () => {
-    if (!formData.paymentEnableNow && !formData.paymentEnableOnSite) {
-      toast({
-        title: "Selecione ao menos uma forma de pagamento",
-        description: "Pelo menos uma opção precisa estar ativa para os clientes agendarem.",
-        variant: "destructive",
-      });
-      return;
-    }
-    updateSettings.mutate(
-      { data: {
-        ...formData,
-        logoUrl: formData.logoUrl || null,
-        pixKey: formData.pixKey || null,
-        loyaltyConfig: {
-          enabled: formData.loyaltyEnabled,
-          pointsPerReal: formData.loyaltyPointsPerReal,
-          pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
-        },
-        receiptPrinterSize: formData.receiptPrinterSize,
-      } },
-      {
-        onSuccess: (saved) => {
-          queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
-          queryClient.setQueryData(getGetSettingsQueryKey(), saved);
-          toast({ title: "Configurações salvas com sucesso" });
-        }
-      }
     );
   };
 
@@ -1268,12 +1241,6 @@ export default function Settings() {
         </CardContent>
       </Card>
       </div>{/* end Row 3 grid */}
-
-      <div className="flex justify-end max-w-7xl">
-        <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">
-          <Save className="h-4 w-4" /> Salvar Configurações
-        </Button>
-      </div>
 
       <div className="max-w-7xl flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
         <div className="flex items-center gap-2">
