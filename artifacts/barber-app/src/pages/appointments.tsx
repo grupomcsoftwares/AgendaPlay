@@ -30,7 +30,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -506,17 +505,20 @@ export default function Appointments() {
 
                 <div className="space-y-2">
                   <Label>Cliente</Label>
-                  <Select value={formData.clientId} onValueChange={v => setFormData({...formData, clientId: v, clientName: v === "new" ? formData.clientName : ""})}>
-                    <SelectTrigger data-testid="select-client">
-                      <SelectValue placeholder="Selecione um cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">+ Novo Cliente (Sem cadastro)</SelectItem>
-                      {clients?.map(c => (
-                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={formData.clientId}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, clientId: v, clientName: v === "new" ? formData.clientName : "" });
+                    }}
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    data-testid="select-client"
+                  >
+                    <option value="new">+ Novo Cliente (Sem cadastro)</option>
+                    {clients?.map(c => (
+                      <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {formData.clientId === "new" && (
