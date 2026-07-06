@@ -227,6 +227,46 @@ export default function Settings() {
     }
   }, [settings]);
 
+  // Auto-save: debounced save when formData changes after initialization
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    // Skip payment validation for auto-save — only validate on explicit save
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setSaveStatus("saving");
+    autoSaveTimerRef.current = setTimeout(() => {
+      updateSettings.mutate(
+        { data: {
+          ...formData,
+          logoUrl: formData.logoUrl || null,
+          pixKey: formData.pixKey || null,
+          loyaltyConfig: {
+            enabled: formData.loyaltyEnabled,
+            pointsPerReal: formData.loyaltyPointsPerReal,
+            pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
+          },
+          receiptPrinterSize: formData.receiptPrinterSize,
+        } },
+        {
+          onSuccess: (saved) => {
+            queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+            queryClient.setQueryData(getGetSettingsQueryKey(), saved);
+            setSaveStatus("saved");
+            setTimeout(() => setSaveStatus("idle"), 2000);
+          },
+          onError: () => {
+            setSaveStatus("idle");
+          },
+        }
+      );
+    }, 800);
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [formData, updateSettings, queryClient]);
+
   const updateDay = (key: DayKey, patch: Partial<DaySchedule>) => {
     setFormData((prev) => ({
       ...prev,
@@ -1238,9 +1278,25 @@ export default function Settings() {
       </Card>
       </div>{/* end Row 3 grid */}
 
-      <div className="flex justify-end max-w-7xl">
-        <Button onClick={handleSave} disabled={updateSettings.isPending} className="gap-2">
-          <Save className="h-4 w-4" /> Salvar Configurações
+      <div className="flex justify-end max-w-7xl items-center gap-3">
+        <span className="text-xs" style={{ color: saveStatus === "saved" ? "hsl(142 70% 55%)" : saveStatus === "saving" ? "hsl(0 0% 60%)" : "hsl(0 0% 45%)" }}>
+          {saveStatus === "saved" ? "Salvo automaticamente" : saveStatus === "saving" ? "Salvando..." : ""}
+        </span>
+        <Button onClick={handleSave} disabled={updateSettings.isPending || saveStatus === "saving"} className="gap-2">
+          {saveStatus === "saving" ? (
+            <>
+              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              Salvando...
+            </>
+          ) : saveStatus === "saved" ? (
+            <>
+              <Check className="h-4 w-4" /> Salvo
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4" /> Salvar Configurações
+            </>
+          )}
         </Button>
       </div>
 
