@@ -16,18 +16,22 @@ function hasMobileParam(): boolean {
 }
 
 export function useIsMobile() {
-  const uaMobile = React.useMemo(() => isMobileUA() || hasMobileParam(), [])
-  // Default to TRUE (mobile) so sidebar never flashes on phones
-  const [isMobile, setIsMobile] = React.useState<boolean>(uaMobile !== false)
+  // Default to FALSE (desktop) — true mobile detection comes from viewport width
+  const [isMobile, setIsMobile] = React.useState<boolean>(false)
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT || isMobileUA() || hasMobileParam())
+    const check = () => {
+      const vw = window.innerWidth
+      setIsMobile(vw < MOBILE_BREAKPOINT || isMobileUA() || hasMobileParam())
     }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT || isMobileUA() || hasMobileParam())
-    return () => mql.removeEventListener("change", onChange)
+    check()
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    mql.addEventListener("change", check)
+    window.addEventListener("resize", check)
+    return () => {
+      mql.removeEventListener("change", check)
+      window.removeEventListener("resize", check)
+    }
   }, [])
 
   return isMobile
