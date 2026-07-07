@@ -35,3 +35,9 @@ id = "fZwmwwHvRuNFNYHtgwmvS"
 uri = "file://artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Linux.zip"
 type = "unspecified"
 title = "AgendaPlay 1.0.0 - Linux AppImage (zipped)"
+
+[[outputs]]
+id = "Z-hw3lmNx9vJuEDy-Hwnp"
+uri = "file://artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Windows.zip"
+type = "unspecified"
+title = "AgendaPlay 1.0.0 - Windows .exe (zipped)"

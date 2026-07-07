@@ -1,3 +1,5 @@
 artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Linux.zip filter=lfs diff=lfs merge=lfs -text
 artifacts/barber-app/dist-electron/AgendaPlay-1.0.0.AppImage filter=lfs diff=lfs merge=lfs -text
 artifacts/barber-app/dist-electron/linux-unpacked/agendaplay filter=lfs diff=lfs merge=lfs -text
+artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Windows.zip filter=lfs diff=lfs merge=lfs -text
+artifacts/barber-app/dist-electron/win-unpacked/AgendaPlay.exe filter=lfs diff=lfs merge=lfs -text
