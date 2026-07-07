@@ -1,13 +1,19 @@
 {
-  "name": "@workspace/barber-app",
-  "version": "0.0.0",
+  "name": "agendaplay",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "electron:dev": "NODE_ENV=development electron electron/main.js",
+    "electron:build": "npm run build && electron-builder",
+    "electron:build:win": "electron-builder --win",
+    "electron:build:mac": "electron-builder --mac",
+    "electron:build:linux": "electron-builder --linux"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -53,6 +59,8 @@
     "clsx": "catalog:",
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "catalog:",
     "input-otp": "^1.4.2",

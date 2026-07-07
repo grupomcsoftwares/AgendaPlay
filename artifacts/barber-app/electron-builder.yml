@@ -1,0 +1,28 @@
+appId: net.agendaplay.desktop
+productName: AgendaPlay
+icon: public/icon.png
+directories:
+  output: dist-electron
+  buildResources: public
+files:
+  - dist/public/**/*
+  - electron/**/*
+  - public/**/*
+  - package.json
+asar: true
+
+mac:
+  target: dmg
+  category: public.app-category.business
+
+win:
+  target: nsis
+
+linux:
+  target: AppImage
+  category: Office
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true

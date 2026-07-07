@@ -29,3 +29,9 @@ id = "rcCQ8OTPqvVSJY4tJ0ldC"
 uri = "file://artifacts/agenda-tv/eas.json"
 type = "unspecified"
 title = "EAS Config"
+
+[[outputs]]
+id = "fZwmwwHvRuNFNYHtgwmvS"
+uri = "file://artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Linux.zip"
+type = "unspecified"
+title = "AgendaPlay 1.0.0 - Linux AppImage (zipped)"

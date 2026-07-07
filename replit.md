@@ -9,6 +9,9 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/barber-app run electron:build:win` — build Windows .exe installer (needs Windows or Wine)
+- `pnpm --filter @workspace/barber-app run electron:build:mac` — build macOS .dmg (needs macOS)
+- `pnpm --filter @workspace/barber-app run electron:build:linux` — build Linux AppImage
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
