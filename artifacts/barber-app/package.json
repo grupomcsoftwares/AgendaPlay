@@ -1,9 +1,11 @@
 {
-  "name": "agendaplay",
+  "name": "@workspace/barber-app",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "main": "electron/main.js",
+  "description": "AgendaPlay — Sistema de agendamento para barbearias",
+  "author": "AgendaPlay <suporte@agendaplay.net>",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
