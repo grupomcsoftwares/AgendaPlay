@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { playNewAppointment, playRescheduled } from "@/lib/sounds";
 import {
   useListAppointments,
@@ -106,6 +106,34 @@ export default function Appointments() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
+
+  // Client search state
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+  const clientDropdownRef = useRef<HTMLDivElement>(null);
+  const clientSearchRef = useRef<HTMLInputElement>(null);
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
+        setClientDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch.trim() || !clients) return clients ?? [];
+    const q = clientSearch.trim().toLowerCase();
+    return clients.filter(c => c.name.toLowerCase().includes(q));
+  }, [clients, clientSearch]);
+
+  const selectedClient = useMemo(() => {
+    if (formData.clientId === "new") return null;
+    return clients?.find(c => c.id.toString() === formData.clientId) ?? null;
+  }, [clients, formData.clientId]);
   // The booking modal can target a different day than the one shown in the list.
   const [formDate, setFormDate] = useState<Date>(new Date());
   const formDateStr = format(formDate, "yyyy-MM-dd");
@@ -503,32 +531,69 @@ export default function Appointments() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2" ref={clientDropdownRef}>
                   <Label>Cliente</Label>
-                  <select
-                    value={formData.clientId}
-                    onChange={e => {
-                      const v = e.target.value;
-                      setFormData({ ...formData, clientId: v, clientName: v === "new" ? formData.clientName : "" });
-                    }}
-                    className="client-select h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                    data-testid="select-client"
-                  >
-                    <option value="new">+ Novo Cliente (Sem cadastro)</option>
-                    {clients?.map(c => (
-                      <option key={c.id} value={c.id.toString()}>{c.name}</option>
-                    ))}
-                  </select>
-                  <style>{`
-                    .client-select option {
-                      background-color: hsl(var(--background)) !important;
-                      color: hsl(var(--foreground)) !important;
-                    }
-                    .client-select option:checked {
-                      background-color: hsl(var(--primary)) !important;
-                      color: hsl(var(--primary-foreground)) !important;
-                    }
-                  `}</style>
+                  <div className="relative">
+                    <input
+                      ref={clientSearchRef}
+                      type="text"
+                      value={clientDropdownOpen ? clientSearch : (selectedClient?.name ?? (formData.clientId === "new" ? "+ Novo Cliente" : ""))}
+                      onChange={e => {
+                        setClientSearch(e.target.value);
+                        setClientDropdownOpen(true);
+                      }}
+                      onFocus={() => {
+                        setClientSearch("");
+                        setClientDropdownOpen(true);
+                      }}
+                      placeholder="Buscar cliente..."
+                      className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      data-testid="select-client"
+                    />
+                    {/* Dropdown de clientes */}
+                    {clientDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+                        {/* Opção: Novo cliente */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, clientId: "new", clientName: "" });
+                            setClientDropdownOpen(false);
+                            setClientSearch("");
+                          }}
+                          className={cn(
+                            "flex w-full items-center px-3 py-2 text-sm hover:bg-accent",
+                            formData.clientId === "new" && "bg-primary/15 text-primary"
+                          )}
+                        >
+                          <span className="font-medium">+ Novo Cliente (Sem cadastro)</span>
+                        </button>
+                        <div className="h-px bg-border mx-1" />
+                        {/* Lista filtrada */}
+                        {filteredClients.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</div>
+                        ) : (
+                          filteredClients.map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, clientId: c.id.toString(), clientName: "" });
+                                setClientDropdownOpen(false);
+                                setClientSearch("");
+                              }}
+                              className={cn(
+                                "flex w-full items-center px-3 py-2 text-sm hover:bg-accent",
+                                formData.clientId === c.id.toString() && "bg-primary/15 text-primary"
+                              )}
+                            >
+                              {c.name}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {formData.clientId === "new" && (
