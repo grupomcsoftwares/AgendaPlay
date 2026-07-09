@@ -199,7 +199,7 @@ function UserFooter({
         <p className="text-[9px] uppercase tracking-widest mb-1" style={{ color: "hsl(var(--sidebar-foreground) / 0.35)" }}>Desenvolvido por</p>
         <img
           src="/mc-softwares-logo.png"
-          alt="Grupo MC Softwares"
+          alt="MC Software"
           className="mx-auto"
           style={{ width: 140, height: "auto", objectFit: "contain" }}
         />
