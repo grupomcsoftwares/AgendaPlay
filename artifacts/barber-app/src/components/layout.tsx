@@ -14,7 +14,6 @@ import {
   Menu,
   Activity,
   RefreshCw,
-  Mail,
   MessageCircle,
   Instagram,
 } from "lucide-react";
@@ -185,10 +184,7 @@ function UserFooter({
       {/* Suporte — Contato com o criador */}
       <div className="mx-3 mb-2 px-3 py-2.5 rounded-lg" style={{ backgroundColor: "hsl(var(--sidebar-accent))", border: "1px solid hsl(var(--sidebar-border))" }}>
         <p className="text-[10px] font-medium uppercase tracking-wider mb-2 text-center" style={{ color: "hsl(var(--sidebar-foreground) / 0.5)" }}>Suporte AgendaPlay</p>
-        <div className="grid grid-cols-3 gap-1">
-          <a href="mailto:suporte@agendaplay.net" className="flex flex-col items-center gap-1 text-[10px] py-1.5 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
-            <Mail className="h-3.5 w-3.5" /> Email
-          </a>
+        <div className="grid grid-cols-2 gap-1">
           <a href="https://wa.me/5575999027208" target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1 text-[10px] py-1.5 rounded hover:opacity-80 transition-opacity" style={{ color: "hsl(var(--sidebar-foreground) / 0.8)" }}>
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
           </a>
