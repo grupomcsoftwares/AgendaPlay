@@ -519,9 +519,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
 
-        <StepIndicator current={indicatorStep} labels={stepLabels} />
+        {/* Link desativado pelo dono da barbearia */}
+        {(settings as any)?.bookingEnabled === false && (
+          <div className="text-center space-y-3 py-6">
+            <div
+              className="mx-auto flex items-center justify-center rounded-full"
+              style={{ width: 56, height: 56, backgroundColor: "hsl(0 70% 50% / 0.12)", color: "hsl(0 70% 60%)" }}
+            >
+              <X className="w-7 h-7" />
+            </div>
+            <h2 className="text-lg font-semibold">Agendamentos indisponíveis</h2>
+            <p className="text-sm text-muted-foreground">No momento, os agendamentos estão temporariamente desativados. Tente novamente mais tarde ou entre em contato com a barbearia.</p>
+          </div>
+        )}
 
-        {step === 0 && (
+        {(settings as any)?.bookingEnabled !== false && <StepIndicator current={indicatorStep} labels={stepLabels} />}
+
+        {(settings as any)?.bookingEnabled !== false && step === 0 && (
           <div className="space-y-6">
             <div className="space-y-1">
               <h2 className="text-xl font-bold">Seus Dados</h2>
@@ -602,7 +616,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           </div>
         )}
 
-        {step === 1 && pickingBarber && (
+        {(settings as any)?.bookingEnabled !== false && step === 1 && pickingBarber && (
           <div className="space-y-4">
             <button
               type="button"
@@ -669,7 +683,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           </div>
         )}
 
-        {step === 1 && !pickingBarber && (
+        {(settings as any)?.bookingEnabled !== false && step === 1 && !pickingBarber && (
           <div className="space-y-4">
             {needsBarberStep ? (
               <button
@@ -942,7 +956,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           </div>
         )}
 
-        <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 1) ? "none" : "block" }}>
+        {(settings as any)?.bookingEnabled !== false && <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 1) ? "none" : "block" }}>
 
           {step === 2 && (
             <CardContent className="p-6 space-y-6">
@@ -1533,7 +1547,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               </button>
             </CardContent>
           )}
-        </Card>
+        </Card>}
       </div>
 
       {confirmed && (

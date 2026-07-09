@@ -503,6 +503,8 @@ export interface Settings {
   serviceExclusions?: number[][];
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsReceiptPrinterSize;
+  /** Se false, o link de agendamento fica desativado para clientes. */
+  bookingEnabled?: boolean;
 }
 
 export interface AccountDeletion {

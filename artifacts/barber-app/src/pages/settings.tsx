@@ -168,6 +168,7 @@ export default function Settings() {
     loyaltyPointsPerRedemptionUnit: number;
     serviceExclusions: number[][];
     receiptPrinterSize: "50mm" | "58mm" | "80mm" | "A4";
+    bookingEnabled: boolean;
   }>({
     barbershopName: "",
     ownerName: "",
@@ -189,6 +190,7 @@ export default function Settings() {
     loyaltyPointsPerRedemptionUnit: 100,
     serviceExclusions: [],
     receiptPrinterSize: "80mm",
+    bookingEnabled: true,
   });
 
   useEffect(() => {
@@ -223,6 +225,7 @@ export default function Settings() {
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
         serviceExclusions: (settings.serviceExclusions as number[][] | undefined) ?? [],
         receiptPrinterSize: ((settings as any).receiptPrinterSize as "50mm" | "58mm" | "80mm" | "A4") || "80mm",
+        bookingEnabled: (settings as any).bookingEnabled ?? true,
       });
     }
   }, [settings]);
@@ -554,6 +557,19 @@ export default function Settings() {
             {user && (
               <div className="space-y-2 pt-1 border-t border-border">
                 <Label className="text-xs flex items-center gap-1.5"><Link className="h-3.5 w-3.5" /> Link de Agendamento</Label>
+                {/* Toggle ON/OFF do link */}
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                  <div>
+                    <p className="text-xs font-medium">{formData.bookingEnabled ? "Link ativo" : "Link desativado"}</p>
+                    <p className="text-[10px] text-muted-foreground">{formData.bookingEnabled ? "Clientes podem agendar normalmente" : "Clientes verão mensagem de indisponibilidade"}</p>
+                  </div>
+                  <Switch
+                    checked={formData.bookingEnabled}
+                    onCheckedChange={(v) => setFormData({ ...formData, bookingEnabled: v })}
+                    data-testid="switch-booking-enabled"
+                  />
+                </div>
+
                 {slugEditMode ? (
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5 rounded border border-yellow-500/40 bg-yellow-500/10 px-2 py-1.5 text-xs text-yellow-600 dark:text-yellow-400">

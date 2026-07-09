@@ -1839,6 +1839,10 @@ components:
           enum: ["50mm", "58mm", "80mm", "A4"]
           default: "80mm"
           description: "Tamanho da impressora para comprovantes."
+        bookingEnabled:
+          type: boolean
+          default: true
+          description: "Se false, o link de agendamento fica desativado para clientes."
 
     AccountDeletion:
       type: object

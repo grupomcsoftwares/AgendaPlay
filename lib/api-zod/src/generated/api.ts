@@ -1104,6 +1104,7 @@ export const GetSettingsQueryParams = zod.object({
 export const getSettingsResponseLogoUrlMax = 3000000;
 
 export const getSettingsResponseReceiptPrinterSizeDefault = `80mm`;
+export const getSettingsResponseBookingEnabledDefault = true;
 
 export const GetSettingsResponse = zod.object({
   "id": zod.number(),
@@ -1180,7 +1181,8 @@ export const GetSettingsResponse = zod.object({
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
-  "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(getSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.')
+  "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(getSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
+  "bookingEnabled": zod.boolean().default(getSettingsResponseBookingEnabledDefault).describe('Se false, o link de agendamento fica desativado para clientes.')
 })
 
 
@@ -1271,6 +1273,7 @@ export const UpdateSettingsBody = zod.object({
 export const updateSettingsResponseLogoUrlMax = 3000000;
 
 export const updateSettingsResponseReceiptPrinterSizeDefault = `80mm`;
+export const updateSettingsResponseBookingEnabledDefault = true;
 
 export const UpdateSettingsResponse = zod.object({
   "id": zod.number(),
@@ -1347,7 +1350,8 @@ export const UpdateSettingsResponse = zod.object({
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
-  "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.')
+  "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
+  "bookingEnabled": zod.boolean().default(updateSettingsResponseBookingEnabledDefault).describe('Se false, o link de agendamento fica desativado para clientes.')
 })
 
 
