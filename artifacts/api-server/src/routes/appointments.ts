@@ -453,19 +453,27 @@ router.post("/appointments", async (req, res): Promise<void> => {
       status: "waiting",
     });
 
-    // Auto-upsert client record for history (insert only if no record with this phone exists).
+    // Auto-upsert client record for history, and link clientId to the appointment.
     if (loyaltyPhone && parsed.data.clientName) {
       const [existing] = await tx
         .select({ id: clientsTable.id })
         .from(clientsTable)
         .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, loyaltyPhone)))
         .limit(1);
-      if (!existing) {
-        await tx.insert(clientsTable).values({
-          userId: shopId,
-          name: parsed.data.clientName,
-          phone: loyaltyPhone,
-        });
+      const clientId = existing
+        ? existing.id
+        : (await tx.insert(clientsTable).values({
+            userId: shopId,
+            name: parsed.data.clientName,
+            phone: loyaltyPhone,
+          }).returning({ id: clientsTable.id }))[0]?.id ?? null;
+
+      // Link clientId so future edits to the client propagate to this appointment.
+      if (clientId) {
+        await tx
+          .update(appointmentsTable)
+          .set({ clientId })
+          .where(eq(appointmentsTable.id, created.id));
       }
     }
 
