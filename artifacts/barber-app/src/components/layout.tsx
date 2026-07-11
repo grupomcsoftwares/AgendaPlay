@@ -298,6 +298,21 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // When embedded inside the native AgendaPlay app, the native sidebar handles
+  // all navigation — render only the page content, no web header/sidebar.
+  const isAppEmbedded =
+    typeof window !== "undefined" &&
+    (!!(window as any).__AGENDAPLAY_MOBILE__ ||
+      window.location.search.includes("view=mobile"));
+
+  if (isAppEmbedded) {
+    return (
+      <div className="flex flex-col h-screen w-full bg-background text-foreground">
+        <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
+      </div>
+    );
+  }
+
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: ["settings"] } });
   const { user, logout } = useAuth();
 
