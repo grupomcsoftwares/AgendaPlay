@@ -1,0 +1,12 @@
+attached_assets/
+lib/
+scripts/
+artifacts/barber-app/
+artifacts/api-server/
+artifacts/mockup-sandbox/
+node_modules/
+.expo/
+dist/
+android/
+ios/
+*.log
