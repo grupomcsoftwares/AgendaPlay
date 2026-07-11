@@ -7,6 +7,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import { useKeepAwake } from "expo-keep-awake";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -29,6 +30,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useKeepAwake();
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,

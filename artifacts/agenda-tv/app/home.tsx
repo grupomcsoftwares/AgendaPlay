@@ -6,6 +6,7 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Linking,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -185,7 +186,7 @@ export default function HomeScreen() {
         latestVersion={latestVersion}
         apkUrl={apkUrl ?? undefined}
         onDismiss={dismiss}
-        onUpdate={() => apkUrl && require("expo-web-browser").openBrowserAsync(apkUrl)}
+        onUpdate={() => apkUrl && Linking.openURL(apkUrl)}
       />
     </View>
   );

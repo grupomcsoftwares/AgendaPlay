@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
 const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
-const SKIPPED_VERSION_KEY = "@agendaplay/skipped_version";
 
 export type UpdateInfo = {
   hasUpdate: boolean;
@@ -15,6 +14,7 @@ export const APP_VERSION = "1.0.2";
 
 export function useUpdateCheck(): UpdateInfo {
   const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION);
+  const [serverApkUrl, setServerApkUrl] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<string>("");
 
   useEffect(() => {
@@ -27,6 +27,7 @@ export function useUpdateCheck(): UpdateInfo {
         const data = await res.json();
         if (!cancelled && data.version) {
           setLatestVersion(data.version);
+          setServerApkUrl(data.apkUrl ?? null);
         }
       } catch {
         // Silently ignore network errors
@@ -43,15 +44,11 @@ export function useUpdateCheck(): UpdateInfo {
 
   const hasUpdate = latestVersion !== APP_VERSION && latestVersion !== skipped;
 
-  const apkUrl = hasUpdate
-    ? `${API_BASE.replace("/api", "")}/downloads/agendaplay-${latestVersion}.apk`
-    : null;
-
   return {
     hasUpdate,
     currentVersion: APP_VERSION,
     latestVersion,
-    apkUrl,
+    apkUrl: hasUpdate ? serverApkUrl : null,
     dismiss,
   };
 }

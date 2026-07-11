@@ -55,9 +55,10 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "react-native-webview": "^13.16.1",
     "expo": "~54.0.35",
+    "expo-keep-awake": "^57.0.0",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-webview": "^13.16.1"
   }
 }
