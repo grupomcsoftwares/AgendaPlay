@@ -240,6 +240,35 @@ export default function Settings() {
     }
   }, [settings]);
 
+  // Keep refs in sync so the unmount cleanup always has fresh values
+  const formDataRef = useRef(formData);
+  useEffect(() => { formDataRef.current = formData; }, [formData]);
+  const updateSettingsRef = useRef(updateSettings);
+  useEffect(() => { updateSettingsRef.current = updateSettings; }, [updateSettings]);
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
+
+  // Save automatically when the user navigates away from this page
+  useEffect(() => {
+    return () => {
+      if (!initializedRef.current) return;
+      const fd = formDataRef.current;
+      updateSettingsRef.current.mutate({ data: {
+        ...fd,
+        logoUrl: fd.logoUrl || null,
+        pixKey: fd.pixKey || null,
+        loyaltyConfig: {
+          enabled: fd.loyaltyEnabled,
+          pointsPerReal: fd.loyaltyPointsPerReal,
+          pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
+        },
+        receiptPrinterSize: fd.receiptPrinterSize,
+        serviceExclusions: fd.serviceExclusions,
+      } as any });
+      toastRef.current({ title: "Configurações salvas!" });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateDay = (key: DayKey, patch: Partial<DaySchedule>) => {
     setFormData((prev) => ({
