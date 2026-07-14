@@ -451,6 +451,15 @@ export interface SubscriptionCheckResult {
   creditsUsedThisPeriod?: number | null;
 }
 
+export type SettingsServiceExclusionsItem = {
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  services: number[];
+  enabled: boolean;
+};
+
 /**
  * Tamanho da impressora para comprovantes.
  */
@@ -499,8 +508,8 @@ export interface Settings {
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
-  /** Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos) */
-  serviceExclusions?: number[][];
+  /** Lista de combinações proibidas de serviços */
+  serviceExclusions?: SettingsServiceExclusionsItem[];
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsReceiptPrinterSize;
   /** Se false, nenhum desconto por combo é aplicado. */
@@ -528,6 +537,15 @@ export interface SlugUpdate {
 export interface UserSlugResponse {
   slug: string;
 }
+
+export type SettingsUpdateServiceExclusionsItem = {
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  services: number[];
+  enabled: boolean;
+};
 
 /**
  * Tamanho da impressora para comprovantes.
@@ -572,7 +590,7 @@ export interface SettingsUpdate {
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços */
-  serviceExclusions?: number[][];
+  serviceExclusions?: SettingsUpdateServiceExclusionsItem[];
   /** Se false, nenhum desconto por combo é aplicado. */
   combosEnabled?: boolean;
   /** Se false, as restrições de serviços são ignoradas. */

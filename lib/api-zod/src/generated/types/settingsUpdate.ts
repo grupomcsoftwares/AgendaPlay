@@ -7,6 +7,7 @@
  */
 import type { LoyaltyConfig } from './loyaltyConfig';
 import type { SettingsUpdateReceiptPrinterSize } from './settingsUpdateReceiptPrinterSize';
+import type { SettingsUpdateServiceExclusionsItem } from './settingsUpdateServiceExclusionsItem';
 import type { WeeklySchedule } from './weeklySchedule';
 
 export interface SettingsUpdate {
@@ -39,7 +40,7 @@ export interface SettingsUpdate {
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços */
-  serviceExclusions?: number[][];
+  serviceExclusions?: SettingsUpdateServiceExclusionsItem[];
   /** Se false, nenhum desconto por combo é aplicado. */
   combosEnabled?: boolean;
   /** Se false, as restrições de serviços são ignoradas. */

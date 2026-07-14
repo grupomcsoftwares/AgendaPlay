@@ -1830,10 +1830,18 @@ components:
         serviceExclusions:
           type: array
           items:
-            type: array
-            items:
-              type: integer
-          description: "Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)"
+            type: object
+            required: [services, enabled]
+            properties:
+              services:
+                type: array
+                items:
+                  type: integer
+                minItems: 2
+                maxItems: 2
+              enabled:
+                type: boolean
+          description: "Lista de combinações proibidas de serviços"
         receiptPrinterSize:
           type: string
           enum: ["50mm", "58mm", "80mm", "A4"]
@@ -1926,9 +1934,17 @@ components:
         serviceExclusions:
           type: array
           items:
-            type: array
-            items:
-              type: integer
+            type: object
+            required: [services, enabled]
+            properties:
+              services:
+                type: array
+                items:
+                  type: integer
+                minItems: 2
+                maxItems: 2
+              enabled:
+                type: boolean
           description: "Lista de combinações proibidas de serviços"
         combosEnabled:
           type: boolean

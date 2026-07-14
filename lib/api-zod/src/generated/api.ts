@@ -1103,6 +1103,9 @@ export const GetSettingsQueryParams = zod.object({
 
 export const getSettingsResponseLogoUrlMax = 3000000;
 
+export const getSettingsResponseServiceExclusionsItemServicesMin = 2;
+export const getSettingsResponseServiceExclusionsItemServicesMax = 2;
+
 export const getSettingsResponseReceiptPrinterSizeDefault = `80mm`;
 export const getSettingsResponseCombosEnabledDefault = true;
 export const getSettingsResponseServiceRestrictionsEnabledDefault = true;
@@ -1182,7 +1185,10 @@ export const GetSettingsResponse = zod.object({
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
-  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
+  "serviceExclusions": zod.array(zod.object({
+  "services": zod.array(zod.number()).min(getSettingsResponseServiceExclusionsItemServicesMin).max(getSettingsResponseServiceExclusionsItemServicesMax),
+  "enabled": zod.boolean()
+})).optional().describe('Lista de combinações proibidas de serviços'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(getSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
   "combosEnabled": zod.boolean().default(getSettingsResponseCombosEnabledDefault).describe('Se false, nenhum desconto por combo é aplicado.'),
   "serviceRestrictionsEnabled": zod.boolean().default(getSettingsResponseServiceRestrictionsEnabledDefault).describe('Se false, as restrições de serviços são ignoradas.'),
@@ -1194,6 +1200,9 @@ export const GetSettingsResponse = zod.object({
  * @summary Update barbershop settings
  */
 export const updateSettingsBodyLogoUrlMax = 3000000;
+
+export const updateSettingsBodyServiceExclusionsItemServicesMin = 2;
+export const updateSettingsBodyServiceExclusionsItemServicesMax = 2;
 
 export const updateSettingsBodyReceiptPrinterSizeDefault = `80mm`;
 
@@ -1270,13 +1279,19 @@ export const UpdateSettingsBody = zod.object({
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
-  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços'),
+  "serviceExclusions": zod.array(zod.object({
+  "services": zod.array(zod.number()).min(updateSettingsBodyServiceExclusionsItemServicesMin).max(updateSettingsBodyServiceExclusionsItemServicesMax),
+  "enabled": zod.boolean()
+})).optional().describe('Lista de combinações proibidas de serviços'),
   "combosEnabled": zod.boolean().optional().describe('Se false, nenhum desconto por combo é aplicado.'),
   "serviceRestrictionsEnabled": zod.boolean().optional().describe('Se false, as restrições de serviços são ignoradas.'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsBodyReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.')
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
+
+export const updateSettingsResponseServiceExclusionsItemServicesMin = 2;
+export const updateSettingsResponseServiceExclusionsItemServicesMax = 2;
 
 export const updateSettingsResponseReceiptPrinterSizeDefault = `80mm`;
 export const updateSettingsResponseCombosEnabledDefault = true;
@@ -1357,7 +1372,10 @@ export const UpdateSettingsResponse = zod.object({
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
-  "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
+  "serviceExclusions": zod.array(zod.object({
+  "services": zod.array(zod.number()).min(updateSettingsResponseServiceExclusionsItemServicesMin).max(updateSettingsResponseServiceExclusionsItemServicesMax),
+  "enabled": zod.boolean()
+})).optional().describe('Lista de combinações proibidas de serviços'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
   "combosEnabled": zod.boolean().default(updateSettingsResponseCombosEnabledDefault).describe('Se false, nenhum desconto por combo é aplicado.'),
   "serviceRestrictionsEnabled": zod.boolean().default(updateSettingsResponseServiceRestrictionsEnabledDefault).describe('Se false, as restrições de serviços são ignoradas.'),

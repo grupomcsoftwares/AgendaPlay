@@ -7,6 +7,7 @@
  */
 import type { LoyaltyConfig } from './loyaltyConfig';
 import type { SettingsReceiptPrinterSize } from './settingsReceiptPrinterSize';
+import type { SettingsServiceExclusionsItem } from './settingsServiceExclusionsItem';
 import type { WeeklySchedule } from './weeklySchedule';
 
 export interface Settings {
@@ -44,8 +45,8 @@ export interface Settings {
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
-  /** Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos) */
-  serviceExclusions?: number[][];
+  /** Lista de combinações proibidas de serviços */
+  serviceExclusions?: SettingsServiceExclusionsItem[];
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsReceiptPrinterSize;
   /** Se false, nenhum desconto por combo é aplicado. */

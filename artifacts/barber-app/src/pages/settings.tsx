@@ -261,7 +261,7 @@ export default function Settings() {
             pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
           },
           receiptPrinterSize: formData.receiptPrinterSize,
-          serviceExclusions: formData.serviceExclusions as any,
+          serviceExclusions: formData.serviceExclusions,
         } },
         {
           onSuccess: (saved) => {
@@ -520,7 +520,7 @@ export default function Settings() {
                   pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
                 },
                 receiptPrinterSize: formData.receiptPrinterSize,
-                serviceExclusions: formData.serviceExclusions as any,
+                serviceExclusions: formData.serviceExclusions,
               } as any },
               { onSuccess: () => toast({ title: "Configurações salvas!" }) }
             );
@@ -1131,7 +1131,7 @@ export default function Settings() {
                         onClick={() => {
                           const next = formData.serviceExclusions.filter((_, i) => i !== idx);
                           setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                          updateSettings.mutate({ data: { serviceExclusions: next as any } });
+                          updateSettings.mutate({ data: { serviceExclusions: next } });
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
