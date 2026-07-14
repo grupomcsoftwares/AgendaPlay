@@ -1839,6 +1839,14 @@ components:
           enum: ["50mm", "58mm", "80mm", "A4"]
           default: "80mm"
           description: "Tamanho da impressora para comprovantes."
+        combosEnabled:
+          type: boolean
+          default: true
+          description: "Se false, nenhum desconto por combo é aplicado."
+        serviceRestrictionsEnabled:
+          type: boolean
+          default: true
+          description: "Se false, as restrições de serviços são ignoradas."
         bookingEnabled:
           type: boolean
           default: true
@@ -1922,6 +1930,12 @@ components:
             items:
               type: integer
           description: "Lista de combinações proibidas de serviços"
+        combosEnabled:
+          type: boolean
+          description: "Se false, nenhum desconto por combo é aplicado."
+        serviceRestrictionsEnabled:
+          type: boolean
+          description: "Se false, as restrições de serviços são ignoradas."
         receiptPrinterSize:
           type: string
           enum: ["50mm", "58mm", "80mm", "A4"]

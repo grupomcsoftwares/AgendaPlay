@@ -303,6 +303,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
   const appliedCombo = React.useMemo(() => {
     if (useLoyaltyPoints) return null;
+    if ((settings as any)?.combosEnabled === false) return null;
     if (!comboDiscounts || selectedServices.length < 2) return null;
     const selectedIds = formData.serviceIds;
     const matches = comboDiscounts.filter(c =>
@@ -413,13 +414,15 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   };
 
   type ServiceExclusion = { services: [number, number]; enabled: boolean };
-  const serviceExclusions = ((settings?.serviceExclusions ?? []) as unknown[])
-    .map((item): ServiceExclusion =>
-      Array.isArray(item)
-        ? { services: [item[0], item[1]] as [number, number], enabled: true }
-        : item as ServiceExclusion
-    )
-    .filter(e => e.enabled !== false);
+  const serviceExclusions = (settings as any)?.serviceRestrictionsEnabled === false
+    ? []
+    : ((settings?.serviceExclusions ?? []) as unknown[])
+        .map((item): ServiceExclusion =>
+          Array.isArray(item)
+            ? { services: [item[0], item[1]] as [number, number], enabled: true }
+            : item as ServiceExclusion
+        )
+        .filter(e => e.enabled !== false);
 
   const handleToggleService = (serviceId: number) => {
     setFormData(prev => {

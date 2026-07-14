@@ -167,6 +167,8 @@ export default function Settings() {
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
     serviceExclusions: { services: [number, number]; enabled: boolean }[];
+    combosEnabled: boolean;
+    serviceRestrictionsEnabled: boolean;
     receiptPrinterSize: "50mm" | "58mm" | "80mm" | "A4";
     bookingEnabled: boolean;
   }>({
@@ -189,6 +191,8 @@ export default function Settings() {
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
     serviceExclusions: [],
+    combosEnabled: true,
+    serviceRestrictionsEnabled: true,
     receiptPrinterSize: "80mm",
     bookingEnabled: true,
   });
@@ -228,6 +232,8 @@ export default function Settings() {
             ? { services: [item[0], item[1]] as [number, number], enabled: true }
             : item as { services: [number, number]; enabled: boolean }
         ),
+        combosEnabled: (settings as any).combosEnabled ?? true,
+        serviceRestrictionsEnabled: (settings as any).serviceRestrictionsEnabled ?? true,
         receiptPrinterSize: ((settings as any).receiptPrinterSize as "50mm" | "58mm" | "80mm" | "A4") || "80mm",
         bookingEnabled: (settings as any).bookingEnabled ?? true,
       });
@@ -496,9 +502,34 @@ export default function Settings() {
 
   return (
     <div className="flex-1 p-4 md:p-6 bg-background overflow-auto space-y-4">
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Gerencie as informações da barbearia.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Configurações</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Gerencie as informações da barbearia.</p>
+        </div>
+        <Button
+          onClick={() => {
+            updateSettings.mutate(
+              { data: {
+                ...formData,
+                logoUrl: formData.logoUrl || null,
+                pixKey: formData.pixKey || null,
+                loyaltyConfig: {
+                  enabled: formData.loyaltyEnabled,
+                  pointsPerReal: formData.loyaltyPointsPerReal,
+                  pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
+                },
+                receiptPrinterSize: formData.receiptPrinterSize,
+                serviceExclusions: formData.serviceExclusions as any,
+              } as any },
+              { onSuccess: () => toast({ title: "Configurações salvas!" }) }
+            );
+          }}
+          disabled={updateSettings.isPending}
+          className="shrink-0"
+        >
+          {updateSettings.isPending ? "Salvando…" : "Salvar"}
+        </Button>
       </div>
 
       {/* ── Row 1: Info + Horário ─────────────────────────────── */}
@@ -837,11 +868,20 @@ export default function Settings() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl">
       <Card className="bg-card border-border">
         <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">Descontos por Combo</CardTitle>
-            <CardDescription className="text-xs">
-              Desconto automático ao escolher 2+ serviços juntos
-            </CardDescription>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={formData.combosEnabled}
+              onCheckedChange={(v) => {
+                setFormData(prev => ({ ...prev, combosEnabled: v }));
+                updateSettings.mutate({ data: { combosEnabled: v } as any });
+              }}
+            />
+            <div>
+              <CardTitle className="text-base">Descontos por Combo</CardTitle>
+              <CardDescription className="text-xs">
+                Desconto automático ao escolher 2+ serviços juntos
+              </CardDescription>
+            </div>
           </div>
           <Button
             size="sm"
@@ -882,15 +922,6 @@ export default function Settings() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch
-                        checked={c.enabled !== false}
-                        onCheckedChange={(checked) => {
-                          updateComboMut.mutate(
-                            { id: c.id, data: { name: c.name, serviceIds: c.serviceIds as number[], discountPercent: Number(c.discountPercent), discountType: (c.discountType as "percent" | "value") ?? "percent", timeDiscountMinutes: c.timeDiscountMinutes ?? 0, enabled: checked } },
-                            { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
-                          );
-                        }}
-                      />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1047,11 +1078,20 @@ export default function Settings() {
       {/* Service Exclusions */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">Restrições de Serviços</CardTitle>
-            <CardDescription className="text-xs">
-              Impedir que certos serviços sejam agendados juntos
-            </CardDescription>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={formData.serviceRestrictionsEnabled}
+              onCheckedChange={(v) => {
+                setFormData(prev => ({ ...prev, serviceRestrictionsEnabled: v }));
+                updateSettings.mutate({ data: { serviceRestrictionsEnabled: v } as any });
+              }}
+            />
+            <div>
+              <CardTitle className="text-base">Restrições de Serviços</CardTitle>
+              <CardDescription className="text-xs">
+                Impedir que certos serviços sejam agendados juntos
+              </CardDescription>
+            </div>
           </div>
           <Button
             size="sm"
@@ -1080,18 +1120,10 @@ export default function Settings() {
                 return (
                   <div key={idx} className="flex items-center justify-between border border-border rounded-lg px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium" style={{ opacity: pair.enabled ? 1 : 0.45 }}>{name1} + {name2}</p>
+                      <p className="text-sm font-medium">{name1} + {name2}</p>
                       <p className="text-xs text-muted-foreground">Não podem ser agendados juntos</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch
-                        checked={pair.enabled}
-                        onCheckedChange={(checked) => {
-                          const next = formData.serviceExclusions.map((p, i) => i === idx ? { ...p, enabled: checked } : p);
-                          setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                          updateSettings.mutate({ data: { serviceExclusions: next as any } });
-                        }}
-                      />
                       <Button
                         variant="ghost"
                         size="icon"

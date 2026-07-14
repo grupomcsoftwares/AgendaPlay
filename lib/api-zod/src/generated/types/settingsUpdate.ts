@@ -40,6 +40,10 @@ export interface SettingsUpdate {
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: number[][];
+  /** Se false, nenhum desconto por combo é aplicado. */
+  combosEnabled?: boolean;
+  /** Se false, as restrições de serviços são ignoradas. */
+  serviceRestrictionsEnabled?: boolean;
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsUpdateReceiptPrinterSize;
 }

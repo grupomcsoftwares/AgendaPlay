@@ -1104,6 +1104,8 @@ export const GetSettingsQueryParams = zod.object({
 export const getSettingsResponseLogoUrlMax = 3000000;
 
 export const getSettingsResponseReceiptPrinterSizeDefault = `80mm`;
+export const getSettingsResponseCombosEnabledDefault = true;
+export const getSettingsResponseServiceRestrictionsEnabledDefault = true;
 export const getSettingsResponseBookingEnabledDefault = true;
 
 export const GetSettingsResponse = zod.object({
@@ -1182,6 +1184,8 @@ export const GetSettingsResponse = zod.object({
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(getSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
+  "combosEnabled": zod.boolean().default(getSettingsResponseCombosEnabledDefault).describe('Se false, nenhum desconto por combo é aplicado.'),
+  "serviceRestrictionsEnabled": zod.boolean().default(getSettingsResponseServiceRestrictionsEnabledDefault).describe('Se false, as restrições de serviços são ignoradas.'),
   "bookingEnabled": zod.boolean().default(getSettingsResponseBookingEnabledDefault).describe('Se false, o link de agendamento fica desativado para clientes.')
 })
 
@@ -1267,12 +1271,16 @@ export const UpdateSettingsBody = zod.object({
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços'),
+  "combosEnabled": zod.boolean().optional().describe('Se false, nenhum desconto por combo é aplicado.'),
+  "serviceRestrictionsEnabled": zod.boolean().optional().describe('Se false, as restrições de serviços são ignoradas.'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsBodyReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.')
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
 
 export const updateSettingsResponseReceiptPrinterSizeDefault = `80mm`;
+export const updateSettingsResponseCombosEnabledDefault = true;
+export const updateSettingsResponseServiceRestrictionsEnabledDefault = true;
 export const updateSettingsResponseBookingEnabledDefault = true;
 
 export const UpdateSettingsResponse = zod.object({
@@ -1351,6 +1359,8 @@ export const UpdateSettingsResponse = zod.object({
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.array(zod.number())).optional().describe('Lista de combinações proibidas de serviços (ex: [[1,2]] = serviços 1 e 2 não podem ser agendados juntos)'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsResponseReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.'),
+  "combosEnabled": zod.boolean().default(updateSettingsResponseCombosEnabledDefault).describe('Se false, nenhum desconto por combo é aplicado.'),
+  "serviceRestrictionsEnabled": zod.boolean().default(updateSettingsResponseServiceRestrictionsEnabledDefault).describe('Se false, as restrições de serviços são ignoradas.'),
   "bookingEnabled": zod.boolean().default(updateSettingsResponseBookingEnabledDefault).describe('Se false, o link de agendamento fica desativado para clientes.')
 })
 

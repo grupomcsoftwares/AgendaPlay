@@ -50,6 +50,8 @@ export const settingsTable = pgTable("settings", {
   smartSlots: boolean("smart_slots").notNull().default(false),
   loyaltyConfig: jsonb("loyalty_config").$type<LoyaltyConfig>(),
   serviceExclusions: jsonb("service_exclusions").$type<ServiceExclusion[]>().default([]),
+  combosEnabled: boolean("combos_enabled").notNull().default(true),
+  serviceRestrictionsEnabled: boolean("service_restrictions_enabled").notNull().default(true),
   receiptPrinterSize: text("receipt_printer_size").notNull().default("80mm"),
   bookingEnabled: boolean("booking_enabled").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

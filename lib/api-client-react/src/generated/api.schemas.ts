@@ -503,6 +503,10 @@ export interface Settings {
   serviceExclusions?: number[][];
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsReceiptPrinterSize;
+  /** Se false, nenhum desconto por combo é aplicado. */
+  combosEnabled?: boolean;
+  /** Se false, as restrições de serviços são ignoradas. */
+  serviceRestrictionsEnabled?: boolean;
   /** Se false, o link de agendamento fica desativado para clientes. */
   bookingEnabled?: boolean;
 }
@@ -569,6 +573,10 @@ export interface SettingsUpdate {
   loyaltyConfig?: LoyaltyConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: number[][];
+  /** Se false, nenhum desconto por combo é aplicado. */
+  combosEnabled?: boolean;
+  /** Se false, as restrições de serviços são ignoradas. */
+  serviceRestrictionsEnabled?: boolean;
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsUpdateReceiptPrinterSize;
 }
