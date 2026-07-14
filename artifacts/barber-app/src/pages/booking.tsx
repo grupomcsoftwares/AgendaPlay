@@ -306,6 +306,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     if (!comboDiscounts || selectedServices.length < 2) return null;
     const selectedIds = formData.serviceIds;
     const matches = comboDiscounts.filter(c =>
+      c.enabled !== false &&
       (c.serviceIds as number[]).length >= 2 &&
       (c.serviceIds as number[]).every(id => selectedIds.includes(id))
     );
@@ -411,7 +412,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     setPickingBarber(false);
   };
 
-  const serviceExclusions = (settings?.serviceExclusions as number[][] | undefined) ?? [];
+  type ServiceExclusion = { services: [number, number]; enabled: boolean };
+  const serviceExclusions = ((settings?.serviceExclusions ?? []) as unknown[])
+    .map((item): ServiceExclusion =>
+      Array.isArray(item)
+        ? { services: [item[0], item[1]] as [number, number], enabled: true }
+        : item as ServiceExclusion
+    )
+    .filter(e => e.enabled !== false);
 
   const handleToggleService = (serviceId: number) => {
     setFormData(prev => {
@@ -424,8 +432,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       // Check if any currently selected service is excluded from this one
       const blockedBy = prev.serviceIds.find(selectedId =>
         serviceExclusions.some(pair =>
-          (pair[0] === selectedId && pair[1] === serviceId) ||
-          (pair[0] === serviceId && pair[1] === selectedId)
+          (pair.services[0] === selectedId && pair.services[1] === serviceId) ||
+          (pair.services[0] === serviceId && pair.services[1] === selectedId)
         )
       );
       if (blockedBy) {
@@ -764,8 +772,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 const redeemableWithPoints = canRedeemNow && (hasPaidServiceInCart || isSelected);
                 const isBlocked = !isSelected && serviceExclusions.some(pair =>
                   formData.serviceIds.some(selectedId =>
-                    (pair[0] === selectedId && pair[1] === service.id) ||
-                    (pair[0] === service.id && pair[1] === selectedId)
+                    (pair.services[0] === selectedId && pair.services[1] === service.id) ||
+                    (pair.services[0] === service.id && pair.services[1] === selectedId)
                   )
                 );
                 return (

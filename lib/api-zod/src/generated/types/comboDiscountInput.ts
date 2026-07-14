@@ -14,4 +14,6 @@ export interface ComboDiscountInput {
   discountType: ComboDiscountInputDiscountType;
   /** Economia de tempo em minutos ao combinar serviços (ex: 5) */
   timeDiscountMinutes?: number;
+  /** Se o combo está ativo (padrão true) */
+  enabled?: boolean;
 }

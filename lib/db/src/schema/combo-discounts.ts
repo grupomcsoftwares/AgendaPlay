@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, jsonb, numeric, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, jsonb, numeric, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -10,6 +10,7 @@ export const comboDiscountsTable = pgTable("combo_discounts", {
   discountPercent: numeric("discount_percent", { precision: 5, scale: 2 }).notNull().default("0"),
   discountType: text("discount_type").$type<"percent" | "value">().notNull().default("percent"),
   timeDiscountMinutes: integer("time_discount_minutes").notNull().default(0),
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -1397,6 +1397,7 @@ export const ListComboDiscountsResponseItem = zod.object({
   "discountPercent": zod.number(),
   "discountType": zod.enum(['percent', 'value']),
   "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)'),
+  "enabled": zod.boolean().optional().describe('Se o combo está ativo (padrão true)'),
   "createdAt": zod.string().optional()
 })
 export const ListComboDiscountsResponse = zod.array(ListComboDiscountsResponseItem)
@@ -1410,7 +1411,8 @@ export const CreateComboDiscountBody = zod.object({
   "serviceIds": zod.array(zod.number()),
   "discountPercent": zod.number(),
   "discountType": zod.enum(['percent', 'value']),
-  "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)')
+  "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)'),
+  "enabled": zod.boolean().optional().describe('Se o combo está ativo (padrão true)')
 })
 
 
@@ -1426,7 +1428,8 @@ export const UpdateComboDiscountBody = zod.object({
   "serviceIds": zod.array(zod.number()),
   "discountPercent": zod.number(),
   "discountType": zod.enum(['percent', 'value']),
-  "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)')
+  "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)'),
+  "enabled": zod.boolean().optional().describe('Se o combo está ativo (padrão true)')
 })
 
 export const UpdateComboDiscountResponse = zod.object({
@@ -1436,6 +1439,7 @@ export const UpdateComboDiscountResponse = zod.object({
   "discountPercent": zod.number(),
   "discountType": zod.enum(['percent', 'value']),
   "timeDiscountMinutes": zod.number().optional().describe('Economia de tempo em minutos ao combinar serviços (ex: 5)'),
+  "enabled": zod.boolean().optional().describe('Se o combo está ativo (padrão true)'),
   "createdAt": zod.string().optional()
 })
 

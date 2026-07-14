@@ -11,7 +11,7 @@ function resolveShop(req: Request): string | null {
 
 const router: IRouter = Router();
 
-function parseComboInput(body: unknown): { name: string; serviceIds: number[]; discountPercent: number; discountType: "percent" | "value"; timeDiscountMinutes: number } | null {
+function parseComboInput(body: unknown): { name: string; serviceIds: number[]; discountPercent: number; discountType: "percent" | "value"; timeDiscountMinutes: number; enabled: boolean } | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
   if (!Array.isArray(b.serviceIds) || b.serviceIds.length < 2) return null;
@@ -22,7 +22,8 @@ function parseComboInput(body: unknown): { name: string; serviceIds: number[]; d
   const discountType = b.discountType === "value" ? "value" : "percent";
   const timeDiscountMinutes = typeof b.timeDiscountMinutes === "number" ? b.timeDiscountMinutes : parseInt(String(b.timeDiscountMinutes ?? "0"), 10);
   const name = typeof b.name === "string" ? b.name.trim() : "";
-  return { name, serviceIds, discountPercent, discountType, timeDiscountMinutes: Number.isNaN(timeDiscountMinutes) ? 0 : Math.max(0, timeDiscountMinutes) };
+  const enabled = b.enabled === false ? false : true;
+  return { name, serviceIds, discountPercent, discountType, timeDiscountMinutes: Number.isNaN(timeDiscountMinutes) ? 0 : Math.max(0, timeDiscountMinutes), enabled };
 }
 
 function parseId(params: unknown): number | null {
@@ -69,6 +70,7 @@ router.post("/combo-discounts", requireAuth, async (req, res): Promise<void> => 
     discountPercent: String(input.discountPercent),
     discountType: input.discountType,
     timeDiscountMinutes: input.timeDiscountMinutes,
+    enabled: input.enabled,
   }).returning();
   res.status(201).json(formatCombo(created));
 });
@@ -93,6 +95,7 @@ router.patch("/combo-discounts/:id", requireAuth, async (req, res): Promise<void
       discountPercent: String(input.discountPercent),
       discountType: input.discountType,
       timeDiscountMinutes: input.timeDiscountMinutes,
+      enabled: input.enabled,
     })
     .where(and(eq(comboDiscountsTable.id, id), eq(comboDiscountsTable.userId, userId)))
     .returning();

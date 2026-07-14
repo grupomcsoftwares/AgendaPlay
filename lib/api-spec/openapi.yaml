@@ -1959,6 +1959,9 @@ components:
         timeDiscountMinutes:
           type: integer
           description: "Economia de tempo em minutos ao combinar serviços (ex: 5)"
+        enabled:
+          type: boolean
+          description: "Se o combo está ativo (padrão true)"
         createdAt:
           type: string
 
@@ -1980,3 +1983,6 @@ components:
         timeDiscountMinutes:
           type: integer
           description: "Economia de tempo em minutos ao combinar serviços (ex: 5)"
+        enabled:
+          type: boolean
+          description: "Se o combo está ativo (padrão true)"

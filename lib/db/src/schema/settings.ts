@@ -2,6 +2,8 @@ import { pgTable, serial, text, timestamp, jsonb, boolean, integer } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export type ServiceExclusion = { services: [number, number]; enabled: boolean };
+
 export type LoyaltyConfig = {
   enabled: boolean;
   pointsPerReal: number;
@@ -47,7 +49,7 @@ export const settingsTable = pgTable("settings", {
   slotIntervalMinutes: integer("slot_interval_minutes").notNull().default(15),
   smartSlots: boolean("smart_slots").notNull().default(false),
   loyaltyConfig: jsonb("loyalty_config").$type<LoyaltyConfig>(),
-  serviceExclusions: jsonb("service_exclusions").$type<number[][]>().default([]),
+  serviceExclusions: jsonb("service_exclusions").$type<ServiceExclusion[]>().default([]),
   receiptPrinterSize: text("receipt_printer_size").notNull().default("80mm"),
   bookingEnabled: boolean("booking_enabled").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

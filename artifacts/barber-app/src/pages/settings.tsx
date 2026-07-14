@@ -166,7 +166,7 @@ export default function Settings() {
     loyaltyEnabled: boolean;
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
-    serviceExclusions: number[][];
+    serviceExclusions: { services: [number, number]; enabled: boolean }[];
     receiptPrinterSize: "50mm" | "58mm" | "80mm" | "A4";
     bookingEnabled: boolean;
   }>({
@@ -223,7 +223,11 @@ export default function Settings() {
         loyaltyEnabled: lc?.enabled ?? false,
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
-        serviceExclusions: (settings.serviceExclusions as number[][] | undefined) ?? [],
+        serviceExclusions: ((settings.serviceExclusions ?? []) as unknown[]).map(item =>
+          Array.isArray(item)
+            ? { services: [item[0], item[1]] as [number, number], enabled: true }
+            : item as { services: [number, number]; enabled: boolean }
+        ),
         receiptPrinterSize: ((settings as any).receiptPrinterSize as "50mm" | "58mm" | "80mm" | "A4") || "80mm",
         bookingEnabled: (settings as any).bookingEnabled ?? true,
       });
@@ -251,6 +255,7 @@ export default function Settings() {
             pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
           },
           receiptPrinterSize: formData.receiptPrinterSize,
+          serviceExclusions: formData.serviceExclusions as any,
         } },
         {
           onSuccess: (saved) => {
@@ -876,7 +881,16 @@ export default function Settings() {
                         {(c.timeDiscountMinutes ?? 0) > 0 ? ` · Economia de ${c.timeDiscountMinutes} min` : ""}
                       </p>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={c.enabled !== false}
+                        onCheckedChange={(checked) => {
+                          updateComboMut.mutate(
+                            { id: c.id, data: { name: c.name, serviceIds: c.serviceIds as number[], discountPercent: Number(c.discountPercent), discountType: (c.discountType as "percent" | "value") ?? "percent", timeDiscountMinutes: c.timeDiscountMinutes ?? 0, enabled: checked } },
+                            { onSuccess: () => queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() }) },
+                          );
+                        }}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1059,28 +1073,38 @@ export default function Settings() {
           ) : (
             <div className="space-y-2">
               {formData.serviceExclusions.map((pair, idx) => {
-                const s1 = services?.find(s => s.id === pair[0]);
-                const s2 = services?.find(s => s.id === pair[1]);
-                const name1 = s1?.name || `#${pair[0]}`;
-                const name2 = s2?.name || `#${pair[1]}`;
+                const s1 = services?.find(s => s.id === pair.services[0]);
+                const s2 = services?.find(s => s.id === pair.services[1]);
+                const name1 = s1?.name || `#${pair.services[0]}`;
+                const name2 = s2?.name || `#${pair.services[1]}`;
                 return (
                   <div key={idx} className="flex items-center justify-between border border-border rounded-lg px-4 py-3">
                     <div>
-                      <p className="text-sm font-medium">{name1} + {name2}</p>
+                      <p className="text-sm font-medium" style={{ opacity: pair.enabled ? 1 : 0.45 }}>{name1} + {name2}</p>
                       <p className="text-xs text-muted-foreground">Não podem ser agendados juntos</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => {
-                        const next = formData.serviceExclusions.filter((_, i) => i !== idx);
-                        setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                        updateSettings.mutate({ data: { serviceExclusions: next } });
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={pair.enabled}
+                        onCheckedChange={(checked) => {
+                          const next = formData.serviceExclusions.map((p, i) => i === idx ? { ...p, enabled: checked } : p);
+                          setFormData(prev => ({ ...prev, serviceExclusions: next }));
+                          updateSettings.mutate({ data: { serviceExclusions: next as any } });
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          const next = formData.serviceExclusions.filter((_, i) => i !== idx);
+                          setFormData(prev => ({ ...prev, serviceExclusions: next }));
+                          updateSettings.mutate({ data: { serviceExclusions: next as any } });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -1138,9 +1162,11 @@ export default function Settings() {
                       toast({ title: "Selecione 2 serviços diferentes", variant: "destructive" });
                       return;
                     }
-                    const newPair = [Math.min(exclusionForm.id1, exclusionForm.id2), Math.max(exclusionForm.id1, exclusionForm.id2)];
+                    const s0 = Math.min(exclusionForm.id1, exclusionForm.id2);
+                    const s1 = Math.max(exclusionForm.id1, exclusionForm.id2);
+                    const newPair = { services: [s0, s1] as [number, number], enabled: true };
                     const exists = formData.serviceExclusions.some(
-                      p => p[0] === newPair[0] && p[1] === newPair[1]
+                      p => p.services[0] === s0 && p.services[1] === s1
                     );
                     if (exists) {
                       toast({ title: "Essa restrição já existe", variant: "destructive" });
@@ -1148,7 +1174,7 @@ export default function Settings() {
                     }
                     const next = [...formData.serviceExclusions, newPair];
                     setFormData(prev => ({ ...prev, serviceExclusions: next }));
-                    updateSettings.mutate({ data: { serviceExclusions: next } });
+                    updateSettings.mutate({ data: { serviceExclusions: next as any } });
                     setExclusionOpen(false);
                     setExclusionForm({ id1: null, id2: null });
                     toast({ title: "Restrição adicionada" });
