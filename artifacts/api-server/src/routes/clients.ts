@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, and, inArray } from "drizzle-orm";
-import { db, clientsTable, appointmentsTable, queueTable } from "@workspace/db";
+import { db, clientsTable, appointmentsTable, queueTable, loyaltyPointsTable } from "@workspace/db";
 import {
   ListClientsQueryParams,
   CreateClientBody,
@@ -132,6 +132,12 @@ router.delete("/clients/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Client not found" });
     return;
   }
+  // Delete loyalty points so a re-registered client starts fresh
+  await db.delete(loyaltyPointsTable)
+    .where(and(
+      eq(loyaltyPointsTable.userId, userId),
+      eq(loyaltyPointsTable.clientPhone, client.phone),
+    ));
   res.sendStatus(204);
 });
 
