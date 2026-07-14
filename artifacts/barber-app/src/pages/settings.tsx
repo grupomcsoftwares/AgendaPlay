@@ -240,41 +240,6 @@ export default function Settings() {
     }
   }, [settings]);
 
-  // Silent auto-save: saves in the background after 800ms of inactivity
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!initializedRef.current) return;
-    // Require at least one payment method to be active before saving
-    if (!formData.paymentEnableNow && !formData.paymentEnableOnSite) {
-      return;
-    }
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      updateSettings.mutate(
-        { data: {
-          ...formData,
-          logoUrl: formData.logoUrl || null,
-          pixKey: formData.pixKey || null,
-          loyaltyConfig: {
-            enabled: formData.loyaltyEnabled,
-            pointsPerReal: formData.loyaltyPointsPerReal,
-            pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
-          },
-          receiptPrinterSize: formData.receiptPrinterSize,
-          serviceExclusions: formData.serviceExclusions,
-        } },
-        {
-          onSuccess: (saved) => {
-            queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
-            queryClient.setQueryData(getGetSettingsQueryKey(), saved);
-          },
-        }
-      );
-    }, 800);
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, [formData, updateSettings, queryClient]);
 
   const updateDay = (key: DayKey, patch: Partial<DaySchedule>) => {
     setFormData((prev) => ({
