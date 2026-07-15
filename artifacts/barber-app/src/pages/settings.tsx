@@ -496,34 +496,9 @@ export default function Settings() {
 
   return (
     <div className="flex-1 p-4 md:p-6 bg-background overflow-auto space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Gerencie as informações da barbearia.</p>
-        </div>
-        <Button
-          onClick={() => {
-            updateSettings.mutate(
-              { data: {
-                ...formData,
-                logoUrl: formData.logoUrl || null,
-                pixKey: formData.pixKey || null,
-                loyaltyConfig: {
-                  enabled: formData.loyaltyEnabled,
-                  pointsPerReal: formData.loyaltyPointsPerReal,
-                  pointsPerRedemptionUnit: formData.loyaltyPointsPerRedemptionUnit,
-                },
-                receiptPrinterSize: formData.receiptPrinterSize,
-                serviceExclusions: formData.serviceExclusions,
-              } as any },
-              { onSuccess: () => toast({ title: "Configurações salvas!" }) }
-            );
-          }}
-          disabled={updateSettings.isPending}
-          className="shrink-0"
-        >
-          {updateSettings.isPending ? "Salvando…" : "Salvar"}
-        </Button>
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Configurações</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Gerencie as informações da barbearia.</p>
       </div>
 
       {/* ── Row 1: Info + Horário ─────────────────────────────── */}
