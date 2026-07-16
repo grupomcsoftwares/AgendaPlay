@@ -1063,7 +1063,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   style={{ scrollbarWidth: "thin" }}
                   data-testid="date-scroller"
                 >
-                  {Array.from({ length: 14 }).map((_, i) => {
+                  {Array.from({ length: (settings as any)?.maxBookingDays ?? 7 }).map((_, i) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const d = new Date(today);
