@@ -215,7 +215,8 @@ export default function Appointments() {
   const dayOptions = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    return Array.from({ length: 14 }, (_, i) => {
+    const days = (settings as any)?.maxBookingDays ?? 7;
+    return Array.from({ length: days }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
