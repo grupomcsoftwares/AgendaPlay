@@ -13,6 +13,8 @@ import {
   getListServicesQueryKey,
   useListClients,
   getListClientsQueryKey,
+  useListBarbers,
+  getListBarbersQueryKey,
   useGetAvailability,
   getGetAvailabilityQueryKey,
   getGetDashboardSummaryQueryKey,
@@ -37,7 +39,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
-const INITIAL_FORM = { clientId: "new", clientName: "", serviceIds: [] as string[], time: "" };
+const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", serviceIds: [] as string[], time: "", barberId: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
@@ -92,6 +94,7 @@ export default function Appointments() {
       : `${format(dateStart, "dd/MM/yyyy")} - ${format(dateEnd, "dd/MM/yyyy")}`;
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
+  const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
 
   const createAppointment = useCreateAppointment();
@@ -287,11 +290,16 @@ export default function Appointments() {
     if (formData.clientId !== "new") {
       const client = clients?.find((c) => c.id.toString() === formData.clientId);
       if (client) cName = client.name;
+    } else {
+      const last = formData.clientLastName.trim();
+      if (last) cName = `${formData.clientName.trim()} ${last}`;
     }
 
     // Fixed America/Sao_Paulo offset (UTC-3) — matches the server's TZ assumption
     // and mirrors the public booking page so admin and public bookings line up.
     const scheduledAt = new Date(`${formDateStr}T${formData.time}:00-03:00`).toISOString();
+
+    const selectedBarber = barbers?.find((b) => b.id.toString() === formData.barberId);
 
     createAppointment.mutate(
       { data: {
@@ -302,6 +310,8 @@ export default function Appointments() {
         servicePrice: combinedPrice,
         serviceDuration: combinedDuration,
         scheduledAt,
+        barberId: selectedBarber ? selectedBarber.id : undefined,
+        barberName: selectedBarber ? selectedBarber.name : undefined,
       }},
       {
         onSuccess: () => {
@@ -597,13 +607,25 @@ export default function Appointments() {
                 </div>
 
                 {formData.clientId === "new" && (
-                  <div className="space-y-2">
-                    <Label>Nome do Cliente</Label>
-                    <Input
-                      value={formData.clientName}
-                      onChange={e => setFormData({...formData, clientName: e.target.value})}
-                      data-testid="input-client-name"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Nome</Label>
+                      <Input
+                        placeholder="Nome"
+                        value={formData.clientName}
+                        onChange={e => setFormData({...formData, clientName: e.target.value})}
+                        data-testid="input-client-name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Sobrenome</Label>
+                      <Input
+                        placeholder="Sobrenome"
+                        value={formData.clientLastName}
+                        onChange={e => setFormData({...formData, clientLastName: e.target.value})}
+                        data-testid="input-client-last-name"
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -649,6 +671,37 @@ export default function Appointments() {
                     })}
                   </div>
                 </div>
+
+                {barbers && barbers.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Barbeiro</Label>
+                    <div className="rounded-md border border-border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, barberId: "" })}
+                        className={cn(
+                          "flex w-full items-center px-3 py-2.5 text-sm transition-colors border-b border-border",
+                          formData.barberId === "" ? "bg-amber-500/10 font-medium" : "hover:bg-muted/50"
+                        )}
+                      >
+                        Sem preferência
+                      </button>
+                      {barbers.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, barberId: b.id.toString() })}
+                          className={cn(
+                            "flex w-full items-center px-3 py-2.5 text-sm transition-colors border-b border-border last:border-b-0",
+                            formData.barberId === b.id.toString() ? "bg-amber-500/10 font-medium" : "hover:bg-muted/50"
+                          )}
+                        >
+                          {b.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>Horário disponível</Label>
