@@ -219,7 +219,7 @@ export default function Settings() {
         paymentEnableNow: settings.paymentEnableNow ?? false,
         paymentEnableOnSite: settings.paymentEnableOnSite ?? true,
         pixKey: settings.pixKey || "",
-        maxBookingDays: settings.maxBookingDays ?? 30,
+        maxBookingDays: (() => { const v = settings.maxBookingDays ?? 30; const opts = [7, 15, 30, 60, 90]; return opts.includes(v) ? v : (opts.find(o => o >= v) ?? 90); })(),
         minAdvanceMinutes: settings.minAdvanceMinutes ?? 0,
         minCancelMinutes: settings.minCancelMinutes ?? 0,
         slotIntervalMinutes: settings.slotIntervalMinutes ?? 15,
