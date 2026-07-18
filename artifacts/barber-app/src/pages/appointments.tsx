@@ -680,16 +680,6 @@ export default function Appointments() {
                   <div className="space-y-2">
                     <Label>Barbeiro</Label>
                     <div className="rounded-md border border-border overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, barberId: "" })}
-                        className={cn(
-                          "flex w-full items-center px-3 py-2.5 text-sm transition-colors border-b border-border",
-                          formData.barberId === "" ? "bg-amber-500/10 font-medium" : "hover:bg-muted/50"
-                        )}
-                      >
-                        Sem preferência
-                      </button>
                       {barbers.map((b) => (
                         <button
                           key={b.id}
