@@ -279,6 +279,10 @@ export default function Appointments() {
       setFormData(INITIAL_FORM);
     } else {
       setFormDate(new Date());
+      // Auto-select when there is exactly one barber
+      if (barbers && barbers.length === 1) {
+        setFormData((prev) => ({ ...prev, barberId: barbers[0]!.id.toString() }));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreateOpen]);
