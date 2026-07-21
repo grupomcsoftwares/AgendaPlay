@@ -370,6 +370,18 @@ export default function CancelBooking() {
           </>
         )}
 
+        {!cancelled && !locked && pushState === "idle" && (
+          <button
+            type="button"
+            onClick={() => handleEnableNotifications(false)}
+            className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm font-semibold"
+            style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.5)", color: AMBER, cursor: "pointer" }}
+          >
+            <Bell className="w-4 h-4" />
+            Ativar lembrete 15 min antes
+          </button>
+        )}
+
         <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</span>
