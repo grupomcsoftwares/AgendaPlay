@@ -239,14 +239,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             } catch { /* ignore */ }
           }
           setConfirmed(true);
-          window.setTimeout(() => {
-            if (adminUser) {
-              setLocation("/appointments");
-            } else if (created?.cancelToken) {
-              const shopParam = shopId ? `&shopId=${shopId}` : "";
-              setLocation(`/agendamento/${created.cancelToken}?novo=1${shopParam}`);
-            }
-          }, 2200);
         },
         onError: (err: any) => {
           const msg = err?.response?.data?.error || err?.message || "Erro ao confirmar agendamento";
@@ -1467,33 +1459,10 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               {/* PIX instructions when "pay now" is selected */}
               {formData.paymentMethod === "now" && pixKey && (
                 <div
-                  className="rounded-2xl p-5 space-y-4"
+                  className="rounded-2xl p-4"
                   style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(38 88% 55% / 0.3)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: AMBER }}>Pague via Pix antes de confirmar</p>
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="p-2 bg-white rounded-xl">
-                      <QRCodeSVG value={pixKey} size={160} />
-                    </div>
-                    <div className="w-full space-y-1">
-                      <p className="text-xs text-muted-foreground text-center">Ou copie a chave Pix:</p>
-                      <div
-                        className="flex items-center gap-2 rounded-lg px-3 py-2"
-                        style={{ backgroundColor: "hsl(0 0% 11%)", border: "1px solid hsl(0 0% 18%)" }}
-                      >
-                        <span className="flex-1 text-sm font-mono truncate">{pixKey}</span>
-                        <button
-                          type="button"
-                          onClick={() => navigator.clipboard.writeText(pixKey)}
-                          className="shrink-0 p-1 rounded hover:opacity-70 transition-opacity"
-                          style={{ color: AMBER, background: "none", border: "none", cursor: "pointer" }}
-                          title="Copiar chave Pix"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-center" style={{ color: AMBER }}>O QR Code Pix será exibido após confirmar</p>
                 </div>
               )}
 
