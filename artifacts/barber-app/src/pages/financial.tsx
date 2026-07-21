@@ -245,7 +245,7 @@ export default function Financial() {
             <UserCheck className="h-5 w-5 text-primary" />
             Comissão por Barbeiro
           </CardTitle>
-          {summary?.commissionByBarber && summary.commissionByBarber.length > 0 && (
+          {summary?.commissionByBarber && summary.commissionByBarber.length > 1 && (
             <span className="text-sm text-muted-foreground">
               Total:{" "}
               <span className="font-semibold text-amber-400">
