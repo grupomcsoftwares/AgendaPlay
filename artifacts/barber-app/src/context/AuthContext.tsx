@@ -39,19 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
       if (res.ok) {
         let data = await res.json();
-        // If subscription is active but due date is missing, sync with Stripe once per session
-        const syncedThisSession = sessionStorage.getItem("stripe_synced") === "1";
-        if (data.hasActiveSubscription && data.subscriptionDaysLeft == null && !syncedThisSession) {
-          try {
-            sessionStorage.setItem("stripe_synced", "1");
-            await fetch(`${BASE}/api/stripe/sync-subscription`, { method: "POST", credentials: "include" });
-            // Cache-bust so we get fresh data after the sync, not a 304 cached response
-            const res2 = await fetch(`${BASE}/api/auth/me?_t=${Date.now()}`, { credentials: "include" });
-            if (res2.ok) data = await res2.json();
-          } catch {
-            // ignore sync failure, keep original data
-          }
-        }
+        // Server-side sync is now handled in /auth/me itself; no client-side sync needed.
         setUser(data);
       } else if (res.status === 401) {
         setUser(null);

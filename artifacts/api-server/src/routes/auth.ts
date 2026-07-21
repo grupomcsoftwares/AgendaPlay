@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
+import { getUncachableStripeClient } from "../stripeClient.js";
 
 export function generateSlug(name: string): string {
   return name
@@ -204,11 +205,39 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
   if (!user) {
     req.session.destroy(() => {});
     res.status(401).json({ error: "Não autenticado." });
     return;
+  }
+
+  // If the user has a Stripe subscription but no period-end date stored, try to
+  // fetch it from Stripe now so subscriptionDaysLeft is always populated.
+  if (user.stripeSubscriptionId && !user.stripeCurrentPeriodEnd && user.stripeCustomerId) {
+    try {
+      const stripe = await getUncachableStripeClient();
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        limit: 5,
+      });
+      if (subscriptions.data.length > 0) {
+        const sub = subscriptions.data[0]!;
+        const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
+          ? new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000)
+          : null;
+        if (periodEnd) {
+          await db.update(usersTable)
+            .set({ stripeCurrentPeriodEnd: periodEnd })
+            .where(eq(usersTable.id, user.id));
+          // Re-read the updated row so status reflects the new date
+          const [updated] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, user.id));
+          if (updated) user = updated;
+        }
+      }
+    } catch {
+      // Stripe unavailable — proceed with current data
+    }
   }
 
   const status = getAccountStatus(user);
