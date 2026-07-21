@@ -295,7 +295,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     [services, formData.serviceIds]
   );
 
-  const totalDurationRaw = selectedServices.reduce((acc, s) => redeemedServiceIds.includes(s.id) ? acc : acc + s.durationMinutes, 0);
+  const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
 
   // Pre-declare loyalty state for combo dependency
@@ -320,9 +320,30 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     })[0];
   }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw, useLoyaltyPoints]);
 
+  // Combo time discount also applies when using loyalty points (price stays via points, but time is shared)
+  const comboForTime = React.useMemo(() => {
+    if ((settings as any)?.combosEnabled === false) return null;
+    if (!comboDiscounts || selectedServices.length < 2) return null;
+    const selectedIds = formData.serviceIds;
+    const matches = comboDiscounts.filter(c =>
+      c.enabled !== false &&
+      (c.serviceIds as number[]).length >= 2 &&
+      (c.serviceIds as number[]).every(id => selectedIds.includes(id))
+    );
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => (b.timeDiscountMinutes ?? 0) - (a.timeDiscountMinutes ?? 0))[0];
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, settings]);
+
   // Combo time discount: e.g. corte 35 min + barba 25 min = 60 min; combo saves 5 min → 55 min
-  const comboTimeDiscount = appliedCombo?.timeDiscountMinutes ?? 0;
-  const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount);
+  // When loyalty points are used, still apply the time discount from the matching combo.
+  const comboTimeDiscount = useLoyaltyPoints
+    ? (comboForTime?.timeDiscountMinutes ?? 0)
+    : (appliedCombo?.timeDiscountMinutes ?? 0);
+  // Additionally, services fully redeemed with points are treated as zero-duration (barber does them in overlap).
+  const redeemedDuration = selectedServices
+    .filter(s => redeemedServiceIds.includes(s.id))
+    .reduce((acc, s) => acc + s.durationMinutes, 0);
+  const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount - redeemedDuration);
 
   // For percentage combos, apply the discount only to the services that are
   // part of the combo — not to every selected service. A fixed-value combo
