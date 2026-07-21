@@ -301,8 +301,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Pre-declare loyalty state for combo dependency
   const useLoyaltyPoints = redeemedServiceIds.length > 0;
 
-  const appliedCombo = React.useMemo(() => {
-    if (useLoyaltyPoints) return null;
+  // Single combo lookup — same sorting logic (highest price discount) regardless of loyalty points.
+  // Used for price discount only when NOT using points; always used for time discount.
+  const bestCombo = React.useMemo(() => {
     if ((settings as any)?.combosEnabled === false) return null;
     if (!comboDiscounts || selectedServices.length < 2) return null;
     const selectedIds = formData.serviceIds;
@@ -312,33 +313,18 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       (c.serviceIds as number[]).every(id => selectedIds.includes(id))
     );
     if (matches.length === 0) return null;
-    // Pick the combo with highest discount value
     return matches.sort((a, b) => {
       const va = a.discountType === "value" ? a.discountPercent : (totalPriceRaw * a.discountPercent) / 100;
       const vb = b.discountType === "value" ? b.discountPercent : (totalPriceRaw * b.discountPercent) / 100;
       return vb - va;
     })[0];
-  }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw, useLoyaltyPoints]);
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, totalPriceRaw, settings]);
 
-  // Combo time discount also applies when using loyalty points (price stays via points, but time is shared)
-  const comboForTime = React.useMemo(() => {
-    if ((settings as any)?.combosEnabled === false) return null;
-    if (!comboDiscounts || selectedServices.length < 2) return null;
-    const selectedIds = formData.serviceIds;
-    const matches = comboDiscounts.filter(c =>
-      c.enabled !== false &&
-      (c.serviceIds as number[]).length >= 2 &&
-      (c.serviceIds as number[]).every(id => selectedIds.includes(id))
-    );
-    if (matches.length === 0) return null;
-    return matches.sort((a, b) => (b.timeDiscountMinutes ?? 0) - (a.timeDiscountMinutes ?? 0))[0];
-  }, [comboDiscounts, formData.serviceIds, selectedServices.length, settings]);
+  // Price discount: only when not using loyalty points (can't stack combo + points)
+  const appliedCombo = useLoyaltyPoints ? null : bestCombo;
 
-  // Combo time discount: e.g. corte 35 min + barba 25 min = 60 min; combo saves 5 min → 55 min
-  // When loyalty points are used, still apply the time discount from the matching combo.
-  const comboTimeDiscount = useLoyaltyPoints
-    ? (comboForTime?.timeDiscountMinutes ?? 0)
-    : (appliedCombo?.timeDiscountMinutes ?? 0);
+  // Time discount: always identical to the normal path (uses bestCombo)
+  const comboTimeDiscount = bestCombo?.timeDiscountMinutes ?? 0;
   const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount);
 
   // For percentage combos, apply the discount only to the services that are
