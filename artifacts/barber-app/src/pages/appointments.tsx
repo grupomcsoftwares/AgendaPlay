@@ -157,6 +157,16 @@ export default function Appointments() {
     () => (services ?? []).filter((s) => editServiceIdsState.includes(s.id.toString())),
     [services, editServiceIdsState],
   );
+
+  // Service exclusion pairs — same logic as the public booking page.
+  type EditServiceExclusion = { services: [number, number]; enabled: boolean };
+  const editServiceExclusions = useMemo((): EditServiceExclusion[] => {
+    if ((settings as any)?.serviceRestrictionsEnabled === false) return [];
+    return ((settings?.serviceExclusions ?? []) as unknown[]).map((item): EditServiceExclusion => {
+      if (Array.isArray(item)) return { services: [item[0], item[1]] as [number, number], enabled: true };
+      return item as EditServiceExclusion;
+    }).filter(e => e.enabled !== false);
+  }, [settings]);
   const editCombinedName = editSelectedServices.map((s) => s.name).join(" + ");
   const editCombinedPriceRaw = editSelectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
   const editCombinedDurationRaw = editSelectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
@@ -1064,11 +1074,24 @@ export default function Appointments() {
                 <div className="grid grid-cols-2 gap-2">
                   {services.map((s) => {
                     const selected = editServiceIdsState.includes(s.id.toString());
+                    const blockedBy = !selected ? editServiceExclusions.find(pair =>
+                      editServiceIdsState.some(selectedId =>
+                        (pair.services[0].toString() === selectedId && pair.services[1] === s.id) ||
+                        (pair.services[1].toString() === selectedId && pair.services[0] === s.id)
+                      )
+                    ) : undefined;
+                    const isBlocked = !!blockedBy;
+                    const blockerName = isBlocked
+                      ? (services.find(x => x.id === blockedBy!.services.find(id => editServiceIdsState.includes(id.toString())))?.name ?? "outro serviço")
+                      : "";
                     return (
                       <button
                         key={s.id}
                         type="button"
+                        disabled={isBlocked}
+                        title={isBlocked ? `Incompatível com ${blockerName}` : undefined}
                         onClick={() => {
+                          if (isBlocked) return;
                           const next = selected
                             ? editServiceIdsState.filter((id) => id !== s.id.toString())
                             : [...editServiceIdsState, s.id.toString()];
@@ -1077,11 +1100,16 @@ export default function Appointments() {
                         }}
                         className={cn(
                           "rounded-md py-2 px-2 text-xs font-semibold border transition-colors text-left",
-                          selected ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-border hover:border-muted-foreground/40",
+                          selected
+                            ? "border-amber-500 bg-amber-500/10 text-amber-500"
+                            : isBlocked
+                            ? "border-red-900/60 bg-red-950/30 text-muted-foreground opacity-50 cursor-not-allowed"
+                            : "border-border hover:border-muted-foreground/40",
                         )}
                       >
                         <div className="font-semibold truncate">{s.name}</div>
                         <div className="text-[10px] text-muted-foreground">{s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(s.price)))}</div>
+                        {isBlocked && <div className="text-[10px] text-red-400 mt-0.5">Incompatível com {blockerName}</div>}
                       </button>
                     );
                   })}
