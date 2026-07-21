@@ -947,15 +947,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   className="rounded-xl p-3 space-y-1"
                   style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                 >
-                  {selectedServices.map(sv => (
-                    <div key={sv.id} className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1.5">
-                        <Scissors className="w-3 h-3" style={{ color: AMBER }} />
-                        <span className="font-medium">{sv.name}</span>
-                      </span>
-                      <span className="text-muted-foreground">{sv.durationMinutes} min · R$ {sv.price.toFixed(2).replace(".", ",")}</span>
-                    </div>
-                  ))}
+                  {selectedServices.map(sv => {
+                    const isFree = redeemedServiceIds.includes(sv.id);
+                    return (
+                      <div key={sv.id} className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5">
+                          <Scissors className="w-3 h-3" style={{ color: AMBER }} />
+                          <span className="font-medium">{sv.name}</span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          {sv.durationMinutes} min · {isFree
+                            ? <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>Grátis</span>
+                            : `R$ ${sv.price.toFixed(2).replace(".", ",")}`}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {appliedCombo && (
                     <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
                       <span className="text-muted-foreground">🎉 Desconto combo</span>
