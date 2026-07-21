@@ -231,6 +231,7 @@ router.get("/availability", async (req, res): Promise<void> => {
 
 router.post("/appointments", async (req, res): Promise<void> => {
   // shopId can come from session (admin booking) or body (public booking page)
+  const isAdminBooking = !!req.session?.userId;
   const shopId = req.session?.userId ?? (typeof req.body?.shopId === "string" ? req.body.shopId.trim() : "");
   if (!shopId) {
     res.status(400).json({ error: "shopId obrigatório" });
@@ -479,8 +480,9 @@ router.post("/appointments", async (req, res): Promise<void> => {
 
     // Credit earned points inside the same transaction (durable — if appointment
     // creation fails the whole tx rolls back, so points are never credited on failure).
+    // Points are only earned on client-initiated bookings (public link), not admin-panel bookings.
     let pointsEarned = 0;
-    if (loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
+    if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
       pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
       if (pointsEarned > 0) {
         await tx
