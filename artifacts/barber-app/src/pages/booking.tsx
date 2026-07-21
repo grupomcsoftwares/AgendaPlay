@@ -81,19 +81,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   useEffect(() => {
     if (!pendingToken) return;
     if (pendingError) {
+      // Appointment not found — clear token so the client can book again.
       localStorage.removeItem(storageKey);
       setPendingToken(null);
       return;
     }
     if (!pendingAppt) return;
-    const isActive = pendingAppt.status === "pending" || pendingAppt.status === "confirmed";
-    const isFuture = new Date(pendingAppt.scheduledAt) > new Date();
-    if (isActive && isFuture && !adminUser) {
-      const shopParam = shopId ? `?shopId=${shopId}` : "";
-      setLocation(`/agendamento/${pendingToken}${shopParam}`);
-    } else {
+    if (pendingAppt.status === "cancelled") {
+      // Cancelled — clear token so the client can make a new booking.
       localStorage.removeItem(storageKey);
       setPendingToken(null);
+      return;
+    }
+    // For any other status (pending, confirmed, in_progress, completed) always
+    // redirect the client to their appointment preview page.
+    if (!adminUser) {
+      const shopParam = shopId ? `?shopId=${shopId}` : "";
+      setLocation(`/agendamento/${pendingToken}${shopParam}`);
     }
   }, [pendingAppt, pendingError, pendingToken, storageKey, shopId, setLocation]);
   // ──────────────────────────────────────────────────────────────────────────
