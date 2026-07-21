@@ -50,13 +50,14 @@ const userCols = {
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
   stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+  subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
 
 const TRIAL_DAYS = 7;
 
-function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; stripeCurrentPeriodEnd: Date | null; maxBarbers?: number | null }) {
+function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; stripeCurrentPeriodEnd: Date | null; subscriptionExpiresAt?: Date | null; maxBarbers?: number | null }) {
   const trialStarted = new Date(user.trialStartedAt);
   const now = new Date();
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -64,16 +65,24 @@ function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: st
   const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
   const trialExpired = trialDaysLeft === 0;
 
-  const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
+  // Stripe period end takes priority; fall back to manually-set expiry date
+  const periodEnd = user.stripeCurrentPeriodEnd
+    ? new Date(user.stripeCurrentPeriodEnd)
+    : user.subscriptionExpiresAt
+      ? new Date(user.subscriptionExpiresAt)
+      : null;
+
   const daysUntilPeriodEnd = periodEnd
     ? Math.max(0, Math.floor((periodEnd.getTime() - now.getTime()) / msPerDay))
     : null;
 
+  const hasActiveSubscription = !!user.stripeSubscriptionId || !!user.subscriptionExpiresAt;
+
   return {
     trialDaysLeft,
     trialExpired,
-    hasActiveSubscription: !!user.stripeSubscriptionId,
-    canAccess: !trialExpired || !!user.stripeSubscriptionId,
+    hasActiveSubscription,
+    canAccess: !trialExpired || hasActiveSubscription,
     maxBarbers: user.maxBarbers ?? null,
     subscriptionDueDate: periodEnd?.toISOString() ?? null,
     subscriptionDaysLeft: daysUntilPeriodEnd,

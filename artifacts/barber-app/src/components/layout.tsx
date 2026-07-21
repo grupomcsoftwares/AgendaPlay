@@ -141,17 +141,27 @@ function UserFooter({
     <div className="border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
       {subscriptionDaysLeft !== null && (
         <div
-          className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center gap-2"
+          className="mx-3 mt-3 px-3 py-2 rounded-lg space-y-0.5"
           style={{ backgroundColor: subBg, border: `1px solid ${subColor}30` }}
         >
-          <CreditCard className="h-3.5 w-3.5 flex-shrink-0" style={{ color: subColor }} />
-          <span className="text-xs font-medium" style={{ color: subColor }}>
-            {subscriptionDaysLeft === 0
-              ? "Mensalidade vence hoje"
-              : subscriptionDaysLeft === 1
-                ? "1 dia até o vencimento"
-                : `${subscriptionDaysLeft} dias até o vencimento`}
-          </span>
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-3.5 w-3.5 flex-shrink-0" style={{ color: subColor }} />
+            <span className="text-xs font-semibold" style={{ color: subColor }}>
+              {subscriptionDaysLeft === 0
+                ? "Mensalidade vence hoje!"
+                : subscriptionDaysLeft === 1
+                  ? "Vence amanhã!"
+                  : `${subscriptionDaysLeft} dias até o vencimento`}
+            </span>
+          </div>
+          {subscriptionDueDate && (
+            <p className="text-[11px] pl-5" style={{ color: `${subColor}CC` }}>
+              Próximo pagamento:{" "}
+              {new Date(subscriptionDueDate).toLocaleDateString("pt-BR", {
+                day: "2-digit", month: "2-digit", year: "numeric",
+              })}
+            </p>
+          )}
         </div>
       )}
       {showTrialBanner && (
