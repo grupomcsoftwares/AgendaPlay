@@ -55,9 +55,10 @@ router.post("/push/trigger-reminders", async (_req, res) => {
   }
   try {
     const now = new Date();
-    const windowStart = new Date(now.getTime() + 14 * 60 * 1000);
-    const windowEnd   = new Date(now.getTime() + 16 * 60 * 1000);
+    const nowMs = now.getTime();
 
+    // Fetch subscriptions that still have at least one reminder to send
+    const { or } = await import("drizzle-orm");
     const rows = await db
       .select({
         id:              pushSubscriptionsTable.id,
@@ -66,41 +67,70 @@ router.post("/push/trigger-reminders", async (_req, res) => {
         p256dh:          pushSubscriptionsTable.p256dh,
         auth:            pushSubscriptionsTable.auth,
         cancelToken:     pushSubscriptionsTable.cancelToken,
-        clientName:      appointmentsTable.clientName,
+        notify15Sent:    pushSubscriptionsTable.notify15Sent,
+        notify10Sent:    pushSubscriptionsTable.notify10Sent,
+        notify5Sent:     pushSubscriptionsTable.notify5Sent,
         serviceName:     appointmentsTable.serviceName,
         servicePrice:    appointmentsTable.servicePrice,
         serviceDuration: appointmentsTable.serviceDuration,
-        barberName:      appointmentsTable.barberName,
         shopName:        settingsTable.barbershopName,
       })
       .from(pushSubscriptionsTable)
       .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
       .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
-      .where(eq(pushSubscriptionsTable.notify15Sent, false));
+      .where(
+        or(
+          eq(pushSubscriptionsTable.notify15Sent, false),
+          eq(pushSubscriptionsTable.notify10Sent, false),
+          eq(pushSubscriptionsTable.notify5Sent,  false),
+        )!
+      );
+
+    // Each reminder fires in a ±1 min window around the target offset
+    const windows = [
+      { minutesBefore: 15, sentField: "notify15Sent" as const, label: "15 minutos" },
+      { minutesBefore: 10, sentField: "notify10Sent" as const, label: "10 minutos" },
+      { minutesBefore:  5, sentField: "notify5Sent"  as const, label: "5 minutos"  },
+    ] as const;
 
     let sent = 0;
     for (const row of rows) {
-      const apptTime = new Date(row.scheduledAt).getTime();
-      if (apptTime < windowStart.getTime() || apptTime > windowEnd.getTime()) continue;
+      const apptMs = new Date(row.scheduledAt).getTime();
+      const diffMs = apptMs - nowMs; // positive = appointment is in the future
 
-      const apptHH     = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
+      const apptHH    = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
         hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
       });
-      const shopLabel  = row.shopName ?? "AgendaPlay";
-      const price      = row.servicePrice != null ? `R$ ${Number(row.servicePrice).toFixed(2).replace(".", ",")}` : "";
-      const duration   = row.serviceDuration ? `${row.serviceDuration} min` : "";
-      const title      = `\u23f0 ${shopLabel} \u2014 faltam 15 minutos!`;
-      const body       = `${row.serviceName} \u00b7 ${duration} \u00b7 ${price} \u00b7 ${apptHH}`;
+      const shopLabel = row.shopName ?? "AgendaPlay";
+      const price     = row.servicePrice != null ? `R$ ${Number(row.servicePrice).toFixed(2).replace(".", ",")}` : "";
+      const duration  = row.serviceDuration ? `${row.serviceDuration} min` : "";
 
-      try {
-        await webpush.sendNotification(
-          { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
-          JSON.stringify({ title, body, tag: `appt-${row.cancelToken}`, url: `/agendamento/${row.cancelToken}` }),
-        );
-        await db.update(pushSubscriptionsTable).set({ notify15Sent: true }).where(eq(pushSubscriptionsTable.id, row.id));
-        sent++;
-      } catch {
-        await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, row.id));
+      for (const w of windows) {
+        if (row[w.sentField]) continue; // already sent
+
+        const targetMs  = w.minutesBefore * 60 * 1000;
+        const windowMin = targetMs - 60 * 1000; // 1 min before target
+        const windowMax = targetMs + 60 * 1000; // 1 min after target
+
+        if (diffMs < windowMin || diffMs > windowMax) continue; // not in window yet
+
+        const title = `⏰ ${shopLabel} — faltam ${w.label}!`;
+        const body  = `${row.serviceName} · ${duration} · ${price} · ${apptHH}`;
+
+        try {
+          await webpush.sendNotification(
+            { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+            JSON.stringify({ title, body, tag: `appt-${row.cancelToken}-${w.minutesBefore}`, url: `/agendamento/${row.cancelToken}` }),
+          );
+          await db.update(pushSubscriptionsTable)
+            .set({ [w.sentField]: true })
+            .where(eq(pushSubscriptionsTable.id, row.id));
+          sent++;
+        } catch {
+          // Subscription expired or invalid — remove it
+          await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, row.id));
+          break; // no point trying other windows for a dead subscription
+        }
       }
     }
     res.json({ sent });

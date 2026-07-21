@@ -8,6 +8,8 @@ export const pushSubscriptionsTable = pgTable("push_subscriptions", {
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
   notify15Sent: boolean("notify_15_sent").notNull().default(false),
+  notify10Sent: boolean("notify_10_sent").notNull().default(false),
+  notify5Sent:  boolean("notify_5_sent").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
