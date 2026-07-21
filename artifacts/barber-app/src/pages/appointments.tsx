@@ -24,7 +24,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -406,6 +406,11 @@ export default function Appointments() {
       return <Badge variant="outline" className="text-violet-400 border-violet-400/20 bg-violet-400/10 gap-1"><span>Pix</span><span className="text-[10px] opacity-70">online</span></Badge>;
     }
     return <Badge variant="outline" className="text-muted-foreground border-border gap-1">Na barbearia</Badge>;
+  };
+
+  const extractClientNote = (notes: string | null | undefined): string => {
+    if (!notes) return "";
+    return notes.replace(/^Tel:[^.]*\.\s*/, "").trim();
   };
 
   return (
@@ -800,6 +805,12 @@ export default function Appointments() {
                   <div>
                     <p className="font-medium">{apt.clientName}</p>
                     <p className="text-sm text-muted-foreground">{apt.serviceName}{apt.barberName ? ` · ${apt.barberName}` : ""}</p>
+                    {extractClientNote(apt.notes) && (
+                      <p className="text-xs mt-1 flex items-start gap-1" style={{ color: "hsl(38 92% 58%)" }}>
+                        <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
+                        <span>{extractClientNote(apt.notes)}</span>
+                      </p>
+                    )}
                   </div>
                   {/* Row 3: price + payment + actions */}
                   <div className="flex items-center justify-between">
@@ -862,7 +873,15 @@ export default function Appointments() {
                         {format(new Date(apt.scheduledAt), "HH:mm")}
                       </TableCell>
                       <TableCell className="font-medium">{apt.clientName}</TableCell>
-                      <TableCell>{apt.serviceName}</TableCell>
+                      <TableCell>
+                        <span>{apt.serviceName}</span>
+                        {extractClientNote(apt.notes) && (
+                          <p className="text-xs mt-0.5 flex items-start gap-1" style={{ color: "hsl(38 92% 58%)" }}>
+                            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
+                            <span>{extractClientNote(apt.notes)}</span>
+                          </p>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium text-emerald-400 whitespace-nowrap">
                         {apt.servicePrice != null
                           ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(apt.servicePrice)))
