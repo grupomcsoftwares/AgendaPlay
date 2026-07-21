@@ -136,6 +136,40 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
 
+  // ── Push notification banner ────────────────────────────────────────────────
+  const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const [pushState, setPushState] = useState<"unknown" | "idle" | "subscribed" | "denied">("unknown");
+  const [pendingPushSub, setPendingPushSub] = useState<PushSubscriptionJSON | null>(null);
+
+  useEffect(() => {
+    if (adminUser) return; // no push prompt for admin
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) { setPushState("denied"); return; }
+    if (Notification.permission === "denied") { setPushState("denied"); return; }
+    navigator.serviceWorker.register("/sw.js").then((reg) =>
+      reg.pushManager.getSubscription().then((sub) => setPushState(sub ? "subscribed" : "idle"))
+    ).catch(() => setPushState("denied"));
+  }, [adminUser]);
+
+  const urlBase64ToUint8Array = (b64: string) => {
+    const padding = "=".repeat((4 - (b64.length % 4)) % 4);
+    const base64 = (b64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  };
+
+  const handleEnablePush = async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setPushState("denied"); return; }
+      const keyRes = await fetch(`${BASE}/api/push/vapid-public-key`);
+      const { key } = await keyRes.json() as { key: string };
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
+      setPendingPushSub(sub.toJSON());
+      setPushState("subscribed");
+    } catch { setPushState("idle"); }
+  };
+
   const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
 
   const [formData, setFormData] = useState<{
@@ -268,6 +302,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             try {
               localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, lastName: formData.lastName, phone: formData.phone }));
             } catch { /* ignore */ }
+          }
+          // Register push subscription (collected before booking) now that we have the cancelToken
+          if (pendingPushSub && created?.cancelToken && created?.scheduledAt) {
+            const json = pendingPushSub;
+            if (json.endpoint && json.keys?.p256dh && json.keys?.auth) {
+              fetch(`${BASE}/api/push/subscribe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  cancelToken: created.cancelToken,
+                  scheduledAt: created.scheduledAt,
+                  endpoint: json.endpoint,
+                  p256dh: json.keys.p256dh,
+                  auth: json.keys.auth,
+                }),
+              }).catch(() => {});
+            }
           }
           setConfirmed(true);
         },
@@ -1671,6 +1722,47 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               >
                 Usar pontos ⭐
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Push notification banner — shown when browser supports push but client hasn't subscribed */}
+      {pushState === "idle" && !adminUser && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <div
+            className="max-w-md mx-auto mx-4 rounded-2xl p-4 flex items-start gap-3 shadow-2xl"
+            style={{ backgroundColor: "hsl(0 0% 10%)", border: `1px solid ${AMBER}33`, margin: "0 1rem 0 1rem" }}
+          >
+            <span className="text-2xl mt-0.5 shrink-0">🔔</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground leading-snug">
+                Ative as notificações
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                Receba um aviso 15 minutos antes do seu horário.
+              </p>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={handleEnablePush}
+                  className="rounded-lg px-4 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: AMBER, color: "hsl(0 0% 8%)", border: "none", cursor: "pointer" }}
+                >
+                  Ativar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPushState("denied")}
+                  className="rounded-lg px-4 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: "hsl(0 0% 18%)", color: "hsl(0 0% 65%)", border: "none", cursor: "pointer" }}
+                >
+                  Agora não
+                </button>
+              </div>
             </div>
           </div>
         </div>
