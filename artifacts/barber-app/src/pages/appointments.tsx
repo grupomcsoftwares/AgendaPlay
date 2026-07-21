@@ -146,22 +146,29 @@ export default function Appointments() {
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editTime, setEditTime] = useState("");
   const [notifyTarget, setNotifyTarget] = useState<{ id: number; clientName: string; clientId: number | null; scheduledAt: string; serviceName: string } | null>(null);
-  const [editServiceIdState, setEditServiceIdState] = useState<number>(0);
+  const [editServiceIdsState, setEditServiceIdsState] = useState<string[]>([]);
   const [receiptApt, setReceiptApt] = useState<Appointment | null>(null);
   const editDateStr = format(editDate, "yyyy-MM-dd");
-  // Use the selected service in the edit modal, falling back to the original
-  const effectiveEditServiceId = editServiceIdState > 0 ? editServiceIdState : (editTarget?.serviceId ?? 0);
-  const editServiceDuration = editTarget?.serviceDuration ?? 0;
-  // If the appointment has a serviceId, use it; otherwise use its stored duration
-  const editAvailabilityParams = effectiveEditServiceId > 0
-    ? { date: editDateStr, serviceId: effectiveEditServiceId }
-    : { date: editDateStr, serviceDuration: editServiceDuration };
+
+  const editSelectedServices = useMemo(
+    () => (services ?? []).filter((s) => editServiceIdsState.includes(s.id.toString())),
+    [services, editServiceIdsState],
+  );
+  const editCombinedName = editSelectedServices.map((s) => s.name).join(" + ");
+  const editCombinedPrice = editSelectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
+  const editCombinedDuration = editSelectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+  const editAvailabilityParams = editSelectedServices.length === 1
+    ? { date: editDateStr, serviceId: editSelectedServices[0]!.id }
+    : editSelectedServices.length > 1
+      ? { date: editDateStr, serviceDuration: editCombinedDuration }
+      : { date: editDateStr, serviceDuration: editTarget?.serviceDuration ?? 0 };
   const { data: editAvailability, isFetching: editLoadingSlots } = useGetAvailability(
     editAvailabilityParams,
     {
       query: {
         queryKey: getGetAvailabilityQueryKey(editAvailabilityParams),
-        enabled: !!editTarget && (effectiveEditServiceId > 0 || editServiceDuration > 0),
+        enabled: !!editTarget && (editSelectedServices.length > 0 || (editTarget?.serviceDuration ?? 0) > 0),
       },
     },
   );
@@ -171,23 +178,25 @@ export default function Appointments() {
     setEditTarget(apt);
     setEditDate(d);
     setEditTime(format(d, "HH:mm"));
-    setEditServiceIdState(apt.serviceId ?? 0);
+    setEditServiceIdsState(apt.serviceId ? [apt.serviceId.toString()] : []);
   };
 
   const handleEdit = () => {
     if (!editTarget || !editTime) return;
     const scheduledAt = new Date(`${editDateStr}T${editTime}:00-03:00`).toISOString();
-    // Old date to invalidate its availability cache so the old slot frees up
     const oldDate = new Date(editTarget.scheduledAt).toISOString().split("T")[0];
     const serviceId = editTarget.serviceId ?? 0;
-    // If service changed, include the new service details
-    const selectedService = services?.find((s) => s.id === effectiveEditServiceId);
     const updateData: Parameters<typeof updateAppointment.mutate>[0]['data'] = { scheduledAt };
-    if (selectedService && effectiveEditServiceId !== serviceId) {
-      updateData.serviceId = selectedService.id;
-      updateData.serviceName = selectedService.name;
-      updateData.servicePrice = parseFloat(String(selectedService.price));
-      updateData.serviceDuration = selectedService.durationMinutes;
+    if (editSelectedServices.length > 0) {
+      const newServiceId = editSelectedServices.length === 1 ? editSelectedServices[0]!.id : null;
+      const nameChanged = editCombinedName !== editTarget.serviceName;
+      const idChanged = newServiceId !== editTarget.serviceId;
+      if (nameChanged || idChanged) {
+        updateData.serviceId = newServiceId;
+        updateData.serviceName = editCombinedName;
+        updateData.servicePrice = editCombinedPrice;
+        updateData.serviceDuration = editCombinedDuration;
+      }
     }
     updateAppointment.mutate(
       { id: editTarget.id, data: updateData },
@@ -983,18 +992,24 @@ export default function Appointments() {
               </div>
             </div>
 
-            {/* Service selector */}
+            {/* Service selector — multi-select */}
             {services && services.length > 0 && (
               <div className="space-y-2">
                 <Label>Serviço</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {services.map((s) => {
-                    const selected = effectiveEditServiceId === s.id;
+                    const selected = editServiceIdsState.includes(s.id.toString());
                     return (
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => { setEditServiceIdState(s.id); setEditTime(""); }}
+                        onClick={() => {
+                          const next = selected
+                            ? editServiceIdsState.filter((id) => id !== s.id.toString())
+                            : [...editServiceIdsState, s.id.toString()];
+                          setEditServiceIdsState(next);
+                          setEditTime("");
+                        }}
                         className={cn(
                           "rounded-md py-2 px-2 text-xs font-semibold border transition-colors text-left",
                           selected ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-border hover:border-muted-foreground/40",
@@ -1006,6 +1021,11 @@ export default function Appointments() {
                     );
                   })}
                 </div>
+                {editSelectedServices.length > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    Total: {editCombinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(editCombinedPrice)}
+                  </p>
+                )}
               </div>
             )}
 
