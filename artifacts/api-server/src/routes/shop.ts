@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt } from "drizzle-orm";
-import { db, usersTable, settingsTable, appointmentsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { db, usersTable, settingsTable, appointmentsTable, clientsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
@@ -26,6 +26,21 @@ function parseHHMM(s: string): number {
 }
 
 const router: IRouter = Router();
+
+// Static route must come before /b/:slug to avoid being caught by the dynamic param.
+router.get("/b/client", async (req, res): Promise<void> => {
+  const { phone, shopId } = req.query;
+  if (!phone || !shopId || typeof phone !== "string" || typeof shopId !== "string") {
+    res.json(null);
+    return;
+  }
+  const [client] = await db
+    .select({ name: clientsTable.name })
+    .from(clientsTable)
+    .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, phone)))
+    .limit(1);
+  res.json(client ?? null);
+});
 
 router.get("/b/:slug", async (req, res): Promise<void> => {
   const slug = String(req.params.slug ?? "").trim().toLowerCase();

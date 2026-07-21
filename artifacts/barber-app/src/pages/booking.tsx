@@ -197,6 +197,37 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     };
   });
 
+  // Sync client name from DB on mount — in case the barber edited the name in the panel.
+  // Only runs when the phone is already known from localStorage (returning client).
+  useEffect(() => {
+    const phone = formData.phone;
+    const sid = shopId;
+    if (!phone || !sid) return;
+    const params = new URLSearchParams({ phone, shopId: sid });
+    fetch(`/api/b/client?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then((client: { name: string } | null) => {
+        if (!client?.name) return;
+        const parts = client.name.trim().split(" ");
+        const first = parts[0] ?? "";
+        const last = parts.slice(1).join(" ");
+        setFormData(prev => {
+          if (prev.name === first && prev.lastName === last) return prev;
+          return { ...prev, name: first, lastName: last };
+        });
+        try {
+          const key = `barber_client_info_${sid}`;
+          const saved = localStorage.getItem(key);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            localStorage.setItem(key, JSON.stringify({ ...parsed, name: first, lastName: last }));
+          }
+        } catch { /* ignore */ }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleBook = () => {
     if (selectedServices.length === 0) return;
     const barber = formData.barberId
