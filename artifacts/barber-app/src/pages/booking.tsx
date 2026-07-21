@@ -95,7 +95,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     }
     // For any other status (pending, confirmed, in_progress, completed) always
     // redirect the client to their appointment preview page.
-    if (!adminUser) {
+    // Use shopIdProp (not adminUser) so public-link visitors are always redirected,
+    // even when an admin session cookie is present in the same browser.
+    if (!!shopIdProp) {
       const shopParam = shopId ? `?shopId=${shopId}` : "";
       setLocation(`/agendamento/${pendingToken}${shopParam}`);
     }
@@ -299,7 +301,8 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       }},
       {
         onSuccess: (created) => {
-          if (created?.cancelToken && !adminUser) {
+          // Save token on the public booking page (shopIdProp set), regardless of admin session.
+          if (created?.cancelToken && !!shopIdProp) {
             localStorage.setItem(storageKey, created.cancelToken);
             setConfirmedToken(created.cancelToken);
           }
@@ -440,13 +443,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   }, [useLoyaltyPoints, formData.usePlan]);
 
   // After booking confirmation, wait 2 s then navigate to the appointment preview.
+  // Falls back to localStorage in case confirmedToken state wasn't set.
   useEffect(() => {
-    if (!confirmed || !confirmedToken) return;
+    if (!confirmed) return;
+    const token = confirmedToken ?? localStorage.getItem(storageKey);
+    if (!token) return;
     const timer = setTimeout(() => {
-      window.location.href = `/agendamento/${confirmedToken}`;
+      setLocation(`/agendamento/${token}`);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [confirmed, confirmedToken]);
+  }, [confirmed, confirmedToken, storageKey, setLocation]);
   const loyaltyDiscountAmount = useLoyaltyPoints
     ? Math.min(
         loyaltyAvailableDiscount,
