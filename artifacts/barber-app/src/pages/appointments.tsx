@@ -20,6 +20,8 @@ import {
   getGetDashboardSummaryQueryKey,
   useGetSettings,
   getGetSettingsQueryKey,
+  useListComboDiscounts,
+  getListComboDiscountsQueryKey,
   ApiError,
   type Appointment,
 } from "@workspace/api-client-react";
@@ -96,6 +98,7 @@ export default function Appointments() {
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
   const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
+  const { data: comboDiscounts } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
 
   const createAppointment = useCreateAppointment();
   const updateAppointment = useUpdateAppointment();
@@ -155,8 +158,37 @@ export default function Appointments() {
     [services, editServiceIdsState],
   );
   const editCombinedName = editSelectedServices.map((s) => s.name).join(" + ");
-  const editCombinedPrice = editSelectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
-  const editCombinedDuration = editSelectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const editCombinedPriceRaw = editSelectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
+  const editCombinedDurationRaw = editSelectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+  const editBestCombo = useMemo(() => {
+    if ((settings as any)?.combosEnabled === false) return null;
+    if (!comboDiscounts || editSelectedServices.length < 2) return null;
+    const selectedIds = editServiceIdsState;
+    const matches = comboDiscounts.filter(c =>
+      c.enabled !== false &&
+      (c.serviceIds as number[]).length >= 2 &&
+      (c.serviceIds as number[]).every(id => selectedIds.includes(id.toString()))
+    );
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => {
+      const va = a.discountType === "value" ? Number(a.discountPercent) : (editCombinedPriceRaw * Number(a.discountPercent)) / 100;
+      const vb = b.discountType === "value" ? Number(b.discountPercent) : (editCombinedPriceRaw * Number(b.discountPercent)) / 100;
+      return vb - va;
+    })[0];
+  }, [comboDiscounts, editServiceIdsState, editSelectedServices.length, editCombinedPriceRaw, settings]);
+
+  const editComboServicesPrice = editBestCombo
+    ? editSelectedServices.filter(s => (editBestCombo.serviceIds as number[]).includes(s.id)).reduce((acc, s) => acc + parseFloat(String(s.price)), 0)
+    : 0;
+  const editComboDiscountAmount = editBestCombo
+    ? editBestCombo.discountType === "value"
+      ? Number(editBestCombo.discountPercent)
+      : (editComboServicesPrice * Number(editBestCombo.discountPercent)) / 100
+    : 0;
+  const editComboTimeDiscount = editBestCombo?.timeDiscountMinutes ?? 0;
+  const editCombinedPrice = Math.max(0, editCombinedPriceRaw - editComboDiscountAmount);
+  const editCombinedDuration = Math.max(5, editCombinedDurationRaw - editComboTimeDiscount);
 
   const editAvailabilityParams = editSelectedServices.length === 1
     ? { date: editDateStr, serviceId: editSelectedServices[0]!.id }
@@ -251,11 +283,39 @@ export default function Appointments() {
   );
 
   const combinedName = selectedServices.map((s) => s.name).join(" + ");
-  const combinedPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
-  const combinedDuration = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const combinedPriceRaw = selectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
+  const combinedDurationRaw = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
+
+  const bestCombo = useMemo(() => {
+    if ((settings as any)?.combosEnabled === false) return null;
+    if (!comboDiscounts || selectedServices.length < 2) return null;
+    const selectedIds = formData.serviceIds;
+    const matches = comboDiscounts.filter(c =>
+      c.enabled !== false &&
+      (c.serviceIds as number[]).length >= 2 &&
+      (c.serviceIds as number[]).every(id => selectedIds.includes(id.toString()))
+    );
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => {
+      const va = a.discountType === "value" ? Number(a.discountPercent) : (combinedPriceRaw * Number(a.discountPercent)) / 100;
+      const vb = b.discountType === "value" ? Number(b.discountPercent) : (combinedPriceRaw * Number(b.discountPercent)) / 100;
+      return vb - va;
+    })[0];
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, combinedPriceRaw, settings]);
+
+  const comboServicesPrice = bestCombo
+    ? selectedServices.filter(s => (bestCombo.serviceIds as number[]).includes(s.id)).reduce((acc, s) => acc + parseFloat(String(s.price)), 0)
+    : 0;
+  const comboDiscountAmount = bestCombo
+    ? bestCombo.discountType === "value"
+      ? Number(bestCombo.discountPercent)
+      : (comboServicesPrice * Number(bestCombo.discountPercent)) / 100
+    : 0;
+  const comboTimeDiscount = bestCombo?.timeDiscountMinutes ?? 0;
+  const combinedPrice = Math.max(0, combinedPriceRaw - comboDiscountAmount);
+  const combinedDuration = Math.max(5, combinedDurationRaw - comboTimeDiscount);
 
   const availabilityServiceId = selectedServices.length === 1 ? (selectedServices[0]?.id ?? 0) : 0;
-  const availabilityDuration = selectedServices.length > 1 ? combinedDuration : undefined;
   const availabilityEnabled = isCreateOpen && selectedServices.length > 0;
 
   const availabilityParams = selectedServices.length === 1
@@ -652,8 +712,13 @@ export default function Appointments() {
                   <div className="flex items-center justify-between">
                     <Label>Serviço</Label>
                     {selectedServices.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                         {combinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combinedPrice)}
+                        {bestCombo && (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "hsl(38 92% 58% / 0.15)", color: "hsl(38 92% 58%)" }}>
+                            combo
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -1022,8 +1087,13 @@ export default function Appointments() {
                   })}
                 </div>
                 {editSelectedServices.length > 1 && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     Total: {editCombinedDuration} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(editCombinedPrice)}
+                    {editBestCombo && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "hsl(38 92% 58% / 0.15)", color: "hsl(38 92% 58%)" }}>
+                        combo
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
