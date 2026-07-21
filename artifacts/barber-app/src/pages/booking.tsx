@@ -339,11 +339,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const comboTimeDiscount = useLoyaltyPoints
     ? (comboForTime?.timeDiscountMinutes ?? 0)
     : (appliedCombo?.timeDiscountMinutes ?? 0);
-  // Additionally, services fully redeemed with points are treated as zero-duration (barber does them in overlap).
-  const redeemedDuration = selectedServices
-    .filter(s => redeemedServiceIds.includes(s.id))
-    .reduce((acc, s) => acc + s.durationMinutes, 0);
-  const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount - redeemedDuration);
+  const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount);
 
   // For percentage combos, apply the discount only to the services that are
   // part of the combo — not to every selected service. A fixed-value combo
