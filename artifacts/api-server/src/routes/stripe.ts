@@ -166,10 +166,10 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
 
   try {
     const stripe = await getUncachableStripeClient();
+    // Check active and trialing; also fall back to "all" to find past_due etc.
     const subscriptions = await stripe.subscriptions.list({
       customer: user.stripeCustomerId,
-      status: "active",
-      limit: 1,
+      limit: 5,
     });
 
     if (subscriptions.data.length > 0) {

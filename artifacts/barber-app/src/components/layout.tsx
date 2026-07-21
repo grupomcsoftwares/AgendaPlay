@@ -115,6 +115,7 @@ function UserFooter({
   trialDaysLeft,
   trialColor,
   trialBg,
+  hasActiveSubscription,
   subscriptionDaysLeft,
   subscriptionDueDate,
   onLogout,
@@ -126,20 +127,20 @@ function UserFooter({
   trialDaysLeft: number | null;
   trialColor: string;
   trialBg: string;
+  hasActiveSubscription: boolean;
   subscriptionDaysLeft: number | null;
   subscriptionDueDate: string | null;
   onLogout: () => void;
 }) {
-  const subColor = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 3
-    ? "hsl(0 70% 55%)"
-    : "hsl(142 70% 45%)";
-  const subBg = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 3
-    ? "hsl(0 60% 10%)"
-    : "hsl(142 60% 10%)";
+  // urgent = vence em ≤3 dias; unknown = assinatura ativa mas sem data no sistema
+  const subUrgent = subscriptionDaysLeft !== null && subscriptionDaysLeft <= 3;
+  const subColor = subUrgent ? "hsl(0 70% 55%)" : "hsl(142 70% 45%)";
+  const subBg   = subUrgent ? "hsl(0 60% 10%)"  : "hsl(142 60% 10%)";
 
   return (
     <div className="border-t" style={{ borderColor: "hsl(var(--sidebar-border))" }}>
-      {subscriptionDaysLeft !== null && (
+      {/* Bloco de assinatura: mostra sempre que há assinatura ativa */}
+      {hasActiveSubscription && (
         <div
           className="mx-3 mt-3 px-3 py-2 rounded-lg space-y-0.5"
           style={{ backgroundColor: subBg, border: `1px solid ${subColor}30` }}
@@ -147,11 +148,13 @@ function UserFooter({
           <div className="flex items-center gap-2">
             <CreditCard className="h-3.5 w-3.5 flex-shrink-0" style={{ color: subColor }} />
             <span className="text-xs font-semibold" style={{ color: subColor }}>
-              {subscriptionDaysLeft === 0
-                ? "Mensalidade vence hoje!"
-                : subscriptionDaysLeft === 1
-                  ? "Vence amanhã!"
-                  : `${subscriptionDaysLeft} dias até o vencimento`}
+              {subscriptionDaysLeft === null
+                ? "Assinatura ativa"
+                : subscriptionDaysLeft === 0
+                  ? "Mensalidade vence hoje!"
+                  : subscriptionDaysLeft === 1
+                    ? "Vence amanhã!"
+                    : `${subscriptionDaysLeft} dias até o vencimento`}
             </span>
           </div>
           {subscriptionDueDate && (
@@ -370,6 +373,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     trialDaysLeft,
     trialColor,
     trialBg,
+    hasActiveSubscription: hasSubscription,
     subscriptionDaysLeft,
     subscriptionDueDate,
     onLogout: handleLogout,
