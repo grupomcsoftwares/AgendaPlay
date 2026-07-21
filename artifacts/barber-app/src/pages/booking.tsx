@@ -1198,13 +1198,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-bold">Quase lá!</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Adicione uma observação ou prossiga para o pagamento.
-                  </p>
-                </div>
-
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="notes" className="text-sm font-semibold">Observações (Opcional)</Label>
