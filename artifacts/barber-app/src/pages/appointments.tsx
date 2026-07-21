@@ -1261,82 +1261,98 @@ export default function Appointments() {
                 const el = document.getElementById("printable-receipt");
                 if (!el) return;
 
-                // Largura baseada no tamanho da impressora selecionado nas configurações
+                // Tamanho baseado na impressora selecionada nas configurações
                 const size = settings?.receiptPrinterSize ?? "80mm";
-                const sizeMap: Record<string, { popupW: number; bodyMaxW: number; padding: number; fontBase: number }> = {
-                  "50mm": { popupW: 180,  bodyMaxW: 172,  padding: 2,  fontBase: 10 },
-                  "58mm": { popupW: 220,  bodyMaxW: 212,  padding: 3,  fontBase: 11 },
-                  "80mm": { popupW: 380,  bodyMaxW: 300,  padding: 14, fontBase: 12 },
-                  "A4":   { popupW: 850,  bodyMaxW: 750,  padding: 24, fontBase: 14 },
-                };
-                const cfg = sizeMap[size] ?? sizeMap["80mm"];
 
-                const w = window.open("", "_blank", `width=${cfg.popupW},height=600`);
+                // pageSize  → valor exato para @page { size: ... } (crucial para impressoras térmicas)
+                // popupW    → largura da janela popup em px
+                // bodyW     → largura do corpo em mm (área imprimível = papel − margens)
+                // padMm     → padding lateral em mm
+                // fontBase  → tamanho base da fonte em pt
+                const sizeMap: Record<string, { pageSize: string; popupW: number; bodyW: number; padMm: number; fontBase: number }> = {
+                  "50mm": { pageSize: "50mm auto",  popupW: 210,  bodyW: 46, padMm: 2,  fontBase: 10 },
+                  "58mm": { pageSize: "58mm auto",  popupW: 240,  bodyW: 53, padMm: 2,  fontBase: 11 },
+                  "80mm": { pageSize: "80mm auto",  popupW: 330,  bodyW: 72, padMm: 4,  fontBase: 12 },
+                  "A4":   { pageSize: "A4",         popupW: 860,  bodyW: 190, padMm: 10, fontBase: 14 },
+                };
+                const cfg = sizeMap[size] ?? sizeMap["80mm"]!;
+
+                const w = window.open("", "_blank", `width=${cfg.popupW},height=700`);
                 if (!w) return;
                 w.document.write(`
                   <html>
                     <head>
                       <title>Comprovante</title>
                       <style>
-                        @page { size: auto; margin: 0; }
+                        /* ── Página: tamanho exato da bobina para o diálogo de impressão ── */
+                        @page {
+                          size: ${cfg.pageSize};
+                          margin: 0;
+                        }
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body {
                           font-family: system-ui, -apple-system, sans-serif;
-                          padding: ${cfg.padding}px;
-                          max-width: ${cfg.bodyMaxW}px;
-                          margin: 0 auto;
+                          width: ${cfg.bodyW}mm;
+                          padding: ${cfg.padMm}mm;
+                          /* padding-bottom extra garante papel suficiente para a guilhotina cortar */
+                          padding-bottom: ${size === "A4" ? "10mm" : "18mm"};
+                          margin: 0;
                           color: #000;
                           background: #fff;
-                          font-size: ${cfg.fontBase}px;
-                          line-height: 1.3;
+                          font-size: ${cfg.fontBase}pt;
+                          line-height: 1.35;
                           word-break: break-word;
                           overflow-wrap: break-word;
                           font-weight: 600;
                           -webkit-font-smoothing: antialiased;
                         }
-                        /* Tailwind overrides for copied HTML */
+                        /* Tailwind overrides para o HTML copiado */
                         .text-center { text-align: center; }
-                        .space-y-1 > * + * { margin-top: 4px; }
-                        .space-y-4 > * + * { margin-top: 16px; }
-                        .space-y-1\.5 > * + * { margin-top: 6px; }
+                        .space-y-1 > * + * { margin-top: 3px; }
+                        .space-y-4 > * + * { margin-top: 12px; }
+                        .space-y-1\\.5 > * + * { margin-top: 5px; }
                         .mx-auto { margin-left: auto; margin-right: auto; }
-                        .mb-1 { margin-bottom: 4px; }
-                        .mb-2 { margin-bottom: 8px; }
+                        .mb-1 { margin-bottom: 3px; }
+                        .mb-2 { margin-bottom: 6px; }
                         .font-bold { font-weight: 700; }
                         .font-semibold { font-weight: 700; }
                         .font-medium { font-weight: 700; }
                         .uppercase { text-transform: uppercase; }
-                        .tracking-wide { letter-spacing: 0.05em; }
-                        .text-sm { font-size: ${cfg.fontBase}px; }
-                        .text-xs { font-size: ${cfg.fontBase - 2}px; }
-                        .text-\[11px\] { font-size: ${Math.max(9, cfg.fontBase - 2)}px; }
-                        .text-lg { font-size: ${cfg.fontBase + 4}px; }
+                        .tracking-wide { letter-spacing: 0.04em; }
+                        .text-sm { font-size: ${cfg.fontBase}pt; }
+                        .text-xs { font-size: ${cfg.fontBase - 1}pt; }
+                        .text-\\[11px\\] { font-size: ${Math.max(7, cfg.fontBase - 2)}pt; }
+                        .text-lg { font-size: ${cfg.fontBase + 3}pt; }
                         .text-muted-foreground { color: #000; font-weight: 700; }
                         .text-right { text-align: right; }
-                        .max-w-\[60\%\] { max-width: 60%; word-break: break-word; overflow-wrap: break-word; }
+                        .max-w-\\[60\\%\\] { max-width: 60%; word-break: break-word; overflow-wrap: break-word; }
                         .flex { display: flex; }
                         .justify-between { justify-content: space-between; flex-wrap: wrap; gap: 2px; }
                         .items-center { align-items: center; }
                         .items-baseline { align-items: baseline; }
                         .border-t-2 { border-top: 2px dashed #000; }
-                        .border-t { border-top: 1px dashed #ccc; }
-                        .border-border { border-color: #ccc; }
-                        .pt-3 { padding-top: 12px; }
+                        .border-t { border-top: 1px dashed #aaa; }
+                        .border-border { border-color: #aaa; }
+                        .pt-3 { padding-top: 10px; }
                         .px-6 { padding-left: 0; padding-right: 0; }
                         .py-5 { padding-top: 0; padding-bottom: 0; }
-                        img { max-width: 100%; height: auto; max-height: 48px; display: block; margin: 0 auto 6px; object-fit: contain; }
-                        h3 { font-size: ${cfg.fontBase + 2}px; }
+                        img { max-width: 100%; height: auto; max-height: 44px; display: block; margin: 0 auto 5px; object-fit: contain; }
+                        h3 { font-size: ${cfg.fontBase + 1}pt; }
                         p { margin: 2px 0; }
-                        .total { font-size: ${cfg.fontBase + 4}px; font-weight: 700; }
                         @media print {
-                          @page { size: auto; margin: 0; }
-                          body { padding: ${Math.max(2, cfg.padding - 2)}px; margin: 0; max-width: 100%; width: 100%; }
+                          @page { size: ${cfg.pageSize}; margin: 0; }
+                          body {
+                            width: ${cfg.bodyW}mm;
+                            max-width: 100%;
+                            padding: ${cfg.padMm}mm;
+                            padding-bottom: 18mm;
+                          }
                         }
                       </style>
                     </head>
                     <body>
                       ${el.innerHTML}
-                      <script>window.onload = () => { setTimeout(() => { window.print(); }, 300); };</script>
+                      <script>window.onload = () => { setTimeout(() => { window.print(); window.onfocus = () => window.close(); }, 300); };</script>
                     </body>
                   </html>
                 `);
