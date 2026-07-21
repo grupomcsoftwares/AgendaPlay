@@ -381,6 +381,18 @@ export default function CancelBooking() {
             Ativar lembrete 15 min antes
           </button>
         )}
+        {!cancelled && !locked && pushState === "subscribed" && (
+          <div className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm" style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: "1px solid hsl(38 88% 55% / 0.3)", color: "hsl(38 88% 65%)" }}>
+            <Bell className="w-4 h-4" />
+            Lembrete ativado — notificação 15 min antes do seu horário.
+          </div>
+        )}
+        {!cancelled && !locked && pushState === "denied" && (
+          <div className="rounded-xl py-3 px-4 flex items-center gap-3 text-sm" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(0 0% 55%)" }}>
+            <BellOff className="w-4 h-4 flex-shrink-0" />
+            <span>Notificações bloqueadas neste dispositivo. Para ativar, permita nas configurações do browser.</span>
+          </div>
+        )}
 
         <div className="bg-card border border-border p-6 rounded-2xl space-y-4">
           <div className="flex items-center justify-between">
