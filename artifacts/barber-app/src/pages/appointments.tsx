@@ -763,7 +763,7 @@ export default function Appointments() {
         </div>
       </div>
 
-      <div className="border border-border rounded-lg bg-card overflow-x-auto">
+      <div className="border border-border rounded-lg bg-card">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -779,82 +779,125 @@ export default function Appointments() {
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Horário</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Profissional</TableHead>
-                <TableHead>Pagamento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
               {[...(appointments ?? [])].sort((a,b) =>
                 new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
               ).map((apt) => (
-                <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
-                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="font-bold text-lg">
-                    {format(new Date(apt.scheduledAt), "HH:mm")}
-                  </TableCell>
-                  <TableCell className="font-medium">{apt.clientName}</TableCell>
-                  <TableCell>{apt.serviceName}</TableCell>
-                  <TableCell className="font-medium text-emerald-400 whitespace-nowrap">
-                    {apt.servicePrice != null
-                      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(apt.servicePrice)))
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
-                  <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
-                  <TableCell>{getStatusBadge(apt.status)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+                <div key={apt.id} className="px-4 py-3 space-y-2" data-testid={`row-appointment-${apt.id}`}>
+                  {/* Row 1: time + status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xl">{format(new Date(apt.scheduledAt), "HH:mm")}</span>
+                      <span className="text-sm text-muted-foreground">{format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {getStatusBadge(apt.status)}
+                    </div>
+                  </div>
+                  {/* Row 2: client + service */}
+                  <div>
+                    <p className="font-medium">{apt.clientName}</p>
+                    <p className="text-sm text-muted-foreground">{apt.serviceName}{apt.barberName ? ` · ${apt.barberName}` : ""}</p>
+                  </div>
+                  {/* Row 3: price + payment + actions */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {apt.servicePrice != null && (
+                        <span className="text-sm font-medium text-emerald-400">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(apt.servicePrice)))}
+                        </span>
+                      )}
+                      {getPaymentBadge(apt.paymentMethod ?? "on_site")}
+                    </div>
+                    <div className="flex items-center gap-1">
                       {(apt.status === 'pending' || apt.status === 'cancelled') && (
-                        <Button variant="ghost" size="icon" title="Editar horário" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" title="Editar" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}><Pencil className="h-4 w-4" /></Button>
                       )}
                       {apt.status === 'pending' && (
                         <>
-                          <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}>
-                            <Play className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Enviar lembrete WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}>
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}>
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}><Play className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}><X className="h-4 w-4" /></Button>
                         </>
                       )}
                       {apt.status === 'in_progress' && (
-                        <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}>
-                          <Check className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
                       )}
                       {apt.status === 'completed' && (
-                        <Button variant="ghost" size="icon" title="Imprimir comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}>
-                          <Printer className="h-4 w-4" />
-                        </Button>
+                        <Button variant="ghost" size="icon" title="Comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}><Printer className="h-4 w-4" /></Button>
                       )}
-                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => {
-                        if (confirm("Deletar este registro?")) deleteAppointment.mutate({id: apt.id}, { onSuccess: invalidate });
-                      }} data-testid={`button-delete-${apt.id}`}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => { if (confirm("Deletar este registro?")) deleteAppointment.mutate({id: apt.id}, { onSuccess: invalidate }); }} data-testid={`button-delete-${apt.id}`}><Trash2 className="h-4 w-4" /></Button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Horário</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Profissional</TableHead>
+                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...(appointments ?? [])].sort((a,b) =>
+                    new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+                  ).map((apt) => (
+                    <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="font-bold text-lg">
+                        {format(new Date(apt.scheduledAt), "HH:mm")}
+                      </TableCell>
+                      <TableCell className="font-medium">{apt.clientName}</TableCell>
+                      <TableCell>{apt.serviceName}</TableCell>
+                      <TableCell className="font-medium text-emerald-400 whitespace-nowrap">
+                        {apt.servicePrice != null
+                          ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(apt.servicePrice)))
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{apt.barberName ?? "—"}</TableCell>
+                      <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
+                      <TableCell>{getStatusBadge(apt.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {(apt.status === 'pending' || apt.status === 'cancelled') && (
+                            <Button variant="ghost" size="icon" title="Editar horário" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}><Pencil className="h-4 w-4" /></Button>
+                          )}
+                          {apt.status === 'pending' && (
+                            <>
+                              <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}><Play className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Enviar lembrete WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}><X className="h-4 w-4" /></Button>
+                            </>
+                          )}
+                          {apt.status === 'in_progress' && (
+                            <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                          )}
+                          {apt.status === 'completed' && (
+                            <Button variant="ghost" size="icon" title="Imprimir comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}><Printer className="h-4 w-4" /></Button>
+                          )}
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => { if (confirm("Deletar este registro?")) deleteAppointment.mutate({id: apt.id}, { onSuccess: invalidate }); }} data-testid={`button-delete-${apt.id}`}><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
 

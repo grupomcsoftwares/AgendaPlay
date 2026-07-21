@@ -450,7 +450,7 @@ export default function Services() {
       </div>
     </div>
 
-    <div className="border border-border rounded-lg bg-card overflow-x-auto">
+    <div className="border border-border rounded-lg bg-card">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -464,6 +464,40 @@ export default function Services() {
             <p className="text-muted-foreground">Cadastre seu primeiro serviço para começar.</p>
           </div>
         ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
+              {services.map((service) => (
+                <div key={service.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-11 h-11 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                    {service.imageUrl ? (
+                      <img src={service.imageUrl} alt={service.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Scissors className="w-4 h-4 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{service.name}</p>
+                    <p className="text-sm text-muted-foreground">{service.durationMinutes} min · {formatCurrency(service.price)}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isReordering ? (
+                      <>
+                        <Button variant="ghost" size="icon" disabled={services.indexOf(service) === 0} onClick={() => handleReorder(service.id, services.indexOf(service) - 1)}><ArrowUp className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" disabled={services.indexOf(service) === services.length - 1} onClick={() => handleReorder(service.id, services.indexOf(service) + 1)}><ArrowDown className="h-4 w-4" /></Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(service.id); const dayPrices = ["","","","","","",""]; const hasDayPricing = (service.dayPricing?.length ?? 0) > 0; if (service.dayPricing) { for (const dp of service.dayPricing) { if (dp.dayOfWeek >= 0 && dp.dayOfWeek <= 6) dayPrices[dp.dayOfWeek] = dp.price.toString(); } } setFormData({ name: service.name, description: service.description || "", durationMinutes: service.durationMinutes.toString(), price: service.price.toString(), imageUrl: service.imageUrl || "", dayPricingEnabled: hasDayPricing, dayPrices }); setIsCreateOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(service.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -559,6 +593,8 @@ export default function Services() {
               ))}
             </TableBody>
           </Table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -472,7 +472,7 @@ export default function Barbers() {
         </Dialog>
       </div>
 
-      <div className="border border-border rounded-lg bg-card overflow-x-auto">
+      <div className="border border-border rounded-lg bg-card">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -487,94 +487,97 @@ export default function Barbers() {
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[72px]">Foto</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Serviços</TableHead>
-                <TableHead>Comissão</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
               {barbers.map((b) => {
                 const serviceNames = b.serviceIds.length === 0
                   ? "Todos"
-                  : (services ?? [])
-                      .filter((s) => b.serviceIds.includes(s.id))
-                      .map((s) => s.name)
-                      .join(", ") || "—";
+                  : (services ?? []).filter((s) => b.serviceIds.includes(s.id)).map((s) => s.name).join(", ") || "—";
                 return (
-                  <TableRow key={b.id} data-testid={`row-barber-${b.id}`}>
-                    <TableCell>
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-                        {b.photoUrl ? (
-                          <img src={b.photoUrl} alt={b.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-5 h-5 text-muted-foreground/40" />
-                        )}
+                  <div key={b.id} className="flex items-center gap-3 px-4 py-3" data-testid={`row-barber-${b.id}`}>
+                    <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                      {b.photoUrl ? (
+                        <img src={b.photoUrl} alt={b.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-5 h-5 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium truncate">{b.name}</p>
+                        <Badge variant={b.active ? "default" : "secondary"} className="text-xs shrink-0" data-testid={`badge-barber-status-${b.id}`}>
+                          {b.active ? "Ativo" : "Inativo"}
+                        </Badge>
                       </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {b.name}
-                      {b.bio && <p className="text-xs text-muted-foreground">{b.bio}</p>}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{serviceNames}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {b.commissionRate != null ? `${b.commissionRate}%` : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={b.active ? "default" : "secondary"} data-testid={`badge-barber-status-${b.id}`}>
-                        {b.active ? "Ativo" : "Inativo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={b.active ? "Desativar" : "Ativar"}
-                        onClick={() => toggleActive(b.id, b.active)}
-                        data-testid={`button-toggle-barber-${b.id}`}
-                      >
-                        <Power className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        data-testid={`button-edit-barber-${b.id}`}
-                        onClick={() => {
-                          setEditingId(b.id);
-                          setFormData({
-                            name: b.name,
-                            photoUrl: b.photoUrl || "",
-                            bio: b.bio || "",
-                            active: b.active,
-                            serviceIds: [...b.serviceIds],
-                            weeklySchedule: (b.weeklySchedule as WeeklySchedule | null | undefined) ?? null,
-                            commissionRate: b.commissionRate ?? null,
-                          });
-                          setIsOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(b.id)}
-                        data-testid={`button-delete-barber-${b.id}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                      <p className="text-xs text-muted-foreground truncate">{serviceNames}</p>
+                      {b.commissionRate != null && (
+                        <p className="text-xs text-muted-foreground">Comissão: {b.commissionRate}%</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" title={b.active ? "Desativar" : "Ativar"} onClick={() => toggleActive(b.id, b.active)} data-testid={`button-toggle-barber-${b.id}`}><Power className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" data-testid={`button-edit-barber-${b.id}`} onClick={() => { setEditingId(b.id); setFormData({ name: b.name, photoUrl: b.photoUrl || "", bio: b.bio || "", active: b.active, serviceIds: [...b.serviceIds], weeklySchedule: (b.weeklySchedule as WeeklySchedule | null | undefined) ?? null, commissionRate: b.commissionRate ?? null }); setIsOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(b.id)} data-testid={`button-delete-barber-${b.id}`}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </div>
                 );
               })}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[72px]">Foto</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Serviços</TableHead>
+                    <TableHead>Comissão</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {barbers.map((b) => {
+                    const serviceNames = b.serviceIds.length === 0
+                      ? "Todos"
+                      : (services ?? []).filter((s) => b.serviceIds.includes(s.id)).map((s) => s.name).join(", ") || "—";
+                    return (
+                      <TableRow key={b.id} data-testid={`row-barber-${b.id}`}>
+                        <TableCell>
+                          <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+                            {b.photoUrl ? (
+                              <img src={b.photoUrl} alt={b.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <User className="w-5 h-5 text-muted-foreground/40" />
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {b.name}
+                          {b.bio && <p className="text-xs text-muted-foreground">{b.bio}</p>}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{serviceNames}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {b.commissionRate != null ? `${b.commissionRate}%` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={b.active ? "default" : "secondary"} data-testid={`badge-barber-status-${b.id}`}>
+                            {b.active ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" title={b.active ? "Desativar" : "Ativar"} onClick={() => toggleActive(b.id, b.active)} data-testid={`button-toggle-barber-${b.id}`}><Power className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" data-testid={`button-edit-barber-${b.id}`} onClick={() => { setEditingId(b.id); setFormData({ name: b.name, photoUrl: b.photoUrl || "", bio: b.bio || "", active: b.active, serviceIds: [...b.serviceIds], weeklySchedule: (b.weeklySchedule as WeeklySchedule | null | undefined) ?? null, commissionRate: b.commissionRate ?? null }); setIsOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(b.id)} data-testid={`button-delete-barber-${b.id}`}><Trash2 className="h-4 w-4" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
     </div>

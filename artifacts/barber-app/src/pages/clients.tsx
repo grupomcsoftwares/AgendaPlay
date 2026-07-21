@@ -161,7 +161,7 @@ export default function Clients() {
         />
       </div>
 
-      <div className="border border-border rounded-lg bg-card overflow-x-auto">
+      <div className="border border-border rounded-lg bg-card">
         {isLoading ? (
           <div className="p-4 space-y-4">
             <Skeleton className="h-10 w-full" />
@@ -173,53 +173,60 @@ export default function Clients() {
             <h3 className="text-lg font-medium">Nenhum cliente encontrado</h3>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Cadastrado em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile cards */}
+            <div className="md:hidden divide-y divide-border">
               {clients.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell>{client.phone}</TableCell>
-                  <TableCell>{client.email || "-"}</TableCell>
-                  <TableCell>{new Date(client.createdAt).toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => {
-                        setEditingId(client.id);
-                        setFormData({
-                          name: client.name,
-                          phone: client.phone,
-                          email: client.email || "",
-                          notes: client.notes || ""
-                        });
-                        setIsCreateOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(client.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <div key={client.id} className="flex items-center justify-between px-4 py-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{client.name}</p>
+                    <p className="text-sm text-muted-foreground">{client.phone || "—"}</p>
+                    <p className="text-xs text-muted-foreground">{new Date(client.createdAt).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => {
+                      setEditingId(client.id);
+                      setFormData({ name: client.name, phone: client.phone, email: client.email || "", notes: client.notes || "" });
+                      setIsCreateOpen(true);
+                    }}><Pencil className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(client.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Cadastrado em</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.phone}</TableCell>
+                      <TableCell>{client.email || "-"}</TableCell>
+                      <TableCell>{new Date(client.createdAt).toLocaleDateString('pt-BR')}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => {
+                          setEditingId(client.id);
+                          setFormData({ name: client.name, phone: client.phone, email: client.email || "", notes: client.notes || "" });
+                          setIsCreateOpen(true);
+                        }}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(client.id)}><Trash2 className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
     </div>
