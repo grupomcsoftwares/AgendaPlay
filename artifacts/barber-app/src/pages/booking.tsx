@@ -295,7 +295,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     [services, formData.serviceIds]
   );
 
-  const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
+  const totalDurationRaw = selectedServices.reduce((acc, s) => redeemedServiceIds.includes(s.id) ? acc : acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
 
   // Pre-declare loyalty state for combo dependency
