@@ -132,6 +132,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Plays a celebratory check animation after a successful booking before
   // navigating to the confirmation page.
   const [confirmed, setConfirmed] = useState(false);
+  const [confirmedToken, setConfirmedToken] = useState<string | null>(null);
   // When true, step 1 shows the barber picker instead of the service list.
   // Default to true until barbers load; switches off if 0/1 active barbers.
   const [pickingBarber, setPickingBarber] = useState(true);
@@ -296,6 +297,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         onSuccess: (created) => {
           if (created?.cancelToken && !adminUser) {
             localStorage.setItem(storageKey, created.cancelToken);
+            setConfirmedToken(created.cancelToken);
           }
           // Persist name+phone so the client doesn't have to retype next visit
           if (formData.name && formData.phone) {
@@ -432,6 +434,15 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       setFormData(prev => ({ ...prev, usePlan: false }));
     }
   }, [useLoyaltyPoints, formData.usePlan]);
+
+  // After booking confirmation, wait 2 s then navigate to the appointment preview.
+  useEffect(() => {
+    if (!confirmed || !confirmedToken) return;
+    const timer = setTimeout(() => {
+      window.location.href = `/agendamento/${confirmedToken}`;
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [confirmed, confirmedToken]);
   const loyaltyDiscountAmount = useLoyaltyPoints
     ? Math.min(
         loyaltyAvailableDiscount,
