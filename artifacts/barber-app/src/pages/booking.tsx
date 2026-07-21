@@ -777,8 +777,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 <Star className="w-4 h-4 shrink-0" />
                 <span>
                   Você tem <strong>{loyaltyBalance.points} pontos</strong> — vale até{" "}
-                  <strong>R$ {loyaltyAvailableDiscount.toFixed(2).replace(".", ",")}</strong> de desconto.
-                  Os serviços marcados com ⭐ podem ser trocados pelos seus pontos!
+                  <strong>R$ {loyaltyAvailableDiscount.toFixed(2).replace(".", ",")}</strong>
                 </span>
               </div>
             )}
