@@ -905,46 +905,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               })}
             </div>
 
-            {formData.serviceIds.length > 0 && (
-              <div
-                className="rounded-2xl p-4 space-y-2"
-                style={{ backgroundColor: "hsl(0 0% 9%)", border: `1px solid ${AMBER}4D` }}
-              >
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {formData.serviceIds.length} serviço{formData.serviceIds.length > 1 ? "s" : ""}
-                  </span>
-                  <span style={{ color: AMBER, fontWeight: 600 }}>
-                    {(() => {
-                      const d = formData.serviceIds.reduce((acc, id) => acc + ((services?.find(s => s.id === id)?.durationMinutes) ?? 0), 0);
-                      const p = formData.serviceIds.reduce((acc, id) => acc + ((services?.find(s => s.id === id)?.price) ?? 0), 0);
-                      return `${Math.max(5, d)} min · R$ ${p.toFixed(2).replace(".", ",")}`;
-                    })()}
-                  </span>
-                </div>
-                {appliedCombo && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      🎉 Desconto combo
-                    </span>
-                    <span className="font-semibold" style={{ color: "hsl(142 71% 45%)" }}>
-                      {appliedCombo.discountType === "value"
-                        ? `- R$ ${Number(appliedCombo.discountPercent).toFixed(2).replace(".", ",")}`
-                        : `- ${appliedCombo.discountPercent}%`}
-                    </span>
-                  </div>
-                )}
-                {appliedCombo && (
-                  <div className="flex items-center justify-between font-semibold pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
-                    <span>Total</span>
-                    <span style={{ color: AMBER }}>
-                      R$ {totalPrice.toFixed(2).replace(".", ",")}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
             <button
               type="button"
               data-testid="button-confirm-services"
