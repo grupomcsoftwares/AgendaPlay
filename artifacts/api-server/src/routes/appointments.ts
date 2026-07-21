@@ -479,17 +479,26 @@ router.post("/appointments", async (req, res): Promise<void> => {
 
     // Credit earned points inside the same transaction (durable — if appointment
     // creation fails the whole tx rolls back, so points are never credited on failure).
+    let pointsEarned = 0;
     if (loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
-      const earned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
-      if (earned > 0) {
+      pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
+      if (pointsEarned > 0) {
         await tx
           .insert(loyaltyPointsTable)
-          .values({ userId: shopId, clientPhone: loyaltyPhone, points: earned })
+          .values({ userId: shopId, clientPhone: loyaltyPhone, points: pointsEarned })
           .onConflictDoUpdate({
             target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-            set: { points: sql`${loyaltyPointsTable.points} + ${earned}`, updatedAt: new Date() },
+            set: { points: sql`${loyaltyPointsTable.points} + ${pointsEarned}`, updatedAt: new Date() },
           });
       }
+    }
+
+    // Store loyalty point totals on the appointment so cancellation can reverse them.
+    if (loyaltyPointsRedeemed > 0 || pointsEarned > 0) {
+      await tx
+        .update(appointmentsTable)
+        .set({ loyaltyPointsRedeemed, loyaltyPointsEarned: pointsEarned })
+        .where(eq(appointmentsTable.id, created.id));
     }
 
     return created;
@@ -681,6 +690,28 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
       .returning();
     if (!updated) return { error: "locked" as const };
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, existing.id));
+
+    // Reverse loyalty points: return redeemed pts, subtract earned pts.
+    const phoneMatch = existing.notes?.match(/Tel:\s*([^.]+)/);
+    const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
+    const netChange = existing.loyaltyPointsRedeemed - existing.loyaltyPointsEarned;
+    if (loyaltyPhone && netChange !== 0) {
+      if (netChange > 0) {
+        await tx
+          .insert(loyaltyPointsTable)
+          .values({ userId: existing.userId, clientPhone: loyaltyPhone, points: netChange })
+          .onConflictDoUpdate({
+            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+            set: { points: sql`${loyaltyPointsTable.points} + ${netChange}`, updatedAt: new Date() },
+          });
+      } else {
+        await tx
+          .update(loyaltyPointsTable)
+          .set({ points: sql`GREATEST(0, ${loyaltyPointsTable.points} + ${netChange})`, updatedAt: new Date() })
+          .where(and(eq(loyaltyPointsTable.userId, existing.userId), eq(loyaltyPointsTable.clientPhone, loyaltyPhone)));
+      }
+    }
+
     return { appointment: updated };
   });
   if (result.error === "notfound") {
@@ -830,6 +861,11 @@ router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<v
   }
   const userId = req.session.userId!;
   const appointment = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)));
+    if (!existing) return null;
     const [a] = await tx
       .update(appointmentsTable)
       .set({ status: "cancelled" })
@@ -837,6 +873,28 @@ router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<v
       .returning();
     if (!a) return null;
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+
+    // Reverse loyalty points: return redeemed pts, subtract earned pts.
+    const phoneMatch = existing.notes?.match(/Tel:\s*([^.]+)/);
+    const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
+    const netChange = existing.loyaltyPointsRedeemed - existing.loyaltyPointsEarned;
+    if (loyaltyPhone && netChange !== 0) {
+      if (netChange > 0) {
+        await tx
+          .insert(loyaltyPointsTable)
+          .values({ userId, clientPhone: loyaltyPhone, points: netChange })
+          .onConflictDoUpdate({
+            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+            set: { points: sql`${loyaltyPointsTable.points} + ${netChange}`, updatedAt: new Date() },
+          });
+      } else {
+        await tx
+          .update(loyaltyPointsTable)
+          .set({ points: sql`GREATEST(0, ${loyaltyPointsTable.points} + ${netChange})`, updatedAt: new Date() })
+          .where(and(eq(loyaltyPointsTable.userId, userId), eq(loyaltyPointsTable.clientPhone, loyaltyPhone)));
+      }
+    }
+
     return a;
   });
   if (!appointment) {

@@ -420,6 +420,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const loyaltyAvailableDiscount = loyaltyBalance?.enabled && loyaltyBalance.pointsPerRedemptionUnit > 0
     ? Math.floor(loyaltyBalance.points / loyaltyBalance.pointsPerRedemptionUnit)
     : 0;
+  // Points already committed to services the client chose to redeem
+  const loyaltyAlreadyCommitted = selectedServices
+    .filter(s => redeemedServiceIds.includes(s.id))
+    .reduce((acc, s) => acc + s.price, 0);
+  // Remaining discount budget available for additional redemptions
+  const loyaltyRemainingDiscount = Math.max(0, loyaltyAvailableDiscount - loyaltyAlreadyCommitted);
   // Auto-clear plan selection when loyalty is active (can't combine)
   useEffect(() => {
     if (useLoyaltyPoints && formData.usePlan) {
@@ -523,11 +529,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         return prev;
       }
       const svc = services?.find(s => s.id === serviceId);
-      // A paid service must already be in the cart for the points modal to appear.
-      const isRedeemable = svc && loyaltyBalance?.enabled && loyaltyAvailableDiscount >= svc.price && svc.price > 0;
+      // A service is redeemable only if the remaining points budget (after already-committed services) is enough to fully cover it.
+      const isRedeemable = svc && loyaltyBalance?.enabled && loyaltyRemainingDiscount >= svc.price && svc.price > 0;
+      // A "paid" service is one in the cart that the client is NOT redeeming with points.
       const hasPaidService = prev.serviceIds.some(id => {
         const s = services?.find(x => x.id === id);
-        return s && s.price > 0 && !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price);
+        return s && s.price > 0 && !redeemedServiceIds.includes(id);
       });
       if (isRedeemable && hasPaidService) {
         setPointsModal({ open: true, serviceId, serviceName: svc.name, servicePrice: svc.price });
@@ -841,12 +848,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
-                // This service can be redeemed with points (for visual badge/border)
-                const canRedeemNow = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= service.price && service.price > 0;
-                // Points modal only triggers when a paid service is already in cart
+                // This service can be redeemed with points (enough remaining budget to cover it fully).
+                const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
+                // Points modal only triggers when a paid (non-redeemed) service is already in cart.
                 const hasPaidServiceInCart = formData.serviceIds.some(id => {
                   const s = services?.find(x => x.id === id);
-                  return s && s.price > 0 && !(loyaltyBalance?.enabled && loyaltyAvailableDiscount >= s.price);
+                  return s && s.price > 0 && !redeemedServiceIds.includes(id);
                 });
                 const redeemableWithPoints = canRedeemNow && (hasPaidServiceInCart || isSelected);
                 const isBlocked = !isSelected && serviceExclusions.some(pair =>
@@ -1292,13 +1299,9 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                     style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                   >
                     {(() => {
-                      let remainingDiscount = loyaltyDiscountAmount;
                       return selectedServices.map(sv => {
-                        const redeemable = loyaltyBalance?.enabled && loyaltyAvailableDiscount >= sv.price && sv.price > 0;
-                        const discountHere = useLoyaltyPoints && redeemable
-                          ? Math.min(sv.price, remainingDiscount)
-                          : 0;
-                        remainingDiscount = Math.max(0, remainingDiscount - discountHere);
+                        const isRedeemed = useLoyaltyPoints && loyaltyBalance?.enabled && redeemedServiceIds.includes(sv.id) && sv.price > 0;
+                        const discountHere = isRedeemed ? sv.price : 0;
                         const finalPrice = sv.price - discountHere;
                         return (
                           <div key={sv.id} className="flex items-center justify-between text-sm">

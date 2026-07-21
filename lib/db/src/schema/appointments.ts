@@ -18,6 +18,8 @@ export const appointmentsTable = pgTable("appointments", {
   paymentMethod: text("payment_method").notNull().default("on_site"),
   coveredByPlan: boolean("covered_by_plan").notNull().default(false),
   creditsUsed: integer("credits_used"), // how many plan credits were spent on this appointment
+  loyaltyPointsRedeemed: integer("loyalty_points_redeemed").notNull().default(0),
+  loyaltyPointsEarned: integer("loyalty_points_earned").notNull().default(0),
   notes: text("notes"),
   cancelToken: text("cancel_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
