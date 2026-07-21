@@ -275,26 +275,22 @@ export default function Financial() {
                   : 100;
                 return (
                   <div key={b.barberName} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">{b.barberName}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {b.appointmentCount} atend.
+                    {/* Linha 1: nome + valor de comissão */}
+                    <div className="flex items-start justify-between gap-2 text-sm">
+                      <span className="font-semibold leading-tight">{b.barberName}</span>
+                      <span className="font-bold text-amber-400 shrink-0 whitespace-nowrap">
+                        {formatCurrency(b.commissionAmount)}
+                      </span>
+                    </div>
+                    {/* Linha 2: badges + receita */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                      <span>{b.appointmentCount} atend.</span>
+                      {b.commissionRate > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">
+                          {b.commissionRate}%
                         </span>
-                        {b.commissionRate > 0 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">
-                            {b.commissionRate}%
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-right shrink-0">
-                        <span className="text-xs text-muted-foreground">
-                          receita {formatCurrency(b.revenue)}
-                        </span>
-                        <span className="font-bold text-amber-400 min-w-[80px] text-right">
-                          {formatCurrency(b.commissionAmount)}
-                        </span>
-                      </div>
+                      )}
+                      <span>receita {formatCurrency(b.revenue)}</span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
                       <div
