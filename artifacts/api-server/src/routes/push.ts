@@ -60,16 +60,18 @@ router.post("/push/trigger-reminders", async (_req, res) => {
 
     const rows = await db
       .select({
-        id:           pushSubscriptionsTable.id,
-        scheduledAt:  pushSubscriptionsTable.scheduledAt,
-        endpoint:     pushSubscriptionsTable.endpoint,
-        p256dh:       pushSubscriptionsTable.p256dh,
-        auth:         pushSubscriptionsTable.auth,
-        cancelToken:  pushSubscriptionsTable.cancelToken,
-        clientName:   appointmentsTable.clientName,
-        serviceName:  appointmentsTable.serviceName,
-        barberName:   appointmentsTable.barberName,
-        shopName:     settingsTable.barbershopName,
+        id:              pushSubscriptionsTable.id,
+        scheduledAt:     pushSubscriptionsTable.scheduledAt,
+        endpoint:        pushSubscriptionsTable.endpoint,
+        p256dh:          pushSubscriptionsTable.p256dh,
+        auth:            pushSubscriptionsTable.auth,
+        cancelToken:     pushSubscriptionsTable.cancelToken,
+        clientName:      appointmentsTable.clientName,
+        serviceName:     appointmentsTable.serviceName,
+        servicePrice:    appointmentsTable.servicePrice,
+        serviceDuration: appointmentsTable.serviceDuration,
+        barberName:      appointmentsTable.barberName,
+        shopName:        settingsTable.barbershopName,
       })
       .from(pushSubscriptionsTable)
       .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
@@ -81,13 +83,14 @@ router.post("/push/trigger-reminders", async (_req, res) => {
       const apptTime = new Date(row.scheduledAt).getTime();
       if (apptTime < windowStart.getTime() || apptTime > windowEnd.getTime()) continue;
 
-      const apptHH = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
+      const apptHH     = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
         hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
       });
       const shopLabel  = row.shopName ?? "AgendaPlay";
-      const barberPart = row.barberName ? ` com ${row.barberName}` : "";
-      const title      = `\u23f0 ${shopLabel} \u2014 em 15 minutos!`;
-      const body       = `${row.clientName} \u00b7 ${row.serviceName}${barberPart} \u00b7 ${apptHH}`;
+      const price      = row.servicePrice != null ? `R$ ${Number(row.servicePrice).toFixed(2).replace(".", ",")}` : "";
+      const duration   = row.serviceDuration ? `${row.serviceDuration} min` : "";
+      const title      = `\u23f0 ${shopLabel} \u2014 faltam 15 minutos!`;
+      const body       = `${row.serviceName} \u00b7 ${duration} \u00b7 ${price} \u00b7 ${apptHH}`;
 
       try {
         await webpush.sendNotification(
@@ -177,16 +180,18 @@ export async function runPushScheduler() {
       // Join with appointments + settings for rich notification content
       const rows = await db
         .select({
-          id:           pushSubscriptionsTable.id,
-          scheduledAt:  pushSubscriptionsTable.scheduledAt,
-          endpoint:     pushSubscriptionsTable.endpoint,
-          p256dh:       pushSubscriptionsTable.p256dh,
-          auth:         pushSubscriptionsTable.auth,
-          cancelToken:  pushSubscriptionsTable.cancelToken,
-          clientName:   appointmentsTable.clientName,
-          serviceName:  appointmentsTable.serviceName,
-          barberName:   appointmentsTable.barberName,
-          shopName:     settingsTable.barbershopName,
+          id:              pushSubscriptionsTable.id,
+          scheduledAt:     pushSubscriptionsTable.scheduledAt,
+          endpoint:        pushSubscriptionsTable.endpoint,
+          p256dh:          pushSubscriptionsTable.p256dh,
+          auth:            pushSubscriptionsTable.auth,
+          cancelToken:     pushSubscriptionsTable.cancelToken,
+          clientName:      appointmentsTable.clientName,
+          serviceName:     appointmentsTable.serviceName,
+          servicePrice:    appointmentsTable.servicePrice,
+          serviceDuration: appointmentsTable.serviceDuration,
+          barberName:      appointmentsTable.barberName,
+          shopName:        settingsTable.barbershopName,
         })
         .from(pushSubscriptionsTable)
         .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
@@ -197,16 +202,17 @@ export async function runPushScheduler() {
         const apptTime = new Date(row.scheduledAt).getTime();
         if (apptTime < windowStart.getTime() || apptTime > windowEnd.getTime()) continue;
 
-        const apptHH = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
+        const apptHH     = new Date(row.scheduledAt).toLocaleTimeString("pt-BR", {
           hour: "2-digit",
           minute: "2-digit",
           timeZone: "America/Sao_Paulo",
         });
 
-        const shopLabel   = row.shopName ?? "AgendaPlay";
-        const barberPart  = row.barberName ? ` com ${row.barberName}` : "";
-        const title       = `⏰ ${shopLabel} — em 15 minutos!`;
-        const body        = `${row.clientName} · ${row.serviceName}${barberPart} · ${apptHH}`;
+        const shopLabel  = row.shopName ?? "AgendaPlay";
+        const price      = row.servicePrice != null ? `R$ ${Number(row.servicePrice).toFixed(2).replace(".", ",")}` : "";
+        const duration   = row.serviceDuration ? `${row.serviceDuration} min` : "";
+        const title      = `⏰ ${shopLabel} — faltam 15 minutos!`;
+        const body       = `${row.serviceName} · ${duration} · ${price} · ${apptHH}`;
 
         try {
           await webpush.sendNotification(
