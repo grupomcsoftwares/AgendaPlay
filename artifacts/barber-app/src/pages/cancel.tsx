@@ -40,6 +40,10 @@ export default function CancelBooking() {
   const [pushState, setPushState] = useState<"unknown" | "denied" | "subscribed" | "idle">("unknown");
   const [reminderBanner, setReminderBanner] = useState(false);
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+  // Gate: client must interact with the notification prompt before seeing details
+  const [notifGatePassed, setNotifGatePassed] = useState<boolean>(() => {
+    try { return localStorage.getItem(`notif_gate_${params?.token ?? ""}`) === "1"; } catch { return false; }
+  });
   const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
   const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
@@ -87,10 +91,15 @@ export default function CancelBooking() {
     }).catch(() => setPushState("denied"));
   }, []);
 
-  const handleEnableNotifications = async () => {
+  const passGate = () => {
+    try { localStorage.setItem(`notif_gate_${token}`, "1"); } catch { /* ignore */ }
+    setNotifGatePassed(true);
+  };
+
+  const handleEnableNotifications = async (fromGate = false) => {
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") { setPushState("denied"); return; }
+      if (perm !== "granted") { setPushState("denied"); if (fromGate) passGate(); return; }
       const keyRes = await fetch(`${BASE}/api/push/vapid-public-key`);
       const { key } = await keyRes.json();
       const reg = await navigator.serviceWorker.ready;
@@ -99,7 +108,7 @@ export default function CancelBooking() {
         applicationServerKey: urlBase64ToUint8Array(key),
       });
       const json = sub.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) { if (fromGate) passGate(); return; }
       await fetch(`${BASE}/api/push/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -112,7 +121,8 @@ export default function CancelBooking() {
         }),
       });
       setPushState("subscribed");
-    } catch { setPushState("idle"); }
+      if (fromGate) passGate();
+    } catch { setPushState("idle"); if (fromGate) passGate(); }
   };
 
   function urlBase64ToUint8Array(base64String: string) {
@@ -165,6 +175,83 @@ export default function CancelBooking() {
   const { date, time } = formatDateTime(appointment.scheduledAt);
   const cancelled = appointment.status === "cancelled";
   const locked = appointment.status === "in_progress" || appointment.status === "completed";
+
+  // Show notification gate for active appointments the user hasn't interacted with yet
+  const showNotifGate = !cancelled && !locked && !notifGatePassed && pushState !== "subscribed";
+
+  if (showNotifGate) {
+    const loading = pushState === "unknown";
+    const denied = pushState === "denied";
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4">
+        <div className="max-w-sm w-full space-y-8 text-center">
+          <div className="space-y-3">
+            <div
+              className="mx-auto rounded-full flex items-center justify-center"
+              style={{ width: 80, height: 80, backgroundColor: "hsl(38 88% 55% / 0.15)", border: `2px solid ${AMBER}` }}
+            >
+              <Bell className="w-9 h-9" style={{ color: AMBER }} />
+            </div>
+            <h1 className="text-xl font-bold">{settings?.barbershopName || "Barbearia"}</h1>
+            <p className="text-sm text-muted-foreground">Seu agendamento</p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-base font-semibold">Ativar lembrete do agendamento</p>
+            <p className="text-sm text-muted-foreground">
+              Receba uma notificação 15 minutos antes do seu corte para não perder o horário.
+            </p>
+          </div>
+
+          {denied ? (
+            <div className="space-y-4">
+              <div
+                className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm"
+                style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 22%)", color: "hsl(0 0% 55%)" }}
+              >
+                <BellOff className="w-4 h-4 flex-shrink-0" />
+                Notificações bloqueadas neste dispositivo.
+              </div>
+              <button
+                type="button"
+                onClick={passGate}
+                className="w-full rounded-xl py-3 text-sm font-semibold"
+                style={{ backgroundColor: "hsl(0 0% 16%)", border: "1px solid hsl(0 0% 24%)", color: "hsl(0 0% 70%)", cursor: "pointer" }}
+              >
+                Continuar mesmo assim
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => handleEnableNotifications(true)}
+                className="w-full rounded-xl py-4 text-sm font-semibold flex items-center justify-center gap-2"
+                style={{
+                  backgroundColor: loading ? "hsl(38 88% 55% / 0.08)" : "hsl(38 88% 55% / 0.15)",
+                  border: `1px solid ${loading ? "hsl(38 88% 55% / 0.3)" : "hsl(38 88% 55% / 0.6)"}`,
+                  color: loading ? "hsl(38 88% 55% / 0.5)" : AMBER,
+                  cursor: loading ? "default" : "pointer",
+                }}
+              >
+                <Bell className="w-4 h-4" />
+                {loading ? "Aguardando…" : "Ativar lembrete 15 min antes"}
+              </button>
+              <button
+                type="button"
+                onClick={passGate}
+                className="w-full text-xs py-2"
+                style={{ color: "hsl(0 0% 45%)", background: "none", border: "none", cursor: "pointer" }}
+              >
+                Agora não
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const openReschedule = () => {
     setErrorMsg(null);
@@ -274,27 +361,10 @@ export default function CancelBooking() {
                 </p>
               </div>
             </div>
-            {pushState === "idle" && (
-              <button
-                type="button"
-                onClick={handleEnableNotifications}
-                className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm font-semibold"
-                style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.5)", color: AMBER, cursor: "pointer" }}
-              >
-                <Bell className="w-4 h-4" />
-                Ativar lembrete 15 min antes
-              </button>
-            )}
             {pushState === "subscribed" && (
               <div className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm" style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: "1px solid hsl(38 88% 55% / 0.3)", color: "hsl(38 88% 65%)" }}>
                 <Bell className="w-4 h-4" />
                 Lembrete ativado — você receberá uma notificação 15 min antes.
-              </div>
-            )}
-            {pushState === "denied" && (
-              <div className="rounded-xl py-3 px-4 flex items-center justify-center gap-2 text-sm" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 20%)", color: "hsl(0 0% 55%)" }}>
-                <BellOff className="w-4 h-4" />
-                Notificações não disponíveis neste dispositivo.
               </div>
             )}
           </>
