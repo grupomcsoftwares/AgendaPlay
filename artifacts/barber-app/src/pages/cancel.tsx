@@ -71,7 +71,11 @@ export default function CancelBooking() {
   // Ping the server every minute to trigger push reminders (autoscale-safe)
   useEffect(() => {
     const ping = () => {
-      fetch(`${BASE}/api/push/trigger-reminders`, { method: "POST" }).catch(() => {});
+      fetch(`${BASE}/api/push/trigger-reminders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopId: shopId ?? undefined }),
+      }).catch(() => {});
     };
     ping();
     const id = setInterval(ping, 60_000);

@@ -48,7 +48,17 @@ router.delete("/push/unsubscribe/:token", async (req, res) => {
 // Trigger endpoint: when a client page pings this, the server checks
 // if any 15-min reminders are due right now and sends them immediately.
 // Works on autoscale because it's driven by client requests, not a timer.
-router.post("/push/trigger-reminders", async (_req, res) => {
+router.post("/push/trigger-reminders", async (req, res) => {
+  // Also auto-advance appointment statuses by time (independent of queue).
+  // The shopId comes from the request body (sent by the client booking page).
+  const shopIdForAutoStart = typeof req.body?.shopId === "string" ? req.body.shopId.trim() : null;
+  if (shopIdForAutoStart) {
+    try {
+      const { autoAdvanceAppointmentsByTime } = await import("./appointments.js");
+      await autoAdvanceAppointmentsByTime(shopIdForAutoStart);
+    } catch { /* non-critical */ }
+  }
+
   if (!process.env.VAPID_PUBLIC_KEY) {
     res.json({ sent: 0, reason: "vapid_not_configured" });
     return;

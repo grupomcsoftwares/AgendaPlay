@@ -69,8 +69,45 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
+/**
+ * Auto-start / auto-complete appointments based on wall-clock time.
+ * Runs independently of the live queue so appointments get the right status
+ * even when the barbeiro has not opened the queue view.
+ *
+ *  pending  → in_progress  when  scheduledAt          <= now
+ *  in_progress → completed when  scheduledAt + duration <= now
+ */
+async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
+  const now = new Date();
+  // pending → in_progress
+  await db
+    .update(appointmentsTable)
+    .set({ status: "in_progress" })
+    .where(
+      and(
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "pending"),
+        lt(appointmentsTable.scheduledAt, now),
+      ),
+    );
+  // in_progress → completed when scheduledAt + serviceDuration <= now
+  await db
+    .update(appointmentsTable)
+    .set({ status: "completed" })
+    .where(
+      and(
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "in_progress"),
+        sql`${appointmentsTable.scheduledAt} + (${appointmentsTable.serviceDuration} * interval '1 minute') <= ${now}`,
+      ),
+    );
+}
+
 router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+  // Auto-advance stale appointments before returning the list so the admin
+  // panel always sees accurate statuses without needing the queue to be open.
+  await autoAdvanceAppointmentsByTime(userId);
   const query = ListAppointmentsQueryParams.safeParse(req.query);
   let appointments;
   if (query.success && query.data.dateStart && query.data.dateEnd) {
@@ -906,4 +943,20 @@ router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<v
   res.json(formatAppointment(appointment));
 });
 
+// Trigger endpoint — can be pinged periodically by the client (no auth required
+// for the public booking page) to auto-advance appointment statuses by time.
+// Requires shopId so we know which shop to advance.
+router.post("/appointments/auto-start", async (req, res): Promise<void> => {
+  const shopId = typeof req.body?.shopId === "string" ? req.body.shopId.trim()
+    : typeof req.query.shopId === "string" ? req.query.shopId.trim()
+    : req.session?.userId ?? null;
+  if (!shopId) {
+    res.status(400).json({ error: "shopId required" });
+    return;
+  }
+  await autoAdvanceAppointmentsByTime(shopId);
+  res.json({ ok: true });
+});
+
+export { autoAdvanceAppointmentsByTime };
 export default router;
