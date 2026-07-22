@@ -214,7 +214,7 @@ router.get("/availability", async (req, res): Promise<void> => {
   // is a natural fit for the selected service/combo. Normal mode uses the
   // configured fixed grid (e.g. every 15 min).
   const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
-  const BUFFER = 0;
+  const BUFFER = 5;
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
