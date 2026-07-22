@@ -735,20 +735,34 @@ export default function Appointments() {
                   <div className="rounded-md border border-border overflow-hidden" data-testid="service-checklist">
                     {(services ?? []).map((s) => {
                       const checked = formData.serviceIds.includes(s.id.toString());
+                      const blockedBy = !checked ? editServiceExclusions.find(pair =>
+                        formData.serviceIds.some(selectedId =>
+                          (pair.services[0].toString() === selectedId && pair.services[1] === s.id) ||
+                          (pair.services[1].toString() === selectedId && pair.services[0] === s.id)
+                        )
+                      ) : undefined;
+                      const isBlocked = !!blockedBy;
+                      const blockerName = isBlocked
+                        ? (services?.find(x => x.id === blockedBy!.services.find(id => formData.serviceIds.includes(id.toString())))?.name ?? "outro serviço")
+                        : "";
                       return (
                         <label
                           key={s.id}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors select-none",
-                            checked ? "bg-amber-500/10" : "hover:bg-muted/50",
+                            "flex items-center gap-3 px-3 py-2.5 transition-colors select-none",
+                            isBlocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer",
+                            checked ? "bg-amber-500/10" : isBlocked ? "bg-red-950/20" : "hover:bg-muted/50",
                             "border-b border-border last:border-b-0"
                           )}
                           data-testid={`service-option-${s.id}`}
+                          title={isBlocked ? `Incompatível com ${blockerName}` : undefined}
                         >
                           <input
                             type="checkbox"
                             checked={checked}
+                            disabled={isBlocked}
                             onChange={() => {
+                              if (isBlocked) return;
                               const next = checked
                                 ? formData.serviceIds.filter((id) => id !== s.id.toString())
                                 : [...formData.serviceIds, s.id.toString()];
@@ -757,9 +771,14 @@ export default function Appointments() {
                             className="accent-amber-500 w-4 h-4 flex-shrink-0"
                           />
                           <span className="flex-1 text-sm font-medium">{s.name}</span>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(s.price)))}
-                          </span>
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground whitespace-nowrap">
+                              {s.durationMinutes} min · {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(String(s.price)))}
+                            </div>
+                            {isBlocked && (
+                              <div className="text-[10px] text-red-400">Incompatível com {blockerName}</div>
+                            )}
+                          </div>
                         </label>
                       );
                     })}
