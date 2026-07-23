@@ -26,7 +26,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare, Users } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -429,22 +429,41 @@ export default function Appointments() {
     );
   };
 
+  /** Extrai o telefone guardado nas notes (formato "Tel: XXXXX.") */
+  const extractPhoneFromNotes = (notes: string | null | undefined): string => {
+    if (!notes) return "";
+    const m = notes.match(/Tel:\s*([\d\s()\-+.]+)/);
+    return m ? (m[1] ?? "").replace(/\D/g, "") : "";
+  };
+
+  /** Retorna true quando o agendamento foi feito por um responsável em nome do cliente */
+  const isBookedByGuardian = (apt: Appointment): boolean => {
+    const notesPhone = extractPhoneFromNotes(apt.notes);
+    if (!notesPhone) return false;
+    // Busca o cliente pelo nome ou ID
+    const client = apt.clientId
+      ? clients?.find((c) => c.id === apt.clientId)
+      : clients?.find((c) => c.name.trim().toLowerCase() === apt.clientName.trim().toLowerCase());
+    // É responsável quando o cliente não tem telefone próprio mas as notes têm
+    return !client?.phone || client.phone.replace(/\D/g, "") !== notesPhone;
+  };
+
   const sendWhatsAppReminder = (apt: Appointment) => {
-    // Primeiro tenta pelo ID cadastrado no agendamento
+    // 1) Tenta pelo cadastro do cliente
     let client = apt.clientId ? clients?.find((c) => c.id === apt.clientId) : undefined;
-    // Fallback: busca pelo nome do cliente (caso tenha sido cadastrado depois)
     if (!client) {
       client = clients?.find((c) => c.name.trim().toLowerCase() === apt.clientName.trim().toLowerCase());
     }
-    const phone = client?.phone?.replace(/\D/g, "");
-    if (!phone) {
+    // 2) Fallback: extrai o telefone das notes (agendado por responsável)
+    const phoneRaw = client?.phone?.replace(/\D/g, "") || extractPhoneFromNotes(apt.notes);
+    if (!phoneRaw) {
       toast({ variant: "destructive", title: "Telefone não encontrado", description: "O cliente não possui telefone cadastrado." });
       return;
     }
     const date = format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR });
     const time = format(new Date(apt.scheduledAt), "HH:mm");
-    const msg = `Olá ${apt.clientName}! Passando para lembrar do seu agendamento na ${settings?.barbershopName || "barbearia"} para ${date} às ${time}. Serviço: ${apt.serviceName}. Até lá! ✨`;
-    const url = `https://wa.me/55${phone}?text=${encodeURIComponent(msg)}`;
+    const msg = `Olá! Passando para lembrar do agendamento de *${apt.clientName}* na ${settings?.barbershopName || "barbearia"} para ${date} às ${time}. Serviço: ${apt.serviceName}. Até lá! ✨`;
+    const url = `https://wa.me/55${phoneRaw}?text=${encodeURIComponent(msg)}`;
     window.open(url, "_blank");
   };
 
@@ -906,7 +925,14 @@ export default function Appointments() {
                   </div>
                   {/* Row 2: client + service */}
                   <div>
-                    <p className="font-medium">{apt.clientName}</p>
+                    <p className="font-medium flex items-center gap-1.5">
+                      {apt.clientName}
+                      {isBookedByGuardian(apt) && (
+                        <span title="Agendado por responsável">
+                          <Users className="w-3.5 h-3.5 text-amber-400" />
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-muted-foreground">{apt.serviceName}{apt.barberName ? ` · ${apt.barberName}` : ""}</p>
                     {extractClientNote(apt.notes) && (
                       <p className="text-xs mt-1 flex items-start gap-1" style={{ color: "hsl(38 92% 58%)" }}>
@@ -975,7 +1001,16 @@ export default function Appointments() {
                       <TableCell className="font-bold text-lg">
                         {format(new Date(apt.scheduledAt), "HH:mm")}
                       </TableCell>
-                      <TableCell className="font-medium">{apt.clientName}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="flex items-center gap-1.5">
+                          {apt.clientName}
+                          {isBookedByGuardian(apt) && (
+                            <span title="Agendado por responsável">
+                              <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            </span>
+                          )}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <span>{apt.serviceName}</span>
                         {extractClientNote(apt.notes) && (

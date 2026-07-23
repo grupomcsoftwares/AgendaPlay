@@ -191,8 +191,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     paymentMethod: "now" | "on_site";
     usePlan: boolean;
   }>(() => {
-    // Child booking via "Agendar outro corte" — use URL-provided name, no phone
+    // Child booking via "Agendar outro corte" — use URL-provided name, inherit parent phone
     if (urlChildName) {
+      let parentPhone = "";
+      try {
+        const saved = localStorage.getItem(`barber_client_info_${shopId ?? "public"}`);
+        if (saved) {
+          const parsed = JSON.parse(saved) as { phone?: string };
+          parentPhone = parsed.phone ?? "";
+        }
+      } catch { /* ignore */ }
       return {
         serviceIds: [],
         barberId: "",
@@ -200,7 +208,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         time: "",
         name: urlChildName,
         lastName: urlChildLastName,
-        phone: "",
+        phone: parentPhone,
         notes: "",
         paymentMethod: "on_site",
         usePlan: false,
