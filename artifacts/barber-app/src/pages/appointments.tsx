@@ -891,7 +891,7 @@ export default function Appointments() {
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-border">
               {[...(appointments ?? [])].sort((a,b) =>
-                new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+                new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
               ).map((apt) => (
                 <div key={apt.id} className="px-4 py-3 space-y-2" data-testid={`row-appointment-${apt.id}`}>
                   {/* Row 1: time + status */}
@@ -966,7 +966,7 @@ export default function Appointments() {
                 </TableHeader>
                 <TableBody>
                   {[...(appointments ?? [])].sort((a,b) =>
-                    new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+                    new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
                   ).map((apt) => (
                     <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
