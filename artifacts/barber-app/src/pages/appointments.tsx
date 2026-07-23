@@ -41,7 +41,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 
-const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", serviceIds: [] as string[], time: "", barberId: "" };
+const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", clientPhone: "", serviceIds: [] as string[], time: "", barberId: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
 
 export default function Appointments() {
@@ -396,6 +396,9 @@ export default function Appointments() {
         scheduledAt,
         barberId: selectedBarber ? selectedBarber.id : undefined,
         barberName: selectedBarber ? selectedBarber.name : undefined,
+        ...(formData.clientId === "new" && formData.clientPhone.trim()
+          ? { notes: `Tel: ${formData.clientPhone.trim()}.` }
+          : {}),
       }},
       {
         onSuccess: () => {
@@ -715,23 +718,35 @@ export default function Appointments() {
                 </div>
 
                 {formData.clientId === "new" && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Nome</Label>
-                      <Input
-                        placeholder="Nome"
-                        value={formData.clientName}
-                        onChange={e => setFormData({...formData, clientName: e.target.value})}
-                        data-testid="input-client-name"
-                      />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <Label>Nome</Label>
+                        <Input
+                          placeholder="Nome"
+                          value={formData.clientName}
+                          onChange={e => setFormData({...formData, clientName: e.target.value})}
+                          data-testid="input-client-name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Sobrenome</Label>
+                        <Input
+                          placeholder="Sobrenome"
+                          value={formData.clientLastName}
+                          onChange={e => setFormData({...formData, clientLastName: e.target.value})}
+                          data-testid="input-client-last-name"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>Sobrenome</Label>
+                      <Label>Telefone</Label>
                       <Input
-                        placeholder="Sobrenome"
-                        value={formData.clientLastName}
-                        onChange={e => setFormData({...formData, clientLastName: e.target.value})}
-                        data-testid="input-client-last-name"
+                        placeholder="(00) 00000-0000"
+                        value={formData.clientPhone}
+                        onChange={e => setFormData({...formData, clientPhone: e.target.value})}
+                        data-testid="input-client-phone"
+                        inputMode="tel"
                       />
                     </div>
                   </div>
