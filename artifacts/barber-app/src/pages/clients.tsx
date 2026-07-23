@@ -24,20 +24,22 @@ export default function Clients() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     phone: "",
     email: "",
     notes: ""
   });
 
   const resetForm = () => {
-    setFormData({ name: "", phone: "", email: "", notes: "" });
+    setFormData({ firstName: "", lastName: "", phone: "", email: "", notes: "" });
     setEditingId(null);
   };
 
   const handleSave = () => {
+    const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
     const payload = {
-      name: formData.name,
+      name: fullName,
       phone: formData.phone,
       email: formData.email || undefined,
       notes: formData.notes || undefined
@@ -105,14 +107,25 @@ export default function Clients() {
               <DialogTitle>{editingId ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do Cliente</Label>
-                <Input 
-                  id="name" 
-                  value={formData.name} 
-                  onChange={e => setFormData({...formData, name: e.target.value})} 
-                  placeholder="Ex: João Silva"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nome</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={e => setFormData({...formData, firstName: e.target.value})}
+                    placeholder="Ex: João"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Sobrenome</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={e => setFormData({...formData, lastName: e.target.value})}
+                    placeholder="Ex: Silva"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
@@ -145,7 +158,7 @@ export default function Clients() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={!formData.name || !formData.phone || createClient.isPending || updateClient.isPending}>
+              <Button onClick={handleSave} disabled={!formData.firstName.trim() || !formData.phone || createClient.isPending || updateClient.isPending}>
                 Salvar
               </Button>
             </DialogFooter>
@@ -186,7 +199,8 @@ export default function Clients() {
                   <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => {
                       setEditingId(client.id);
-                      setFormData({ name: client.name, phone: client.phone, email: client.email || "", notes: client.notes || "" });
+                      const [first = "", ...rest] = client.name.split(" ");
+                      setFormData({ firstName: first, lastName: rest.join(" "), phone: client.phone, email: client.email || "", notes: client.notes || "" });
                       setIsCreateOpen(true);
                     }}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(client.id)}><Trash2 className="h-4 w-4" /></Button>
@@ -216,7 +230,8 @@ export default function Clients() {
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => {
                           setEditingId(client.id);
-                          setFormData({ name: client.name, phone: client.phone, email: client.email || "", notes: client.notes || "" });
+                          const [first = "", ...rest] = client.name.split(" ");
+                          setFormData({ firstName: first, lastName: rest.join(" "), phone: client.phone, email: client.email || "", notes: client.notes || "" });
                           setIsCreateOpen(true);
                         }}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(client.id)}><Trash2 className="h-4 w-4" /></Button>
