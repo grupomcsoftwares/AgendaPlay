@@ -44,8 +44,8 @@ export default defineConfig({
       },
       includeAssets: ["favicon.svg", "apple-touch-icon.png", "robots.txt"],
       manifest: {
-        name: "BarberApp — Agendamentos",
-        short_name: "BarberApp",
+        name: "Agenda Play",
+        short_name: "Agenda Play",
         description:
           "Agende seu horário na barbearia em poucos toques. Escolha o profissional, o serviço e o melhor horário.",
         lang: "pt-BR",
