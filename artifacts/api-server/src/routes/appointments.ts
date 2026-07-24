@@ -251,7 +251,7 @@ router.get("/availability", async (req, res): Promise<void> => {
   // is a natural fit for the selected service/combo. Normal mode uses the
   // configured fixed grid (e.g. every 15 min).
   const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
-  const BUFFER = 5;
+  const BUFFER = 0; // no gap between appointments — back-to-back booking allowed
   for (let t = openMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
@@ -404,7 +404,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
       .select()
       .from(appointmentsTable)
       .where(and(eq(appointmentsTable.userId, shopId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
-    const BUFFER = 5;
+    const BUFFER = 0; // no gap between appointments — back-to-back booking allowed
     const incomingBarberId = parsed.data.barberId ?? null;
     for (const a of sameDay) {
       if (a.status === "cancelled") continue;
@@ -816,7 +816,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     }
 
     const endMin = startMin + existing.serviceDuration;
-    const BUFFER = 5;
+    const BUFFER = 0; // no gap between appointments — back-to-back booking allowed
     const dayStart = new Date(`${localDate}T00:00:00Z`);
     const before = new Date(dayStart.getTime() - 24 * 3600 * 1000);
     const after = new Date(dayStart.getTime() + 48 * 3600 * 1000);
