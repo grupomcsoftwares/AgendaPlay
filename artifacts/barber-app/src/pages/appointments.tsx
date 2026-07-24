@@ -932,6 +932,8 @@ export default function Appointments() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-xl">{format(new Date(apt.scheduledAt), "HH:mm")}</span>
+                      <span className="text-muted-foreground text-sm">→</span>
+                      <span className="font-semibold text-base text-muted-foreground">{format(new Date(new Date(apt.scheduledAt).getTime() + apt.serviceDuration * 60000), "HH:mm")}</span>
                       <span className="text-sm text-muted-foreground">{format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -996,6 +998,7 @@ export default function Appointments() {
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Horário</TableHead>
+                    <TableHead>Término</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Serviço</TableHead>
                     <TableHead>Valor</TableHead>
@@ -1015,6 +1018,9 @@ export default function Appointments() {
                       </TableCell>
                       <TableCell className="font-bold text-lg">
                         {format(new Date(apt.scheduledAt), "HH:mm")}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {format(new Date(new Date(apt.scheduledAt).getTime() + apt.serviceDuration * 60000), "HH:mm")}
                       </TableCell>
                       <TableCell className="font-medium">
                         <span className="flex items-center gap-1.5">
