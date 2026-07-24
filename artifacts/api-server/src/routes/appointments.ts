@@ -188,7 +188,7 @@ router.get("/availability", async (req, res): Promise<void> => {
 
   // Booking rules from settings
   const maxBookingDays = settings?.maxBookingDays ?? 30;
-  const minAdvanceMinutes = settings?.minAdvanceMinutes ?? 0;
+  const minAdvanceMinutes = 0; // always show nearest available slot — no advance buffer
   const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
   const smartSlots = settings?.smartSlots ?? false;
 

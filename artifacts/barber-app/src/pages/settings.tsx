@@ -719,19 +719,6 @@ export default function Settings() {
                 </select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Antecedência mínima para agendar</Label>
-                <select value={formData.minAdvanceMinutes} onChange={(e) => setFormData({ ...formData, minAdvanceMinutes: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
-                  <option value={0}>Sem restrição</option>
-                  <option value={15}>15 minutos</option>
-                  <option value={30}>30 minutos</option>
-                  <option value={60}>60 minutos</option>
-                  <option value={120}>120 minutos</option>
-                  <option value={240}>240 minutos</option>
-                  <option value={480}>480 minutos</option>
-                  <option value={1440}>1440 minutos</option>
-                </select>
-              </div>
-              <div className="space-y-1">
                 <Label className="text-xs">Antecedência mínima para cancelar</Label>
                 <select value={formData.minCancelMinutes} onChange={(e) => setFormData({ ...formData, minCancelMinutes: Number(e.target.value) })} className="h-8 w-full rounded-md border border-input bg-muted/40 px-2 text-sm">
                   <option value={0}>Sem restrição</option>
