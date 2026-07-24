@@ -615,6 +615,23 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     }
   }, [availability, formData.time]);
 
+  // Auto-advance to next day when today has no remaining slots (all in the past).
+  useEffect(() => {
+    if (!availability || loadingSlots) return;
+    const hasAny = availability.slots.some(s => s.available);
+    if (hasAny) return;
+    // Only auto-advance when the selected date is today
+    const todayStr = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,"0")}-${d.getDate().toString().padStart(2,"0")}`;
+    })();
+    if (dateKey !== todayStr) return;
+    // Advance to tomorrow
+    const next = new Date(formData.date);
+    next.setDate(next.getDate() + 1);
+    setFormData(prev => ({ ...prev, date: next, time: "" }));
+  }, [availability, loadingSlots]);
+
   return (
     <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">
       <div className="max-w-md w-full space-y-8">
