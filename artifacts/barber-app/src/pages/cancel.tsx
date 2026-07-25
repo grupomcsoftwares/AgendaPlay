@@ -434,9 +434,21 @@ export default function CancelBooking() {
             <p className="text-sm text-muted-foreground">Este agendamento foi cancelado.</p>
           </div>
         ) : locked ? (
-          <p className="text-sm text-center text-muted-foreground">
-            Este agendamento já está em andamento ou foi concluído e não pode ser cancelado pelo link.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-center text-muted-foreground">
+              Este agendamento já está em andamento ou foi concluído e não pode ser cancelado pelo link.
+            </p>
+            <Button
+              className="w-full"
+              data-testid="button-new-booking"
+              onClick={() => {
+                try { localStorage.removeItem(`barber_pending_token_${shopId ?? "admin"}`); } catch { /* ignore */ }
+                window.location.href = shopId ? `/booking?shopId=${shopId}&novo=1` : "/booking?novo=1";
+              }}
+            >
+              Fazer novo agendamento
+            </Button>
+          </div>
         ) : confirming ? (
           <div className="space-y-3">
             <p className="text-sm text-center text-muted-foreground">Tem certeza? Esta ação não pode ser desfeita.</p>

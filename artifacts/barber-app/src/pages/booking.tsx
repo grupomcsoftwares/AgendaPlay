@@ -87,13 +87,13 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       return;
     }
     if (!pendingAppt) return;
-    if (pendingAppt.status === "cancelled") {
-      // Cancelled — clear token so the client can make a new booking.
+    if (pendingAppt.status === "cancelled" || pendingAppt.status === "completed") {
+      // Cancelled or already completed — clear token so the client can make a new booking.
       localStorage.removeItem(storageKey);
       setPendingToken(null);
       return;
     }
-    // For any other status (pending, confirmed, in_progress, completed) always
+    // For any other status (pending, confirmed, in_progress) always
     // redirect the client to their appointment preview page.
     // Use shopIdProp (not adminUser) so public-link visitors are always redirected,
     // even when an admin session cookie is present in the same browser.
