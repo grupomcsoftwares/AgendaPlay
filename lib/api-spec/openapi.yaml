@@ -1537,7 +1537,7 @@ components:
 
     CommissionByBarber:
       type: object
-      required: [barberName, revenue, commissionRate, commissionAmount, appointmentCount]
+      required: [barberName, revenue, commissionRate, commissionAmount, shopShareRate, shopShareAmount, appointmentCount]
       properties:
         barberName:
           type: string
@@ -1548,6 +1548,12 @@ components:
           description: Commission percentage (0-100). 0 means no rate set.
         commissionAmount:
           type: number
+        shopShareRate:
+          type: number
+          description: Percentage of the revenue kept by the barbershop (100 minus commissionRate).
+        shopShareAmount:
+          type: number
+          description: Amount of the revenue kept by the barbershop after the barber commission.
         appointmentCount:
           type: integer
 

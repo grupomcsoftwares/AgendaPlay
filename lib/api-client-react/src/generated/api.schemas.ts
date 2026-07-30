@@ -312,6 +312,10 @@ export interface CommissionByBarber {
   /** Commission percentage (0-100). 0 means no rate set. */
   commissionRate: number;
   commissionAmount: number;
+  /** Percentage of the revenue kept by the barbershop (100 minus commissionRate). */
+  shopShareRate: number;
+  /** Amount of the revenue kept by the barbershop after the barber commission. */
+  shopShareAmount: number;
   appointmentCount: number;
 }
 

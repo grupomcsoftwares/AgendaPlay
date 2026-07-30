@@ -710,6 +710,8 @@ export const GetFinancialSummaryResponse = zod.object({
   "revenue": zod.number(),
   "commissionRate": zod.number().describe('Commission percentage (0-100). 0 means no rate set.'),
   "commissionAmount": zod.number(),
+  "shopShareRate": zod.number().describe('Percentage of the revenue kept by the barbershop (100 minus commissionRate).'),
+  "shopShareAmount": zod.number().describe('Amount of the revenue kept by the barbershop after the barber commission.'),
   "appointmentCount": zod.number()
 }))
 })

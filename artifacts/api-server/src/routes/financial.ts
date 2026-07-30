@@ -90,15 +90,23 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
     });
   }
   const commissionByBarber = Array.from(barberMap.entries())
-    .map(([barberName, data]) => ({
-      barberName,
-      revenue:          data.revenue,
-      commissionRate:   data.commissionRate,
-      commissionAmount: data.commissionRate > 0
+    .map(([barberName, data]) => {
+      const commissionAmount = data.commissionRate > 0
         ? Math.round(data.revenue * data.commissionRate) / 100
-        : 0,
-      appointmentCount: data.appointmentCount,
-    }))
+        : 0;
+      const shopShareRate = Math.max(0, 100 - data.commissionRate);
+      const shopShareAmount = Math.round((data.revenue - commissionAmount) * 100) / 100;
+
+      return {
+        barberName,
+        revenue: data.revenue,
+        commissionRate: data.commissionRate,
+        commissionAmount,
+        shopShareRate,
+        shopShareAmount,
+        appointmentCount: data.appointmentCount,
+      };
+    })
     .sort((a, b) => b.commissionAmount - a.commissionAmount);
 
   res.json({ totalRevenue, totalAppointments, averageTicket, revenueByService, revenueByDay, commissionByBarber });

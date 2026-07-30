@@ -291,6 +291,9 @@ export default function Financial() {
                         </span>
                       )}
                       <span>receita {formatCurrency(b.revenue)}</span>
+                      <span className="text-emerald-400">
+                        barbearia {b.shopShareRate}% {formatCurrency(b.shopShareAmount)}
+                      </span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
                       <div
