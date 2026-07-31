@@ -6,29 +6,6 @@ import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import { getUncachableStripeClient } from "../stripeClient.js";
 
-export function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 80) || "barbearia";
-}
-
-async function uniqueSlug(db_: typeof db, base: string): Promise<string> {
-  let slug = base;
-  let attempt = 0;
-  while (true) {
-    const [existing] = await db_.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.slug, slug)).limit(1);
-    if (!existing) return slug;
-    attempt++;
-    slug = `${base}-${attempt}`;
-  }
-}
-
 declare module "express-session" {
   interface SessionData {
     userId?: string;
@@ -120,14 +97,14 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const baseSlug = generateSlug(barbershopName);
-  const slug = await uniqueSlug(db, baseSlug);
   const [user] = await db.insert(usersTable).values({
     email: normalizedEmail,
     passwordHash,
     barbershopName,
     ownerName,
-    slug,
+    // New accounts start without a public name-based link. The owner can
+    // choose a custom slug later from Settings.
+    slug: null,
   }).returning();
 
   req.session.userId = user.id;

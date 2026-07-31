@@ -5,3 +5,4 @@
 - [Push notifications on autoscale](push-notifications-autoscale.md) — server-side `setInterval` schedulers fail on autoscale because processes sleep between requests. Use client-driven pings to a trigger endpoint as primary delivery mechanism.
 - [Account-switch cache isolation](account-cache-isolation.md) — clear React Query and account-scoped browser storage on login, registration, logout, and account deletion to prevent stale shop data.
 - [Account deletion schema drift](account-deletion-schema-drift.md) — never let an account-delete transaction reference a table absent from the deployed database; one failed cleanup query rolls back the email deletion.
+- [Public booking slug lifecycle](public-booking-slug-lifecycle.md) — never derive a new account's public slug from its shop name; deleted-and-recreated accounts must not resurrect old public links.
