@@ -40,6 +40,11 @@ function normalizeCpf(value: unknown): string {
   return typeof value === "string" ? value.replace(/\D/g, "") : "";
 }
 
+function normalizeDocumentType(value: unknown): "cpf" | "cnpj" | null {
+  if (value === "cpf" || value === "cnpj") return value;
+  return null;
+}
+
 function normalizePhone(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -94,9 +99,27 @@ function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: st
   };
 }
 
+function isValidCnpj(cnpj: string): boolean {
+  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+
+  const calculateDigit = (value: string, weights: number[]) => {
+    const sum = value.split("").reduce((total, digit, index) => total + Number(digit) * weights[index]!, 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  const firstDigit = calculateDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  if (firstDigit !== Number(cnpj[12])) return false;
+
+  const secondDigit = calculateDigit(cnpj.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return secondDigit === Number(cnpj[13]);
+}
+
 router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
-  const { email, cpf, password, barbershopName, ownerName, phone } = req.body as {
+  const { email, documentType: rawDocumentType, documentNumber, cpf, password, barbershopName, ownerName, phone } = req.body as {
     email?: string;
+    documentType?: string;
+    documentNumber?: string;
     cpf?: string;
     password?: string;
     barbershopName?: string;
@@ -105,11 +128,13 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   };
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  const normalizedCpf = normalizeCpf(cpf);
+  // `cpf` remains accepted for one compatibility window for older clients.
+  const documentType = rawDocumentType === undefined ? "cpf" : normalizeDocumentType(rawDocumentType);
+  const normalizedDocument = normalizeCpf(documentNumber ?? cpf);
   const normalizedPhone = normalizePhone(phone);
   const phoneDigits = normalizedPhone.replace(/\D/g, "");
 
-  if (!normalizedEmail || !normalizedCpf || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
+  if (!normalizedEmail || !documentType || !normalizedDocument || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
     return;
   }
@@ -119,8 +144,11 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  if (!isValidCpf(normalizedCpf)) {
-    res.status(400).json({ error: "Informe um CPF válido." });
+  const validDocument = documentType === "cpf"
+    ? isValidCpf(normalizedDocument)
+    : isValidCnpj(normalizedDocument);
+  if (!validDocument) {
+    res.status(400).json({ error: `Informe um ${documentType.toUpperCase()} válido.` });
     return;
   }
 
@@ -138,20 +166,22 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const existingCpf = await db
+  const existingDocument = await db
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(eq(usersTable.cpf, normalizedCpf))
+    .where(eq(documentType === "cpf" ? usersTable.cpf : usersTable.cnpj, normalizedDocument))
     .limit(1);
-  if (existingCpf.length > 0) {
-    res.status(409).json({ error: "Este CPF já está cadastrado em uma conta." });
+  if (existingDocument.length > 0) {
+    res.status(409).json({ error: `Este ${documentType.toUpperCase()} já está cadastrado em uma conta.` });
     return;
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     email: normalizedEmail,
-    cpf: normalizedCpf,
+    documentType,
+    cpf: documentType === "cpf" ? normalizedDocument : null,
+    cnpj: documentType === "cnpj" ? normalizedDocument : null,
     passwordHash,
     barbershopName: barbershopName.trim(),
     ownerName: ownerName.trim(),

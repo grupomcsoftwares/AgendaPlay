@@ -12,18 +12,31 @@ export default function Register() {
     ownerName: "",
     phone: "",
     email: "",
-    cpf: "",
+    documentType: "cpf" as "cpf" | "cnpj",
+    documentNumber: "",
     password: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.name === "cpf"
-      ? e.target.value.replace(/\D/g, "").slice(0, 11)
+  const formatDocument = (value: string, type: "cpf" | "cnpj") => {
+    const digits = value.replace(/\D/g, "").slice(0, type === "cpf" ? 11 : 14);
+    if (type === "cpf") {
+      return digits
         .replace(/^(\d{3})(\d)/, "$1.$2")
         .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-        .replace(/\.(\d{3})(\d)/, ".$1-$2")
+        .replace(/\.(\d{3})(\d)/, ".$1-$2");
+    }
+    return digits
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+      .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5");
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.name === "documentNumber"
+      ? formatDocument(e.target.value, form.documentType)
       : e.target.name === "phone"
         ? e.target.value.replace(/\D/g, "").slice(0, 11)
           .replace(/^(\d{2})(\d)/, "($1) $2")
@@ -151,26 +164,47 @@ export default function Register() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold" htmlFor="cpf">CPF do responsável</label>
+            <label className="text-sm font-semibold" htmlFor="documentType">Documento da conta</label>
+            <select
+              id="documentType"
+              name="documentType"
+              value={form.documentType}
+              onChange={(e) => setForm((prev) => ({
+                ...prev,
+                documentType: e.target.value as "cpf" | "cnpj",
+                documentNumber: "",
+              }))}
+              className="w-full rounded-lg px-3 text-sm focus:outline-none"
+              style={inputStyle}
+            >
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="documentNumber">
+              {form.documentType === "cpf" ? "CPF do responsável" : "CNPJ da empresa"}
+            </label>
             <div className="relative">
               <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(0 0% 45%)" }} />
               <input
-                id="cpf"
-                name="cpf"
+                id="documentNumber"
+                name="documentNumber"
                 type="text"
                 inputMode="numeric"
                 autoComplete="off"
                 required
-                value={form.cpf}
+                value={form.documentNumber}
                 onChange={handleChange}
-                placeholder="000.000.000-00"
-                maxLength={14}
+                placeholder={form.documentType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
+                maxLength={form.documentType === "cpf" ? 14 : 18}
                 className="w-full rounded-lg pl-9 pr-3 text-sm focus:outline-none"
                 style={inputStyle}
               />
             </div>
             <p className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>
-              O CPF identifica uma única conta e é liberado somente após a exclusão definitiva.
+              O {form.documentType.toUpperCase()} identifica uma única conta e é liberado somente após a exclusão definitiva.
             </p>
           </div>
 

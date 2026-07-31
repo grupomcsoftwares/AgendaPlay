@@ -8,3 +8,4 @@
 - [Public booking slug lifecycle](public-booking-slug-lifecycle.md) — never derive a new account's public slug from its shop name; deleted-and-recreated accounts must not resurrect old public links.
 - [Account CPF uniqueness](account-cpf-uniqueness.md) — CPF identifies one account; normalize and validate it at registration, and release it only after definitive account deletion.
 - [Account identity source](account-identity-source.md) — full name, phone, and shop name are captured at registration and treated as account identity in settings.
+- [Account document choice](account-document-choice.md) — registration supports either a validated unique CPF or CNPJ; legacy CPF records remain compatible.
