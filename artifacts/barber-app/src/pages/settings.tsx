@@ -539,22 +539,18 @@ export default function Settings() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Nome da Barbearia</Label>
-                <Input className="h-8 text-sm" value={formData.barbershopName} onChange={e => setFormData({...formData, barbershopName: e.target.value})} />
+                <Input className="h-8 text-sm bg-muted/40" value={formData.barbershopName} readOnly disabled />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Proprietário</Label>
-                <Input className="h-8 text-sm" value={formData.ownerName} onChange={e => setFormData({...formData, ownerName: e.target.value})} />
+                <Label className="text-xs">Nome completo</Label>
+                <Input className="h-8 text-sm bg-muted/40" value={formData.ownerName} readOnly disabled />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Telefone</Label>
-                <Input className="h-8 text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Endereço</Label>
-                <Input className="h-8 text-sm" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                <Input className="h-8 text-sm bg-muted/40" value={formData.phone} readOnly disabled />
               </div>
             </div>
 

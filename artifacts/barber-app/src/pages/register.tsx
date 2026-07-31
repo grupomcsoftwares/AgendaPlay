@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
-import { Mail, Lock, User, Store, CreditCard } from "lucide-react";
+import { Mail, Lock, User, Store, CreditCard, Phone } from "lucide-react";
 import logoUrl from "../assets/agenda-play-logo-v2.png";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,6 +10,7 @@ export default function Register() {
   const [form, setForm] = useState({
     barbershopName: "",
     ownerName: "",
+    phone: "",
     email: "",
     cpf: "",
     password: "",
@@ -23,7 +24,11 @@ export default function Register() {
         .replace(/^(\d{3})(\d)/, "$1.$2")
         .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
         .replace(/\.(\d{3})(\d)/, ".$1-$2")
-      : e.target.value;
+      : e.target.name === "phone"
+        ? e.target.value.replace(/\D/g, "").slice(0, 11)
+          .replace(/^(\d{2})(\d)/, "($1) $2")
+          .replace(/(\d{5})(\d)/, "$1-$2")
+        : e.target.value;
     setForm((prev) => ({ ...prev, [e.target.name]: value }));
   };
 
@@ -89,7 +94,7 @@ export default function Register() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold" htmlFor="ownerName">Seu Nome</label>
+            <label className="text-sm font-semibold" htmlFor="ownerName">Nome completo</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(0 0% 45%)" }} />
               <input
@@ -100,6 +105,27 @@ export default function Register() {
                 value={form.ownerName}
                 onChange={handleChange}
                 placeholder="João Silva"
+                className="w-full rounded-lg pl-9 pr-3 text-sm focus:outline-none"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="phone">Telefone</label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(0 0% 45%)" }} />
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+                value={form.phone}
+                onChange={handleChange}
+                placeholder="(11) 99999-9999"
+                maxLength={15}
                 className="w-full rounded-lg pl-9 pr-3 text-sm focus:outline-none"
                 style={inputStyle}
               />

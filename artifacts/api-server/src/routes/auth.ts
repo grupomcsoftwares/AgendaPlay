@@ -22,6 +22,7 @@ const userCols = {
   passwordHash: usersTable.passwordHash,
   barbershopName: usersTable.barbershopName,
   ownerName: usersTable.ownerName,
+  phone: usersTable.phone,
   slug: usersTable.slug,
   trialStartedAt: usersTable.trialStartedAt,
   stripeCustomerId: usersTable.stripeCustomerId,
@@ -37,6 +38,10 @@ const TRIAL_DAYS = 7;
 
 function normalizeCpf(value: unknown): string {
   return typeof value === "string" ? value.replace(/\D/g, "") : "";
+}
+
+function normalizePhone(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isValidCpf(cpf: string): boolean {
@@ -90,19 +95,27 @@ function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: st
 }
 
 router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
-  const { email, cpf, password, barbershopName, ownerName } = req.body as {
+  const { email, cpf, password, barbershopName, ownerName, phone } = req.body as {
     email?: string;
     cpf?: string;
     password?: string;
     barbershopName?: string;
     ownerName?: string;
+    phone?: string;
   };
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const normalizedCpf = normalizeCpf(cpf);
+  const normalizedPhone = normalizePhone(phone);
+  const phoneDigits = normalizedPhone.replace(/\D/g, "");
 
-  if (!normalizedEmail || !normalizedCpf || !password || !barbershopName || !ownerName) {
+  if (!normalizedEmail || !normalizedCpf || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    return;
+  }
+
+  if (!/^\d{10,11}$/.test(phoneDigits)) {
+    res.status(400).json({ error: "Informe um telefone válido com DDD." });
     return;
   }
 
@@ -140,8 +153,9 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     email: normalizedEmail,
     cpf: normalizedCpf,
     passwordHash,
-    barbershopName,
-    ownerName,
+    barbershopName: barbershopName.trim(),
+    ownerName: ownerName.trim(),
+    phone: normalizedPhone,
     // New accounts start without a public name-based link. The owner can
     // choose a custom slug later from Settings.
     slug: null,
@@ -155,6 +169,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     ...status,
@@ -198,6 +213,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
@@ -269,6 +285,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     email: user.email,
     barbershopName: user.barbershopName,
     ownerName: user.ownerName,
+    phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,

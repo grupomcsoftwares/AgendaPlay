@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   barbershopName: text("barbershop_name").notNull().default("Minha Barbearia"),
   ownerName: text("owner_name").notNull().default("Proprietário"),
+  phone: text("phone"),
   slug: text("slug").unique(),
   previousSlug: text("previous_slug"),
   trialStartedAt: timestamp("trial_started_at", { withTimezone: true }).notNull().defaultNow(),
