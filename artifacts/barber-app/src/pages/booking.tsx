@@ -385,6 +385,18 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     () => (services ?? []).filter(s => formData.serviceIds.includes(s.id)),
     [services, formData.serviceIds]
   );
+  const promotionalServiceIds = React.useMemo(
+    () => new Set(
+      (services ?? [])
+        .filter(service =>
+          (service.dayPricing ?? []).some(dayPrice =>
+            Number(dayPrice.price) < Number(service.price)
+          )
+        )
+        .map(service => service.id)
+    ),
+    [services]
+  );
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
@@ -877,6 +889,30 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               <p className="text-sm text-muted-foreground">Selecione um ou mais serviços</p>
             </div>
 
+            {eligibleServicesAll.some(service => promotionalServiceIds.has(service.id)) && (
+              <div
+                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                style={{
+                  backgroundColor: "hsl(142 71% 45% / 0.12)",
+                  border: "1px solid hsl(142 71% 45% / 0.35)",
+                }}
+                data-testid="banner-promotion"
+              >
+                <span
+                  className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wider"
+                  style={{
+                    backgroundColor: "hsl(142 71% 45%)",
+                    color: "hsl(0 0% 7%)",
+                  }}
+                >
+                  PROMOÇÃO
+                </span>
+                <p className="text-sm text-muted-foreground">
+                  Aproveite preços especiais em dias selecionados.
+                </p>
+              </div>
+            )}
+
             {/* Loyalty banner — shown when client has points redeemable for at least one service */}
             {loyaltyBalance?.enabled && loyaltyAvailableDiscount > 0 && eligibleServicesAll.some(s => s.price <= loyaltyAvailableDiscount) && (
               <div
@@ -894,6 +930,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
+                const hasPromotion = promotionalServiceIds.has(service.id);
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -963,6 +1000,18 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               <DollarSign className="w-3.5 h-3.5" />
                               R$ {service.price.toFixed(2).replace(".", ",")}
                             </span>
+                            {hasPromotion && (
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
+                                style={{
+                                  backgroundColor: "hsl(142 71% 45%)",
+                                  color: "hsl(0 0% 7%)",
+                                }}
+                                data-testid={`badge-promotion-${service.id}`}
+                              >
+                                PROMOÇÃO
+                              </span>
+                            )}
                             {isBlocked && (
                               <span
                                 className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
