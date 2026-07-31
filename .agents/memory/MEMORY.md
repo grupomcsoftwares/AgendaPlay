@@ -6,3 +6,4 @@
 - [Account-switch cache isolation](account-cache-isolation.md) — clear React Query and account-scoped browser storage on login, registration, logout, and account deletion to prevent stale shop data.
 - [Account deletion schema drift](account-deletion-schema-drift.md) — never let an account-delete transaction reference a table absent from the deployed database; one failed cleanup query rolls back the email deletion.
 - [Public booking slug lifecycle](public-booking-slug-lifecycle.md) — never derive a new account's public slug from its shop name; deleted-and-recreated accounts must not resurrect old public links.
+- [Account CPF uniqueness](account-cpf-uniqueness.md) — CPF identifies one account; normalize and validate it at registration, and release it only after definitive account deletion.

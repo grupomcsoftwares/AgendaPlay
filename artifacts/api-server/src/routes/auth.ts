@@ -35,6 +35,28 @@ const userCols = {
 
 const TRIAL_DAYS = 7;
 
+function normalizeCpf(value: unknown): string {
+  return typeof value === "string" ? value.replace(/\D/g, "") : "";
+}
+
+function isValidCpf(cpf: string): boolean {
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+
+  let firstSum = 0;
+  for (let index = 0; index < 9; index += 1) {
+    firstSum += Number(cpf[index]) * (10 - index);
+  }
+  const firstCheck = (firstSum * 10) % 11;
+  if ((firstCheck === 10 ? 0 : firstCheck) !== Number(cpf[9])) return false;
+
+  let secondSum = 0;
+  for (let index = 0; index < 10; index += 1) {
+    secondSum += Number(cpf[index]) * (11 - index);
+  }
+  const secondCheck = (secondSum * 10) % 11;
+  return (secondCheck === 10 ? 0 : secondCheck) === Number(cpf[10]);
+}
+
 function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; stripeCurrentPeriodEnd: Date | null; subscriptionExpiresAt?: Date | null; maxBarbers?: number | null }) {
   const trialStarted = new Date(user.trialStartedAt);
   const now = new Date();
@@ -68,17 +90,24 @@ function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: st
 }
 
 router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
-  const { email, password, barbershopName, ownerName } = req.body as {
+  const { email, cpf, password, barbershopName, ownerName } = req.body as {
     email?: string;
+    cpf?: string;
     password?: string;
     barbershopName?: string;
     ownerName?: string;
   };
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedCpf = normalizeCpf(cpf);
 
-  if (!normalizedEmail || !password || !barbershopName || !ownerName) {
+  if (!normalizedEmail || !normalizedCpf || !password || !barbershopName || !ownerName) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
+    return;
+  }
+
+  if (!isValidCpf(normalizedCpf)) {
+    res.status(400).json({ error: "Informe um CPF válido." });
     return;
   }
 
@@ -96,9 +125,20 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  const existingCpf = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.cpf, normalizedCpf))
+    .limit(1);
+  if (existingCpf.length > 0) {
+    res.status(409).json({ error: "Este CPF já está cadastrado em uma conta." });
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     email: normalizedEmail,
+    cpf: normalizedCpf,
     passwordHash,
     barbershopName,
     ownerName,

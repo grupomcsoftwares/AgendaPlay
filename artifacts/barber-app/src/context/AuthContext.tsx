@@ -22,7 +22,7 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; password: string; barbershopName: string; ownerName: string }) => Promise<void>;
+  register: (data: { email: string; cpf: string; password: string; barbershopName: string; ownerName: string }) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data);
   }, [clearAccountCache]);
 
-  const register = useCallback(async (data: { email: string; password: string; barbershopName: string; ownerName: string }) => {
+  const register = useCallback(async (data: { email: string; cpf: string; password: string; barbershopName: string; ownerName: string }) => {
     // A newly created account must start with an empty client cache.
     clearAccountCache();
     const res = await fetch(`${BASE}/api/auth/register`, {

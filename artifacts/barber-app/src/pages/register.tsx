@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
-import { Mail, Lock, User, Store } from "lucide-react";
+import { Mail, Lock, User, Store, CreditCard } from "lucide-react";
 import logoUrl from "../assets/agenda-play-logo-v2.png";
 import { useAuth } from "../context/AuthContext";
 
@@ -11,13 +11,20 @@ export default function Register() {
     barbershopName: "",
     ownerName: "",
     email: "",
+    cpf: "",
     password: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const value = e.target.name === "cpf"
+      ? e.target.value.replace(/\D/g, "").slice(0, 11)
+        .replace(/^(\d{3})(\d)/, "$1.$2")
+        .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1-$2")
+      : e.target.value;
+    setForm((prev) => ({ ...prev, [e.target.name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,6 +122,30 @@ export default function Register() {
                 style={inputStyle}
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold" htmlFor="cpf">CPF do responsável</label>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: "hsl(0 0% 45%)" }} />
+              <input
+                id="cpf"
+                name="cpf"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                required
+                value={form.cpf}
+                onChange={handleChange}
+                placeholder="000.000.000-00"
+                maxLength={14}
+                className="w-full rounded-lg pl-9 pr-3 text-sm focus:outline-none"
+                style={inputStyle}
+              />
+            </div>
+            <p className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>
+              O CPF identifica uma única conta e é liberado somente após a exclusão definitiva.
+            </p>
           </div>
 
           <div className="space-y-2">
