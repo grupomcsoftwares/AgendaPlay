@@ -133,6 +133,8 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoProcessing, setLogoProcessing] = useState(false);
   const initializedRef = useRef(false);
+  const skipInitialAutoSaveRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: loyaltyClients } = useListLoyaltyClients({ query: { queryKey: getListLoyaltyClientsQueryKey() } });
 
@@ -200,6 +202,7 @@ export default function Settings() {
   useEffect(() => {
     if (settings && !initializedRef.current) {
       initializedRef.current = true;
+      skipInitialAutoSaveRef.current = true;
       const incoming = (settings.weeklySchedule as WeeklySchedule | null | undefined) ?? null;
       const merged = defaultWeeklySchedule();
       if (incoming) {
@@ -240,32 +243,73 @@ export default function Settings() {
     }
   }, [settings]);
 
-  // Keep refs in sync so the unmount cleanup always has fresh values
+  // Keep refs in sync so automatic saves and unmount cleanup always have fresh values.
   const formDataRef = useRef(formData);
   useEffect(() => { formDataRef.current = formData; }, [formData]);
   const updateSettingsRef = useRef(updateSettings);
   useEffect(() => { updateSettingsRef.current = updateSettings; }, [updateSettings]);
-  const toastRef = useRef(toast);
-  useEffect(() => { toastRef.current = toast; }, [toast]);
 
-  // Save automatically when the user navigates away from this page
+  const buildSettingsPayload = (fd: typeof formData) => ({
+    ...fd,
+    logoUrl: fd.logoUrl || null,
+    pixKey: fd.pixKey || null,
+    loyaltyConfig: {
+      enabled: fd.loyaltyEnabled,
+      pointsPerReal: fd.loyaltyPointsPerReal,
+      pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
+    },
+    receiptPrinterSize: fd.receiptPrinterSize,
+    serviceExclusions: fd.serviceExclusions,
+  } as any);
+
+  const persistSettings = (fd: typeof formData, showToast = false) => {
+    updateSettingsRef.current.mutate(
+      { data: buildSettingsPayload(fd) },
+      {
+        onSuccess: (saved) => {
+          // Keep the current page and the next page in sync with the confirmed server value.
+          queryClient.setQueryData(getGetSettingsQueryKey(), saved);
+          queryClient.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+          if (showToast) toast({ title: "Configurações salvas!" });
+        },
+        onError: () => {
+          if (showToast) {
+            toast({ title: "Não foi possível salvar as configurações.", variant: "destructive" });
+          }
+        },
+      },
+    );
+  };
+
+  // Save changes automatically shortly after the user stops editing.
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    if (skipInitialAutoSaveRef.current) {
+      skipInitialAutoSaveRef.current = false;
+      return;
+    }
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      persistSettings(formDataRef.current);
+      saveTimerRef.current = null;
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData]);
+
+  // Flush the latest values when leaving before the debounce has elapsed.
   useEffect(() => {
     return () => {
       if (!initializedRef.current) return;
-      const fd = formDataRef.current;
-      updateSettingsRef.current.mutate({ data: {
-        ...fd,
-        logoUrl: fd.logoUrl || null,
-        pixKey: fd.pixKey || null,
-        loyaltyConfig: {
-          enabled: fd.loyaltyEnabled,
-          pointsPerReal: fd.loyaltyPointsPerReal,
-          pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
-        },
-        receiptPrinterSize: fd.receiptPrinterSize,
-        serviceExclusions: fd.serviceExclusions,
-      } as any });
-      toastRef.current({ title: "Configurações salvas!" });
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      persistSettings(formDataRef.current, true);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

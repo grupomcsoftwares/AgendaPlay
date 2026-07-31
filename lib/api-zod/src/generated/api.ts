@@ -1287,6 +1287,7 @@ export const UpdateSettingsBody = zod.object({
 })).optional().describe('Lista de combinações proibidas de serviços'),
   "combosEnabled": zod.boolean().optional().describe('Se false, nenhum desconto por combo é aplicado.'),
   "serviceRestrictionsEnabled": zod.boolean().optional().describe('Se false, as restrições de serviços são ignoradas.'),
+  "bookingEnabled": zod.boolean().optional().describe('Se false, o link de agendamento fica desativado para clientes.'),
   "receiptPrinterSize": zod.enum(['50mm', '58mm', '80mm', 'A4']).default(updateSettingsBodyReceiptPrinterSizeDefault).describe('Tamanho da impressora para comprovantes.')
 })
 

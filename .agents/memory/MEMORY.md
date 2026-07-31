@@ -9,3 +9,4 @@
 - [Account CPF uniqueness](account-cpf-uniqueness.md) — CPF identifies one account; normalize and validate it at registration, and release it only after definitive account deletion.
 - [Account identity source](account-identity-source.md) — full name, phone, and shop name are captured at registration and treated as account identity in settings.
 - [Account document choice](account-document-choice.md) — registration supports either a validated unique CPF or CNPJ; legacy CPF records remain compatible.
+- [Editable settings contracts](settings-input-contracts.md) — editable fields must exist in the request schema, not only the response schema, or updates can be silently discarded.

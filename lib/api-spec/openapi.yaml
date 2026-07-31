@@ -1958,6 +1958,9 @@ components:
         serviceRestrictionsEnabled:
           type: boolean
           description: "Se false, as restrições de serviços são ignoradas."
+        bookingEnabled:
+          type: boolean
+          description: "Se false, o link de agendamento fica desativado para clientes."
         receiptPrinterSize:
           type: string
           enum: ["50mm", "58mm", "80mm", "A4"]

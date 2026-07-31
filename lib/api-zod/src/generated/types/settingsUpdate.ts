@@ -45,6 +45,8 @@ export interface SettingsUpdate {
   combosEnabled?: boolean;
   /** Se false, as restrições de serviços são ignoradas. */
   serviceRestrictionsEnabled?: boolean;
+  /** Se false, o link de agendamento fica desativado para clientes. */
+  bookingEnabled?: boolean;
   /** Tamanho da impressora para comprovantes. */
   receiptPrinterSize?: SettingsUpdateReceiptPrinterSize;
 }
