@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type AuthUser = {
   id: string;
@@ -33,6 +34,21 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const clearAccountCache = useCallback(() => {
+    queryClient.clear();
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith("barber_") || key.startsWith("notif_gate_"))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      // Storage may be unavailable in private browsing; the query cache is still cleared.
+    }
+  }, [queryClient]);
 
   const refresh = useCallback(async () => {
     try {
@@ -55,6 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(async (email: string, password: string) => {
+    // Never let data from the previous account remain visible while logging in.
+    clearAccountCache();
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,9 +85,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const data = await res.json();
     setUser(data);
-  }, []);
+  }, [clearAccountCache]);
 
   const register = useCallback(async (data: { email: string; password: string; barbershopName: string; ownerName: string }) => {
+    // A newly created account must start with an empty client cache.
+    clearAccountCache();
     const res = await fetch(`${BASE}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,12 +102,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const user = await res.json();
     setUser(user);
-  }, []);
+  }, [clearAccountCache]);
 
   const logout = useCallback(async () => {
     await fetch(`${BASE}/api/auth/logout`, { method: "POST", credentials: "include" });
+    clearAccountCache();
     setUser(null);
-  }, []);
+  }, [clearAccountCache]);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>

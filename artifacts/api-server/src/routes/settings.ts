@@ -43,9 +43,16 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
   req.log.info({ pixKey: parsed.data.pixKey, paymentEnableNow: parsed.data.paymentEnableNow }, "PATCH settings parsed");
   const userId = req.session.userId!;
   await getOrCreateSettings(userId);
+  const updateData = {
+    ...parsed.data,
+    serviceExclusions: parsed.data.serviceExclusions?.map((item) => ({
+      ...item,
+      services: [item.services[0], item.services[1]] as [number, number],
+    })),
+  };
   const [updated] = await db
     .update(settingsTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(settingsTable.userId, userId))
     .returning();
   if (!updated) {

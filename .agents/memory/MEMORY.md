@@ -3,3 +3,4 @@
 - [Stripe setup quirks](stripe-setup.md) — runMigrations breaks in esbuild bundle; run via raw Node; STRIPE_SECRET_KEY is primary key source.
 - [Stale TS declaration cache](ts-cache-stale.md) — lib .tsbuildinfo files can stale cache old declarations, causing "property does not exist" on newly added fields. Fix: `rm -f lib/*/.tsbuildinfo && pnpm run typecheck:libs`.
 - [Push notifications on autoscale](push-notifications-autoscale.md) — server-side `setInterval` schedulers fail on autoscale because processes sleep between requests. Use client-driven pings to a trigger endpoint as primary delivery mechanism.
+- [Account-switch cache isolation](account-cache-isolation.md) — clear React Query and account-scoped browser storage on login, registration, logout, and account deletion to prevent stale shop data.

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   usersTable,
@@ -13,6 +13,9 @@ import {
   subscriptionPlansTable,
   clientSubscriptionsTable,
   queueTable,
+  serviceDayPricingTable,
+  pushSubscriptionsTable,
+  adminPushSubscriptionsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 import bcrypt from "bcryptjs";
@@ -102,13 +105,27 @@ router.delete("/users/account", requireAuth, async (req, res): Promise<void> => 
   }
 
   await db.transaction(async (tx) => {
+    // These tables do not all have database-level cascades, so remove every
+    // account-owned record explicitly before deleting the account itself.
     await tx.delete(queueTable).where(eq(queueTable.userId, userId));
+    await tx.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.userId, userId));
     await tx.delete(clientSubscriptionsTable).where(eq(clientSubscriptionsTable.userId, userId));
     await tx.delete(loyaltyPointsTable).where(eq(loyaltyPointsTable.userId, userId));
+    const accountAppointments = await tx
+      .select({ cancelToken: appointmentsTable.cancelToken })
+      .from(appointmentsTable)
+      .where(eq(appointmentsTable.userId, userId));
+    const cancelTokens = accountAppointments
+      .map((appointment) => appointment.cancelToken)
+      .filter((token): token is string => Boolean(token));
+    if (cancelTokens.length > 0) {
+      await tx.delete(pushSubscriptionsTable).where(inArray(pushSubscriptionsTable.cancelToken, cancelTokens));
+    }
     await tx.delete(appointmentsTable).where(eq(appointmentsTable.userId, userId));
     await tx.delete(clientsTable).where(eq(clientsTable.userId, userId));
     await tx.delete(subscriptionPlansTable).where(eq(subscriptionPlansTable.userId, userId));
     await tx.delete(comboDiscountsTable).where(eq(comboDiscountsTable.userId, userId));
+    await tx.delete(serviceDayPricingTable).where(eq(serviceDayPricingTable.userId, userId));
     await tx.delete(servicesTable).where(eq(servicesTable.userId, userId));
     await tx.delete(barbersTable).where(eq(barbersTable.userId, userId));
     await tx.delete(settingsTable).where(eq(settingsTable.userId, userId));
