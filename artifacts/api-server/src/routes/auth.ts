@@ -98,7 +98,9 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     ownerName?: string;
   };
 
-  if (!email || !password || !barbershopName || !ownerName) {
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (!normalizedEmail || !password || !barbershopName || !ownerName) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
     return;
   }
@@ -108,7 +110,10 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+  const existing = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(sql`lower(trim(${usersTable.email})) = ${normalizedEmail}`);
   if (existing.length > 0) {
     res.status(409).json({ error: "E-mail já cadastrado." });
     return;
@@ -118,7 +123,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   const baseSlug = generateSlug(barbershopName);
   const slug = await uniqueSlug(db, baseSlug);
   const [user] = await db.insert(usersTable).values({
-    email: email.toLowerCase(),
+    email: normalizedEmail,
     passwordHash,
     barbershopName,
     ownerName,

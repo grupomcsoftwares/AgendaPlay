@@ -6,6 +6,7 @@ import {
   appointmentsTable,
   clientsTable,
   servicesTable,
+  barberServicesTable,
   barbersTable,
   settingsTable,
   comboDiscountsTable,
@@ -15,7 +16,6 @@ import {
   queueTable,
   serviceDayPricingTable,
   pushSubscriptionsTable,
-  adminPushSubscriptionsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 import bcrypt from "bcryptjs";
@@ -74,8 +74,9 @@ router.patch("/users/slug", requireAuth, async (req, res): Promise<void> => {
 
 router.delete("/users/account", requireAuth, async (req, res): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     res.status(400).json({ error: "Email e senha são obrigatórios." });
     return;
   }
@@ -93,7 +94,7 @@ router.delete("/users/account", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  if (user.email.toLowerCase() !== email.toLowerCase()) {
+  if (user.email.trim().toLowerCase() !== normalizedEmail) {
     res.status(401).json({ error: "Email ou senha incorretos." });
     return;
   }
@@ -108,16 +109,25 @@ router.delete("/users/account", requireAuth, async (req, res): Promise<void> => 
     // These tables do not all have database-level cascades, so remove every
     // account-owned record explicitly before deleting the account itself.
     await tx.delete(queueTable).where(eq(queueTable.userId, userId));
-    await tx.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.userId, userId));
     await tx.delete(clientSubscriptionsTable).where(eq(clientSubscriptionsTable.userId, userId));
     await tx.delete(loyaltyPointsTable).where(eq(loyaltyPointsTable.userId, userId));
     const accountAppointments = await tx
       .select({ cancelToken: appointmentsTable.cancelToken })
       .from(appointmentsTable)
       .where(eq(appointmentsTable.userId, userId));
+    const accountBarbers = await tx
+      .select({ id: barbersTable.id })
+      .from(barbersTable)
+      .where(eq(barbersTable.userId, userId));
+    const accountServices = await tx
+      .select({ id: servicesTable.id })
+      .from(servicesTable)
+      .where(eq(servicesTable.userId, userId));
     const cancelTokens = accountAppointments
       .map((appointment) => appointment.cancelToken)
       .filter((token): token is string => Boolean(token));
+    const barberIds = accountBarbers.map((barber) => barber.id);
+    const serviceIds = accountServices.map((service) => service.id);
     if (cancelTokens.length > 0) {
       await tx.delete(pushSubscriptionsTable).where(inArray(pushSubscriptionsTable.cancelToken, cancelTokens));
     }
@@ -126,6 +136,12 @@ router.delete("/users/account", requireAuth, async (req, res): Promise<void> => 
     await tx.delete(subscriptionPlansTable).where(eq(subscriptionPlansTable.userId, userId));
     await tx.delete(comboDiscountsTable).where(eq(comboDiscountsTable.userId, userId));
     await tx.delete(serviceDayPricingTable).where(eq(serviceDayPricingTable.userId, userId));
+    if (barberIds.length > 0) {
+      await tx.delete(barberServicesTable).where(inArray(barberServicesTable.barberId, barberIds));
+    }
+    if (serviceIds.length > 0) {
+      await tx.delete(barberServicesTable).where(inArray(barberServicesTable.serviceId, serviceIds));
+    }
     await tx.delete(servicesTable).where(eq(servicesTable.userId, userId));
     await tx.delete(barbersTable).where(eq(barbersTable.userId, userId));
     await tx.delete(settingsTable).where(eq(settingsTable.userId, userId));
