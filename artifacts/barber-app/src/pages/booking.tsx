@@ -413,9 +413,14 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       ? Math.min(...lowerPrices.map(item => item.price))
       : null;
   };
+  const getEffectiveServicePrice = (service: typeof selectedServices[number], date: Date) => {
+    const dayPrice = (service.dayPricing ?? []).find(item => item.dayOfWeek === date.getDay());
+    const price = dayPrice ? Number(dayPrice.price) : Number(service.price);
+    return Number.isFinite(price) ? price : Number(service.price);
+  };
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
-  const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
+  const totalPriceRaw = selectedServices.reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0);
 
   // Pre-declare loyalty state for combo dependency
   const useLoyaltyPoints = redeemedServiceIds.length > 0;
@@ -452,7 +457,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const comboServicesPrice = appliedCombo
     ? selectedServices
         .filter(s => (appliedCombo.serviceIds as number[]).includes(s.id))
-        .reduce((acc, s) => acc + s.price, 0)
+        .reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0)
     : 0;
   const discountAmount = appliedCombo
     ? appliedCombo.discountType === "value"
@@ -468,7 +473,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   // Points already committed to services the client chose to redeem
   const loyaltyAlreadyCommitted = selectedServices
     .filter(s => redeemedServiceIds.includes(s.id))
-    .reduce((acc, s) => acc + s.price, 0);
+    .reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0);
   // Remaining discount budget available for additional redemptions
   const loyaltyRemainingDiscount = Math.max(0, loyaltyAvailableDiscount - loyaltyAlreadyCommitted);
   // Auto-clear plan selection when loyalty is active (can't combine)
@@ -494,7 +499,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
         loyaltyAvailableDiscount,
         selectedServices
           .filter(s => redeemedServiceIds.includes(s.id))
-          .reduce((acc, s) => acc + s.price, 0)
+          .reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0)
       )
     : 0;
   const loyaltyPointsToSpend = useLoyaltyPoints && loyaltyBalance?.pointsPerRedemptionUnit
@@ -1404,9 +1409,11 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                   >
                     {(() => {
                       return selectedServices.map(sv => {
-                        const isRedeemed = useLoyaltyPoints && loyaltyBalance?.enabled && redeemedServiceIds.includes(sv.id) && sv.price > 0;
-                        const discountHere = isRedeemed ? sv.price : 0;
-                        const finalPrice = sv.price - discountHere;
+                        const effectivePrice = getEffectiveServicePrice(sv, formData.date);
+                        const promotionalPrice = getPromotionalPrice(sv, formData.date);
+                        const isRedeemed = useLoyaltyPoints && loyaltyBalance?.enabled && redeemedServiceIds.includes(sv.id) && effectivePrice > 0;
+                        const discountHere = isRedeemed ? effectivePrice : 0;
+                        const finalPrice = effectivePrice - discountHere;
                         return (
                           <div key={sv.id} className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">{sv.name}</span>
@@ -1414,15 +1421,25 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               {discountHere > 0 && (
                                 <>
                                   <span className="line-through text-muted-foreground mr-1" style={{ opacity: 0.6 }}>
-                                    R$ {sv.price.toFixed(2).replace(".", ",")}
+                                    R$ {effectivePrice.toFixed(2).replace(".", ",")}
                                   </span>
                                   <span style={{ color: AMBER }}>
                                     R$ {finalPrice.toFixed(2).replace(".", ",")} ⭐
                                   </span>
                                 </>
                               )}
-                              {discountHere === 0 && (
-                                <>R$ {sv.price.toFixed(2).replace(".", ",")}</>
+                              {discountHere === 0 && promotionalPrice !== null && (
+                                <>
+                                  <span className="line-through text-muted-foreground mr-1" style={{ opacity: 0.6 }}>
+                                    R$ {sv.price.toFixed(2).replace(".", ",")}
+                                  </span>
+                                  <span style={{ color: "hsl(142 71% 45%)" }}>
+                                    R$ {effectivePrice.toFixed(2).replace(".", ",")}
+                                  </span>
+                                </>
+                              )}
+                              {discountHere === 0 && promotionalPrice === null && (
+                                <>R$ {effectivePrice.toFixed(2).replace(".", ",")}</>
                               )}
                             </span>
                           </div>
@@ -1459,7 +1476,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                         <div key={sv.id} className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">{sv.name}</span>
                           <span className="font-semibold" style={{ color: AMBER }}>
-                            R$ {sv.price.toFixed(2).replace(".", ",")} ⭐
+                            R$ {getEffectiveServicePrice(sv, formData.date).toFixed(2).replace(".", ",")} ⭐
                           </span>
                         </div>
                       ))}
