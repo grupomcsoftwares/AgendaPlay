@@ -397,6 +397,22 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
     ),
     [services]
   );
+  const getPromotionalPrice = (service: typeof selectedServices[number], date?: Date) => {
+    const regularPrice = Number(service.price);
+    const lowerPrices = (service.dayPricing ?? [])
+      .filter(dayPrice => Number(dayPrice.price) < regularPrice)
+      .map(dayPrice => ({ dayOfWeek: dayPrice.dayOfWeek, price: Number(dayPrice.price) }))
+      .filter(dayPrice => Number.isFinite(dayPrice.price));
+
+    if (date) {
+      const dayPrice = lowerPrices.find(item => item.dayOfWeek === date.getDay());
+      return dayPrice?.price ?? null;
+    }
+
+    return lowerPrices.length > 0
+      ? Math.min(...lowerPrices.map(item => item.price))
+      : null;
+  };
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + s.price, 0);
@@ -891,7 +907,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
 
             {eligibleServicesAll.some(service => promotionalServiceIds.has(service.id)) && (
               <div
-                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                className="flex w-fit items-center rounded-full px-3 py-1.5"
                 style={{
                   backgroundColor: "hsl(142 71% 45% / 0.12)",
                   border: "1px solid hsl(142 71% 45% / 0.35)",
@@ -907,9 +923,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 >
                   PROMOÇÃO
                 </span>
-                <p className="text-sm text-muted-foreground">
-                  Aproveite preços especiais em dias selecionados.
-                </p>
               </div>
             )}
 
@@ -931,6 +944,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
                 const hasPromotion = promotionalServiceIds.has(service.id);
+                const promotionalPrice = hasPromotion ? getPromotionalPrice(service) : null;
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -994,12 +1008,20 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               {service.durationMinutes} min
                             </span>
                             <span
-                              className="flex items-center gap-1 font-semibold"
+                              className={`flex items-center gap-1 font-semibold ${isSelected && promotionalPrice !== null ? "line-through opacity-60" : ""}`}
                               style={{ color: AMBER }}
                             >
                               <DollarSign className="w-3.5 h-3.5" />
                               R$ {service.price.toFixed(2).replace(".", ",")}
                             </span>
+                            {isSelected && promotionalPrice !== null && (
+                              <span
+                                className="flex items-center gap-1 font-bold"
+                                style={{ color: "hsl(142 71% 45%)" }}
+                              >
+                                R$ {promotionalPrice.toFixed(2).replace(".", ",")}
+                              </span>
+                            )}
                             {hasPromotion && (
                               <span
                                 className="rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
@@ -1127,16 +1149,24 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 >
                   {selectedServices.map(sv => {
                     const isFree = redeemedServiceIds.includes(sv.id);
+                    const selectedDayPromotionalPrice = getPromotionalPrice(sv, formData.date);
                     return (
                       <div key={sv.id} className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5">
                           <Scissors className="w-3 h-3" style={{ color: AMBER }} />
                           <span className="font-medium">{sv.name}</span>
                         </span>
-                        <span className="text-muted-foreground">
+                        <span className="text-muted-foreground flex items-center gap-1.5">
                           {sv.durationMinutes} min · {isFree
                             ? <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>Grátis</span>
-                            : `R$ ${sv.price.toFixed(2).replace(".", ",")}`}
+                            : selectedDayPromotionalPrice !== null
+                              ? <>
+                                  <span className="line-through opacity-60">R$ {sv.price.toFixed(2).replace(".", ",")}</span>
+                                  <span style={{ color: "hsl(142 71% 45%)", fontWeight: 700 }}>
+                                    R$ {selectedDayPromotionalPrice.toFixed(2).replace(".", ",")}
+                                  </span>
+                                </>
+                              : `R$ ${sv.price.toFixed(2).replace(".", ",")}`}
                         </span>
                       </div>
                     );
