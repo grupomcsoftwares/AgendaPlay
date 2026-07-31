@@ -928,7 +928,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
                 const hasPromotion = promotionalServiceIds.has(service.id);
-                const promotionalPrice = hasPromotion ? getPromotionalPrice(service) : null;
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -992,20 +991,12 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                               {service.durationMinutes} min
                             </span>
                             <span
-                              className={`flex items-center gap-1 font-semibold ${isSelected && promotionalPrice !== null ? "line-through opacity-60" : ""}`}
+                              className="flex items-center gap-1 font-semibold"
                               style={{ color: AMBER }}
                             >
                               <DollarSign className="w-3.5 h-3.5" />
                               R$ {service.price.toFixed(2).replace(".", ",")}
                             </span>
-                            {isSelected && promotionalPrice !== null && (
-                              <span
-                                className="flex items-center gap-1 font-bold"
-                                style={{ color: "hsl(142 71% 45%)" }}
-                              >
-                                R$ {promotionalPrice.toFixed(2).replace(".", ",")}
-                              </span>
-                            )}
                             {hasPromotion && (
                               <span
                                 className="rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
