@@ -905,27 +905,6 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
               <p className="text-sm text-muted-foreground">Selecione um ou mais serviços</p>
             </div>
 
-            {eligibleServicesAll.some(service => promotionalServiceIds.has(service.id)) && (
-              <div
-                className="flex w-fit items-center rounded-full px-3 py-1.5"
-                style={{
-                  backgroundColor: "hsl(142 71% 45% / 0.12)",
-                  border: "1px solid hsl(142 71% 45% / 0.35)",
-                }}
-                data-testid="banner-promotion"
-              >
-                <span
-                  className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wider"
-                  style={{
-                    backgroundColor: "hsl(142 71% 45%)",
-                    color: "hsl(0 0% 7%)",
-                  }}
-                >
-                  PROMOÇÃO
-                </span>
-              </div>
-            )}
-
             {/* Loyalty banner — shown when client has points redeemable for at least one service */}
             {loyaltyBalance?.enabled && loyaltyAvailableDiscount > 0 && eligibleServicesAll.some(s => s.price <= loyaltyAvailableDiscount) && (
               <div
