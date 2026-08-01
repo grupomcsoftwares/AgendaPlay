@@ -1562,10 +1562,11 @@ export const ListSubscriptionsResponseItem = zod.object({
   "clientPhone": zod.string(),
   "clientEmail": zod.string(),
   "startDate": zod.string(),
-  "status": zod.enum(['pending', 'active', 'cancelled']),
+  "status": zod.enum(['pending', 'active', 'cancelled', 'expired']),
   "creditsRemaining": zod.number().nullish(),
   "creditsTotal": zod.number().nullish(),
   "expiresAt": zod.string().nullish(),
+  "renewedAt": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })
@@ -1592,7 +1593,7 @@ export const UpdateSubscriptionParams = zod.object({
 })
 
 export const UpdateSubscriptionBody = zod.object({
-  "status": zod.enum(['pending', 'active', 'cancelled'])
+  "status": zod.enum(['pending', 'active', 'cancelled', 'expired'])
 })
 
 export const UpdateSubscriptionResponse = zod.object({
@@ -1602,10 +1603,35 @@ export const UpdateSubscriptionResponse = zod.object({
   "clientPhone": zod.string(),
   "clientEmail": zod.string(),
   "startDate": zod.string(),
-  "status": zod.enum(['pending', 'active', 'cancelled']),
+  "status": zod.enum(['pending', 'active', 'cancelled', 'expired']),
   "creditsRemaining": zod.number().nullish(),
   "creditsTotal": zod.number().nullish(),
   "expiresAt": zod.string().nullish(),
+  "renewedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Manually renew an expired or active subscription (resets credits and extends 30 days)
+ */
+export const RenewSubscriptionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RenewSubscriptionResponse = zod.object({
+  "id": zod.number(),
+  "planId": zod.number(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "clientEmail": zod.string(),
+  "startDate": zod.string(),
+  "status": zod.enum(['pending', 'active', 'cancelled', 'expired']),
+  "creditsRemaining": zod.number().nullish(),
+  "creditsTotal": zod.number().nullish(),
+  "expiresAt": zod.string().nullish(),
+  "renewedAt": zod.string().nullish(),
   "createdAt": zod.string().optional(),
   "updatedAt": zod.string().optional()
 })

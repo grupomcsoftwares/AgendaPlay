@@ -21,6 +21,8 @@ export interface ClientSubscription {
   creditsTotal?: number | null;
   /** @nullable */
   expiresAt?: string | null;
+  /** @nullable */
+  renewedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

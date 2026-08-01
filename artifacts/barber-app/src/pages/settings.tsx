@@ -34,6 +34,7 @@ type SubscriberMonthlyUsage = {
   clientEmail: string;
   status: string;
   expiresAt: string | null;
+  renewedAt: string | null;
   planId: number;
   planName: string | null;
   maxAppointmentsPerMonth: number | null;
@@ -161,6 +162,23 @@ export default function Settings() {
     refetchOnWindowFocus: true,
     staleTime: 60_000,
   });
+
+  const [renewingId, setRenewingId] = useState<number | null>(null);
+  async function handleRenewSubscription(id: number) {
+    setRenewingId(id);
+    try {
+      const res = await fetch(`/api/subscriptions/${id}/renew`, { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        toast({ title: data.error ?? "Erro ao renovar assinatura", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Assinatura renovada com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ["subscriptions-monthly-usage"] });
+    } finally {
+      setRenewingId(null);
+    }
+  }
 
   const [exclusionOpen, setExclusionOpen] = useState(false);
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
@@ -1333,46 +1351,67 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Subscriber monthly usage — only shown when shop has active subscribers with cut limits */}
-          {subscriberUsage && subscriberUsage.filter(s => s.maxAppointmentsPerMonth != null).length > 0 && (
+          {/* Subscriber monthly usage — shown when shop has active or expired subscribers */}
+          {subscriberUsage && subscriberUsage.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-border">
-              <p className="text-sm font-semibold">Assinantes — cortes do mês</p>
+              <p className="text-sm font-semibold">Assinantes</p>
               <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
-                {subscriberUsage
-                  .filter(s => s.maxAppointmentsPerMonth != null)
-                  .map((s) => {
-                    const limit = s.maxAppointmentsPerMonth!;
+                {subscriberUsage.map((s) => {
+                    const isExpired = s.status === "expired";
+                    const limit = s.maxAppointmentsPerMonth;
                     const used = s.cutsUsedThisMonth;
-                    const atLimit = used >= limit;
-                    const fraction = Math.min(used / limit, 1);
+                    const atLimit = limit != null && used >= limit;
+                    const fraction = limit != null ? Math.min(used / limit, 1) : 0;
+                    const expiryDate = s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("pt-BR") : null;
                     return (
                       <div
                         key={s.id}
-                        className={`rounded-lg border px-3 py-2.5 text-sm space-y-1.5 ${atLimit ? "border-orange-500/40 bg-orange-500/5" : "border-border"}`}
+                        className={`rounded-lg border px-3 py-2.5 text-sm space-y-1.5 ${isExpired ? "border-destructive/40 bg-destructive/5" : atLimit ? "border-orange-500/40 bg-orange-500/5" : "border-border"}`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
                             <span className="font-medium">{s.clientName}</span>
                             {s.planName && (
                               <span className="ml-2 text-xs text-muted-foreground">{s.planName}</span>
                             )}
-                          </div>
-                          <div className={`text-xs font-semibold tabular-nums ${atLimit ? "text-orange-400" : "text-muted-foreground"}`}>
-                            {used}/{limit} cortes
-                            {atLimit && (
-                              <span className="ml-1.5 inline-flex items-center gap-1 text-orange-400">
-                                <AlertTriangle className="h-3 w-3 inline" /> limite
+                            {expiryDate && (
+                              <span className={`ml-2 text-xs ${isExpired ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                {isExpired ? "venceu" : "vence"} {expiryDate}
                               </span>
                             )}
                           </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isExpired ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-xs border-destructive/50 text-destructive hover:bg-destructive/10"
+                                disabled={renewingId === s.id}
+                                onClick={() => handleRenewSubscription(s.id)}
+                              >
+                                {renewingId === s.id ? "..." : "Renovar"}
+                              </Button>
+                            ) : limit != null ? (
+                              <div className={`text-xs font-semibold tabular-nums ${atLimit ? "text-orange-400" : "text-muted-foreground"}`}>
+                                {used}/{limit} cortes
+                                {atLimit && (
+                                  <span className="ml-1.5 inline-flex items-center gap-1 text-orange-400">
+                                    <AlertTriangle className="h-3 w-3 inline" /> limite
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        {/* progress bar */}
-                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${atLimit ? "bg-orange-400" : "bg-amber-500"}`}
-                            style={{ width: `${fraction * 100}%` }}
-                          />
-                        </div>
+                        {/* progress bar — only for plans with cut limits */}
+                        {limit != null && !isExpired && (
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${atLimit ? "bg-orange-400" : "bg-amber-500"}`}
+                              style={{ width: `${fraction * 100}%` }}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

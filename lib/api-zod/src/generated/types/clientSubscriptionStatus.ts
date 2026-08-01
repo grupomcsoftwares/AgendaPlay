@@ -13,4 +13,5 @@ export const ClientSubscriptionStatus = {
   pending: 'pending',
   active: 'active',
   cancelled: 'cancelled',
+  expired: 'expired',
 } as const;

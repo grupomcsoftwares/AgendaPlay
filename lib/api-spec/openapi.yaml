@@ -1064,6 +1064,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/ClientSubscription"
 
+  /subscriptions/{id}/renew:
+    post:
+      operationId: renewSubscription
+      tags: [subscriptions]
+      summary: Manually renew an expired or active subscription (resets credits and extends 30 days)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Renewed subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientSubscription"
+        "400":
+          description: Subscription not in a renewable state
+        "404":
+          description: Subscription not found
+
   /subscriptions/check:
     get:
       operationId: checkSubscription
@@ -1725,12 +1748,14 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, active, cancelled]
+          enum: [pending, active, cancelled, expired]
         creditsRemaining:
           type: ["integer", "null"]
         creditsTotal:
           type: ["integer", "null"]
         expiresAt:
+          type: ["string", "null"]
+        renewedAt:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -1758,7 +1783,7 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, active, cancelled]
+          enum: [pending, active, cancelled, expired]
 
     SubscriptionCheckResult:
       type: object

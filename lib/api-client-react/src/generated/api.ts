@@ -3965,6 +3965,76 @@ export const useUpdateSubscription = <TError = ErrorType<unknown>,
       return useMutation(getUpdateSubscriptionMutationOptions(options));
     }
 
+export const getRenewSubscriptionUrl = (id: number,) => {
+
+
+
+
+  return `/api/subscriptions/${id}/renew`
+}
+
+/**
+ * @summary Manually renew an expired or active subscription (resets credits and extends 30 days)
+ */
+export const renewSubscription = async (id: number, options?: RequestInit): Promise<ClientSubscription> => {
+
+  return customFetch<ClientSubscription>(getRenewSubscriptionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRenewSubscriptionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renewSubscription>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renewSubscription>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['renewSubscription'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renewSubscription>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  renewSubscription(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenewSubscriptionMutationResult = NonNullable<Awaited<ReturnType<typeof renewSubscription>>>
+
+    export type RenewSubscriptionMutationError = ErrorType<void>
+
+    /**
+ * @summary Manually renew an expired or active subscription (resets credits and extends 30 days)
+ */
+export const useRenewSubscription = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renewSubscription>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renewSubscription>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRenewSubscriptionMutationOptions(options));
+    }
+
 export const getCheckSubscriptionUrl = (params: CheckSubscriptionParams,) => {
   const normalizedParams = new URLSearchParams();
 

@@ -396,6 +396,7 @@ export const ClientSubscriptionStatus = {
   pending: 'pending',
   active: 'active',
   cancelled: 'cancelled',
+  expired: 'expired',
 } as const;
 
 export interface ClientSubscription {
@@ -412,6 +413,8 @@ export interface ClientSubscription {
   creditsTotal?: number | null;
   /** @nullable */
   expiresAt?: string | null;
+  /** @nullable */
+  renewedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -431,6 +434,7 @@ export const SubscriptionStatusUpdateStatus = {
   pending: 'pending',
   active: 'active',
   cancelled: 'cancelled',
+  expired: 'expired',
 } as const;
 
 export interface SubscriptionStatusUpdate {

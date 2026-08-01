@@ -32,7 +32,21 @@ function formatSubscription(s: typeof clientSubscriptionsTable.$inferSelect) {
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
     expiresAt: s.expiresAt?.toISOString() ?? null,
+    renewedAt: s.renewedAt?.toISOString() ?? null,
   };
+}
+
+/** Mark all expired-but-still-active subscriptions as expired, for a given userId. */
+async function autoExpireSubscriptions(userId: string): Promise<void> {
+  const now = new Date();
+  await db
+    .update(clientSubscriptionsTable)
+    .set({ status: "expired" })
+    .where(and(
+      eq(clientSubscriptionsTable.userId, userId),
+      eq(clientSubscriptionsTable.status, "active"),
+      sql`${clientSubscriptionsTable.expiresAt} IS NOT NULL AND ${clientSubscriptionsTable.expiresAt} < ${now}`,
+    ));
 }
 
 // ── Subscription Plans ────────────────────────────────────────────────────
@@ -137,6 +151,7 @@ router.delete("/subscription-plans/:id", requireAuth, async (req, res): Promise<
 
 router.get("/subscriptions", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+  await autoExpireSubscriptions(userId);
   const rows = await db
     .select()
     .from(clientSubscriptionsTable)
@@ -202,13 +217,13 @@ router.patch("/subscriptions/:id", requireAuth, async (req, res): Promise<void> 
   const userId = req.session.userId!;
   const body = req.body as Record<string, unknown>;
   const status = body.status as string | undefined;
-  if (!status || !["pending", "active", "cancelled"].includes(status)) {
-    res.status(400).json({ error: "status deve ser pending, active ou cancelled" });
+  if (!status || !["pending", "active", "cancelled", "expired"].includes(status)) {
+    res.status(400).json({ error: "status deve ser pending, active, cancelled ou expired" });
     return;
   }
 
   // When activating, load plan credits and set expiration
-  let patch: Partial<typeof clientSubscriptionsTable.$inferInsert> = { status: status as "pending" | "active" | "cancelled" };
+  let patch: Partial<typeof clientSubscriptionsTable.$inferInsert> = { status: status as "pending" | "active" | "cancelled" | "expired" };
   if (status === "active") {
     const [sub] = await db.select().from(clientSubscriptionsTable).where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId))).limit(1);
     if (sub) {
@@ -237,6 +252,55 @@ router.patch("/subscriptions/:id", requireAuth, async (req, res): Promise<void> 
   res.json(formatSubscription(updated));
 });
 
+// Manual renewal of an expired subscription — resets credits and adds 30 days
+router.post("/subscriptions/:id/renew", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params);
+  if (!id) {
+    res.status(400).json({ error: "id inválido" });
+    return;
+  }
+  const userId = req.session.userId!;
+
+  const [sub] = await db
+    .select()
+    .from(clientSubscriptionsTable)
+    .where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId)))
+    .limit(1);
+  if (!sub) {
+    res.status(404).json({ error: "Assinatura não encontrada" });
+    return;
+  }
+  if (!["expired", "active"].includes(sub.status)) {
+    res.status(400).json({ error: "Apenas assinaturas ativas ou expiradas podem ser renovadas" });
+    return;
+  }
+
+  const [plan] = await db
+    .select({ credits: subscriptionPlansTable.credits })
+    .from(subscriptionPlansTable)
+    .where(eq(subscriptionPlansTable.id, sub.planId))
+    .limit(1);
+  const planCredits = plan?.credits ?? 0;
+
+  const now = new Date();
+  const newExpiry = new Date(now);
+  newExpiry.setDate(newExpiry.getDate() + 30);
+
+  const [updated] = await db
+    .update(clientSubscriptionsTable)
+    .set({
+      status: "active",
+      creditsRemaining: planCredits,
+      creditsTotal: planCredits,
+      expiresAt: newExpiry,
+      renewedAt: now,
+    })
+    .where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId)))
+    .returning();
+
+  res.json(formatSubscription(updated));
+});
+
 router.get("/subscriptions/check", async (req, res): Promise<void> => {
   const shopId = resolveShop(req);
   if (!shopId) {
@@ -249,6 +313,8 @@ router.get("/subscriptions/check", async (req, res): Promise<void> => {
     return;
   }
   const phone = normalizePhone(rawPhone);
+  // Auto-expire any subscriptions whose period has ended before checking
+  await autoExpireSubscriptions(shopId);
   const [sub] = await db
     .select()
     .from(clientSubscriptionsTable)
@@ -286,6 +352,9 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
   if (!rawPhone) { res.status(400).json({ error: "phone obrigatório" }); return; }
   const phone = normalizePhone(rawPhone);
 
+  // Auto-expire any subscriptions whose period has ended before checking
+  await autoExpireSubscriptions(shopId);
+
   const [sub] = await db
     .select()
     .from(clientSubscriptionsTable)
@@ -315,15 +384,18 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
   });
 });
 
-// Returns all active subscribers with their monthly cut count (for plans with maxAppointmentsPerMonth)
+// Returns all subscribers (active + expired) with their monthly cut count
 router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+
+  // Auto-expire any subscriptions whose period has ended
+  await autoExpireSubscriptions(userId);
 
   // First day of current calendar month (UTC)
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  // All active subscriptions joined with plan info
+  // All active + expired subscriptions joined with plan info
   const subs = await db
     .select({
       id: clientSubscriptionsTable.id,
@@ -332,6 +404,7 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
       clientEmail: clientSubscriptionsTable.clientEmail,
       status: clientSubscriptionsTable.status,
       expiresAt: clientSubscriptionsTable.expiresAt,
+      renewedAt: clientSubscriptionsTable.renewedAt,
       planId: clientSubscriptionsTable.planId,
       planName: subscriptionPlansTable.name,
       maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
@@ -340,7 +413,7 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
     .leftJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, clientSubscriptionsTable.planId))
     .where(and(
       eq(clientSubscriptionsTable.userId, userId),
-      eq(clientSubscriptionsTable.status, "active"),
+      sql`${clientSubscriptionsTable.status} IN ('active', 'expired')`,
     ))
     .orderBy(clientSubscriptionsTable.createdAt);
 
@@ -380,6 +453,7 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
     clientEmail: s.clientEmail,
     status: s.status,
     expiresAt: s.expiresAt?.toISOString() ?? null,
+    renewedAt: s.renewedAt?.toISOString() ?? null,
     planId: s.planId,
     planName: s.planName ?? null,
     maxAppointmentsPerMonth: s.maxAppointmentsPerMonth ?? null,

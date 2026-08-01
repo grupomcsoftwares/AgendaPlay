@@ -8,10 +8,11 @@ export const clientSubscriptionsTable = pgTable("client_subscriptions", {
   clientPhone: text("client_phone").notNull(),
   clientEmail: text("client_email").notNull(),
   startDate: text("start_date").notNull(),
-  status: text("status").$type<"pending" | "active" | "cancelled">().notNull().default("pending"),
+  status: text("status").$type<"pending" | "active" | "cancelled" | "expired">().notNull().default("pending"),
   creditsRemaining: integer("credits_remaining"), // points left to spend
   creditsTotal: integer("credits_total"), // original allocation
-  expiresAt: timestamp("expires_at", { withTimezone: true }), // when unused credits expire
+  expiresAt: timestamp("expires_at", { withTimezone: true }), // when current period expires
+  renewedAt: timestamp("renewed_at", { withTimezone: true }), // last renewal timestamp
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
