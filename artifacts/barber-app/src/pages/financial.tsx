@@ -7,8 +7,9 @@ import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon, UserCheck, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { DateRange } from "react-day-picker";
 
 export default function Financial() {
   const today = new Date();
@@ -17,8 +18,6 @@ export default function Financial() {
   const [periodOpen, setPeriodOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<Date>(startOfMonth(today));
   const [pendingEnd, setPendingEnd] = useState<Date>(endOfMonth(today));
-  const [calMode, setCalMode] = useState<"start" | "end">("start");
-  const [calOpen, setCalOpen] = useState(false);
 
   const dateStartStr = format(dateStart, "yyyy-MM-dd");
   const dateEndStr = format(dateEnd, "yyyy-MM-dd");
@@ -55,11 +54,24 @@ export default function Financial() {
   };
 
   const handleQuickPeriod = (days: number) => {
-    const end = new Date();
-    const start = new Date();
+    const end = startOfDay(new Date());
+    const start = startOfDay(new Date());
     start.setDate(start.getDate() - days);
     setDateStart(start);
     setDateEnd(end);
+  };
+
+  const isQuickPeriodActive = (days: number) => {
+    const end = startOfDay(new Date());
+    const start = startOfDay(new Date());
+    start.setDate(start.getDate() - days);
+    return dateStartStr === format(start, "yyyy-MM-dd") && dateEndStr === format(end, "yyyy-MM-dd");
+  };
+
+  const handleRangeSelect = (range: DateRange | undefined) => {
+    if (!range?.from) return;
+    setPendingStart(range.from);
+    setPendingEnd(range.to ?? range.from);
   };
 
   return (
@@ -69,14 +81,31 @@ export default function Financial() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">Acompanhe o faturamento do seu negócio.</p>
         </div>
-        <div className="flex gap-2 shrink-0 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(0)}>Hoje</Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center rounded-lg border border-border/80 bg-card/60 p-1">
+            {[
+              { label: "Hoje", days: 0 },
+              { label: "7 dias", days: 6 },
+              { label: "30 dias", days: 29 },
+              { label: "90 dias", days: 89 },
+            ].map(({ label, days }) => {
+              const active = isQuickPeriodActive(days);
+              return (
+                <Button
+                  key={label}
+                  variant={active ? "default" : "ghost"}
+                  size="sm"
+                  className={active ? "shadow-sm" : "text-muted-foreground"}
+                  onClick={() => handleQuickPeriod(days)}
+                >
+                  {label}
+                </Button>
+              );
+            })}
+          </div>
           <Button
             variant="outline"
-            className="justify-start gap-2 font-normal min-w-[180px]"
+            className="justify-start gap-2 font-normal min-w-[220px]"
             onClick={handleOpenPeriod}
           >
             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -87,53 +116,33 @@ export default function Financial() {
 
       {/* Period picker dialog */}
       <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
-        <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden border-border/60">
+        <DialogContent className="sm:max-w-[720px] p-0 gap-0 overflow-hidden border-border/60">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="text-xl font-semibold tracking-tight">
-              Selecione o período do relatório
+              Escolha o período do relatório
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 py-5 space-y-4">
-            {/* Start date */}
-            <div className="space-y-1.5">
-              <span className="text-sm font-medium text-foreground">Data de início</span>
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2 font-normal"
-                onClick={() => { setCalMode("start"); setCalOpen(true); }}
-              >
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                {format(pendingStart, "EEE, dd MMM yyyy", { locale: ptBR })}
-              </Button>
-            </div>
-            {/* End date */}
-            <div className="space-y-1.5">
-              <span className="text-sm font-medium text-foreground">Data de término</span>
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2 font-normal"
-                onClick={() => { setCalMode("end"); setCalOpen(true); }}
-              >
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                {format(pendingEnd, "EEE, dd MMM yyyy", { locale: ptBR })}
-              </Button>
-            </div>
-            {/* Calendar picker */}
-            {calOpen && (
-              <div className="border rounded-xl p-2">
-                <Calendar
-                  mode="single"
-                  locale={ptBR}
-                  selected={calMode === "start" ? pendingStart : pendingEnd}
-                  onSelect={(d) => {
-                    if (!d) return;
-                    if (calMode === "start") setPendingStart(d);
-                    else setPendingEnd(d);
-                    setCalOpen(false);
-                  }}
-                />
+          <div className="px-6 py-5">
+            <div className="mb-4 grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                <span className="block text-xs text-muted-foreground">Início</span>
+                <span className="font-medium">{format(pendingStart, "dd/MM/yyyy")}</span>
               </div>
-            )}
+              <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                <span className="block text-xs text-muted-foreground">Término</span>
+                <span className="font-medium">{format(pendingEnd, "dd/MM/yyyy")}</span>
+              </div>
+            </div>
+            <div className="flex justify-center rounded-xl border border-border/70 bg-card/40">
+              <Calendar
+                mode="range"
+                locale={ptBR}
+                numberOfMonths={2}
+                selected={{ from: pendingStart, to: pendingEnd }}
+                onSelect={handleRangeSelect}
+                className="w-full justify-center"
+              />
+            </div>
           </div>
           <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
             <Button variant="ghost" onClick={() => setPeriodOpen(false)}>
