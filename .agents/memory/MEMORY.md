@@ -12,3 +12,4 @@
 - [Editable settings contracts](settings-input-contracts.md) — editable fields must exist in the request schema, not only the response schema, or updates can be silently discarded.
 - [Booking day pricing and combos](booking-day-pricing-combos.md) — combo totals must use each service's effective price for the selected day, not its base price.
 - [GitHub source-control connection](github-source-control-connection.md) — GitHub OAuth integration and Replit Git push credentials are separate; EAS GitHub builds need the latter.
+- [Expo/EAS version alignment](expo-eas-version-alignment.md) — keep Expo native modules on the same SDK major and use one authoritative Expo version before EAS builds.
