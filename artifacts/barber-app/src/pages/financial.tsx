@@ -70,6 +70,7 @@ export default function Financial() {
           <p className="text-muted-foreground mt-1 text-sm md:text-base">Acompanhe o faturamento do seu negócio.</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(0)}>Hoje</Button>
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
           <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
