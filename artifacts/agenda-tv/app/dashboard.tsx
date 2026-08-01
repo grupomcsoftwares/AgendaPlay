@@ -9,6 +9,7 @@ import {
   Dimensions,
   useWindowDimensions,
   Linking,
+  Share,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -84,6 +85,21 @@ export default function DashboardScreen() {
     setLoading(true);
     if (!isTablet && !isTV) setMenuOpen(false);
   }, [isTablet, isTV]);
+
+  const bookingUrl = user?.slug
+    ? `https://agendaplay.net/b/${user.slug}`
+    : null;
+
+  const handleShare = useCallback(async () => {
+    if (!bookingUrl) return;
+    const shopName = user?.barbershopName || "minha barbearia";
+    const message = `Agende seu horário na ${shopName}:\n${bookingUrl}`;
+    try {
+      await Share.share({ message });
+    } catch {
+      // user cancelled or share not available
+    }
+  }, [bookingUrl, user?.barbershopName]);
 
   // Reset selection to first TV item when switching to TV mode
   useEffect(() => {
@@ -199,6 +215,25 @@ export default function DashboardScreen() {
                 </Pressable>
               );
             })}
+
+            {bookingUrl && !isTV && (
+              <>
+                <View style={styles.menuDivider} />
+                <Pressable
+                  style={[
+                    styles.menuItem,
+                    styles.shareButton,
+                    !menuOpen && styles.menuItemCollapsed,
+                  ]}
+                  onPress={handleShare}
+                >
+                  <Feather name="share-2" size={18} color="#c9a84c" />
+                  {menuOpen && (
+                    <Text style={styles.shareLabel}>Compartilhar link</Text>
+                  )}
+                </Pressable>
+              </>
+            )}
           </View>
         </ScrollView>
       </View>
@@ -383,5 +418,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#333",
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: "#1a1a1a",
+    marginHorizontal: 8,
+    marginVertical: 6,
+  },
+  shareButton: {
+    borderColor: "#2a2a1a",
+    borderWidth: 1,
+  },
+  shareLabel: {
+    fontSize: 13,
+    color: "#c9a84c",
+    fontWeight: "600",
+    flex: 1,
   },
 });
