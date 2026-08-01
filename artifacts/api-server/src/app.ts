@@ -111,10 +111,6 @@ app.use(
   }),
 );
 
-app.get("/api/app-version", (_req, res) => {
-  res.json({ version: "1.0.2" });
-});
-
 app.use("/api", router);
 
 export default app;

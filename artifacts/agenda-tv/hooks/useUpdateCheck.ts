@@ -10,7 +10,27 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.2";
+export const APP_VERSION = "1.0.3";
+
+/** Returns true only when `server` is a valid version strictly greater than `current`. */
+function isNewerVersion(server: string, current: string): boolean {
+  const parse = (v: string) => {
+    const parts = v.trim().split(".");
+    if (parts.length === 0 || parts.some((p) => !/^\d+$/.test(p))) return null;
+    return parts.map(Number);
+  };
+  const s = parse(server);
+  const c = parse(current);
+  if (!s || !c) return false;
+  const len = Math.max(s.length, c.length);
+  for (let i = 0; i < len; i++) {
+    const a = s[i] ?? 0;
+    const b = c[i] ?? 0;
+    if (a > b) return true;
+    if (a < b) return false;
+  }
+  return false;
+}
 
 export function useUpdateCheck(): UpdateInfo {
   const [latestVersion, setLatestVersion] = useState<string>(APP_VERSION);
@@ -42,7 +62,8 @@ export function useUpdateCheck(): UpdateInfo {
     setSkipped(latestVersion);
   }, [latestVersion]);
 
-  const hasUpdate = latestVersion !== APP_VERSION && latestVersion !== skipped;
+  const hasUpdate =
+    isNewerVersion(latestVersion, APP_VERSION) && latestVersion !== skipped;
 
   return {
     hasUpdate,

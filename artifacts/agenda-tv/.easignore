@@ -5,6 +5,7 @@ android/
 ios/
 *.log
 attached_assets/
-artifacts/
-lib/
+artifacts/barber-app/
+artifacts/api-server/
+artifacts/mockup-sandbox/
 scripts/
