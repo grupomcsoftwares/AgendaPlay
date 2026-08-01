@@ -25,8 +25,8 @@ import {
   ApiError,
   type Appointment,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare, Users } from "lucide-react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare, Users, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,15 @@ import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+
+type SubscriberMonthlyUsage = {
+  id: number;
+  clientName: string;
+  clientPhone: string;
+  planName: string | null;
+  maxAppointmentsPerMonth: number | null;
+  cutsUsedThisMonth: number;
+};
 
 const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", clientPhone: "", serviceIds: [] as string[], time: "", barberId: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
@@ -99,6 +108,23 @@ export default function Appointments() {
   const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
   const { data: settings } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const { data: comboDiscounts } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
+
+  // Subscriber monthly cut usage — used to warn barber when a client is at their limit
+  const { data: subscriberUsage } = useQuery<SubscriberMonthlyUsage[]>({
+    queryKey: ["subscriptions-monthly-usage"],
+    queryFn: async () => {
+      const res = await fetch("/api/subscriptions/monthly-usage", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+  });
+
+  // Subscribers that have reached or exceeded their monthly cut limit
+  const subscribersAtLimit = (subscriberUsage ?? []).filter(
+    s => s.maxAppointmentsPerMonth != null && s.cutsUsedThisMonth >= s.maxAppointmentsPerMonth,
+  );
 
   const createAppointment = useCreateAppointment();
   const updateAppointment = useUpdateAppointment();
@@ -904,6 +930,33 @@ export default function Appointments() {
           </Dialog>
         </div>
       </div>
+
+      {/* Subscriber limit warning — shown when any active subscriber has used up their monthly cuts */}
+      {subscribersAtLimit.length > 0 && (
+        <div className="rounded-lg border border-orange-500/40 bg-orange-500/5 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-400 shrink-0" />
+            <span className="text-sm font-medium text-orange-400">
+              {subscribersAtLimit.length === 1
+                ? "1 assinante atingiu o limite de cortes este mês"
+                : `${subscribersAtLimit.length} assinantes atingiram o limite de cortes este mês`}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 pl-6">
+            {subscribersAtLimit.map(s => (
+              <span
+                key={s.id}
+                className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-xs font-medium text-orange-300"
+              >
+                {s.clientName}
+                <span className="text-orange-400/70">
+                  {s.cutsUsedThisMonth}/{s.maxAppointmentsPerMonth}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="border border-border rounded-lg bg-card">
         {isLoading ? (

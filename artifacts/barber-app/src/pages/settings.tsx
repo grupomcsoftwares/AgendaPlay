@@ -6,7 +6,7 @@ import {
   useListLoyaltyClients, getListLoyaltyClientsQueryKey,
   useDeleteAccount,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,19 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
+
+type SubscriberMonthlyUsage = {
+  id: number;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  status: string;
+  expiresAt: string | null;
+  planId: number;
+  planName: string | null;
+  maxAppointmentsPerMonth: number | null;
+  cutsUsedThisMonth: number;
+};
 
 type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
@@ -137,6 +150,17 @@ export default function Settings() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: loyaltyClients } = useListLoyaltyClients({ query: { queryKey: getListLoyaltyClientsQueryKey() } });
+
+  const { data: subscriberUsage } = useQuery<SubscriberMonthlyUsage[]>({
+    queryKey: ["subscriptions-monthly-usage"],
+    queryFn: async () => {
+      const res = await fetch("/api/subscriptions/monthly-usage", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+  });
 
   const [exclusionOpen, setExclusionOpen] = useState(false);
   const [exclusionForm, setExclusionForm] = useState<{ id1: number | null; id2: number | null }>({ id1: null, id2: null });
@@ -1305,6 +1329,53 @@ export default function Settings() {
                     </span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Subscriber monthly usage — only shown when shop has active subscribers with cut limits */}
+          {subscriberUsage && subscriberUsage.filter(s => s.maxAppointmentsPerMonth != null).length > 0 && (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <p className="text-sm font-semibold">Assinantes — cortes do mês</p>
+              <div className="space-y-1 max-h-72 overflow-y-auto pr-1">
+                {subscriberUsage
+                  .filter(s => s.maxAppointmentsPerMonth != null)
+                  .map((s) => {
+                    const limit = s.maxAppointmentsPerMonth!;
+                    const used = s.cutsUsedThisMonth;
+                    const atLimit = used >= limit;
+                    const fraction = Math.min(used / limit, 1);
+                    return (
+                      <div
+                        key={s.id}
+                        className={`rounded-lg border px-3 py-2.5 text-sm space-y-1.5 ${atLimit ? "border-orange-500/40 bg-orange-500/5" : "border-border"}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-medium">{s.clientName}</span>
+                            {s.planName && (
+                              <span className="ml-2 text-xs text-muted-foreground">{s.planName}</span>
+                            )}
+                          </div>
+                          <div className={`text-xs font-semibold tabular-nums ${atLimit ? "text-orange-400" : "text-muted-foreground"}`}>
+                            {used}/{limit} cortes
+                            {atLimit && (
+                              <span className="ml-1.5 inline-flex items-center gap-1 text-orange-400">
+                                <AlertTriangle className="h-3 w-3 inline" /> limite
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {/* progress bar */}
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${atLimit ? "bg-orange-400" : "bg-amber-500"}`}
+                            style={{ width: `${fraction * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}

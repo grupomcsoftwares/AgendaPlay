@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, sql } from "drizzle-orm";
-import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable } from "@workspace/db";
+import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable, clientsTable } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
@@ -313,6 +313,78 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
     expiresAt: sub.expiresAt?.toISOString() ?? null,
     creditsUsedThisPeriod: totalUsed[0]?.sum ?? 0,
   });
+});
+
+// Returns all active subscribers with their monthly cut count (for plans with maxAppointmentsPerMonth)
+router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
+
+  // First day of current calendar month (UTC)
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+  // All active subscriptions joined with plan info
+  const subs = await db
+    .select({
+      id: clientSubscriptionsTable.id,
+      clientName: clientSubscriptionsTable.clientName,
+      clientPhone: clientSubscriptionsTable.clientPhone,
+      clientEmail: clientSubscriptionsTable.clientEmail,
+      status: clientSubscriptionsTable.status,
+      expiresAt: clientSubscriptionsTable.expiresAt,
+      planId: clientSubscriptionsTable.planId,
+      planName: subscriptionPlansTable.name,
+      maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
+    })
+    .from(clientSubscriptionsTable)
+    .leftJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, clientSubscriptionsTable.planId))
+    .where(and(
+      eq(clientSubscriptionsTable.userId, userId),
+      eq(clientSubscriptionsTable.status, "active"),
+    ))
+    .orderBy(clientSubscriptionsTable.createdAt);
+
+  if (subs.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  // Count this-month coveredByPlan appointments per client phone (via clients table)
+  const monthlyUsage = await db
+    .select({
+      clientPhone: clientsTable.phone,
+      count: sql<number>`COUNT(${appointmentsTable.id})`,
+    })
+    .from(appointmentsTable)
+    .innerJoin(
+      clientsTable,
+      and(
+        eq(clientsTable.id, appointmentsTable.clientId),
+        eq(clientsTable.userId, userId),
+      ),
+    )
+    .where(and(
+      eq(appointmentsTable.userId, userId),
+      eq(appointmentsTable.coveredByPlan, true),
+      sql`${appointmentsTable.status} != 'cancelled'`,
+      gte(appointmentsTable.scheduledAt, monthStart),
+    ))
+    .groupBy(clientsTable.phone);
+
+  const usageByPhone = new Map(monthlyUsage.map(r => [r.clientPhone, Number(r.count)]));
+
+  res.json(subs.map(s => ({
+    id: s.id,
+    clientName: s.clientName,
+    clientPhone: s.clientPhone,
+    clientEmail: s.clientEmail,
+    status: s.status,
+    expiresAt: s.expiresAt?.toISOString() ?? null,
+    planId: s.planId,
+    planName: s.planName ?? null,
+    maxAppointmentsPerMonth: s.maxAppointmentsPerMonth ?? null,
+    cutsUsedThisMonth: usageByPhone.get(s.clientPhone) ?? 0,
+  })));
 });
 
 export default router;
