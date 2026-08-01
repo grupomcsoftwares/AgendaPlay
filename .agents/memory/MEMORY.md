@@ -13,4 +13,5 @@
 - [Booking day pricing and combos](booking-day-pricing-combos.md) — combo totals must use each service's effective price for the selected day, not its base price.
 - [GitHub source-control connection](github-source-control-connection.md) — GitHub OAuth integration and Replit Git push credentials are separate; EAS GitHub builds need the latter.
 - [EAS monorepo .easignore](eas-monorepo-easignore.md) — EAS archives from repo root; root .easignore rules, and workspace deps (lib/) must stay in the archive.
+- [APK release versioning](apk-release-versioning.md) — changing the app version after a build does not update installed APKs; bump versionCode and release a fresh artifact before updating the server link.
 - [Expo/EAS version alignment](expo-eas-version-alignment.md) — keep Expo native modules on the same SDK major and use one authoritative Expo version before EAS builds.

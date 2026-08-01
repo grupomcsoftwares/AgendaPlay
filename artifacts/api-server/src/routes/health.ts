@@ -6,7 +6,7 @@ export const APP_VERSION = "1.0.3";
 // When a new APK is ready, update APP_VERSION above and set APK_URL to the
 // direct EAS download link (from expo.dev → Builds → the build → "Download").
 export const APK_URL: string | null =
-  "https://expo.dev/artifacts/eas/BjlKbeS4iGYT3rP2pmNIQiafsDyCcmLZJ1ToKwmG-p0.apk";
+  "https://expo.dev/artifacts/eas/TwK0HYBSVvqZWEPxO7MXEN9EBDaItTjAvoPUUny_eGI.apk";
 
 const router: IRouter = Router();
 
