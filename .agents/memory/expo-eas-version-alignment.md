@@ -7,4 +7,4 @@ Expo/EAS builds can fail when an Expo SDK 54 app declares a native module from S
 
 **Why:** Native module versions are coupled to the Expo SDK; local development may still run while the clean EAS install rejects or misbuilds the project.
 
-**How to apply:** Before an Android or iOS build, keep one Expo declaration, align Expo modules with the SDK's expected versions, regenerate the lockfile, validate the resolved app config, and set preview APK profiles to `distribution: "internal"` so EAS does not enter Play Store submission credential setup.
+**How to apply:** Before an Android or iOS build, keep one Expo declaration, align Expo modules with the SDK's expected versions, regenerate the lockfile, validate the resolved app config, set preview APK profiles to `distribution: "internal"` so EAS does not enter Play Store submission credential setup, and retain `submit.production` because Expo's GitHub build form requires that named submit profile even when auto-submit is off.
