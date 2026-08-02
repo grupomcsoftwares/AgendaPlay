@@ -240,7 +240,7 @@ export default function DashboardScreen() {
                 );
               })}
 
-              {bookingUrl && !isTV && (
+              {bookingUrl && !isTV && !isPhone && (
                 <>
                   <View style={styles.menuDivider} />
                   <Pressable
