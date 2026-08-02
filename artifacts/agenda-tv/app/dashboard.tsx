@@ -69,6 +69,7 @@ export default function DashboardScreen() {
   const botPad = isWeb ? 34 : insets.bottom;
   const isTablet = useIsTablet();
   const isTV = Platform.isTV || false;
+  const isPhone = !isTablet && !isTV;
 
   const [selectedId, setSelectedId] = useState<string>("overview");
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -155,14 +156,35 @@ export default function DashboardScreen() {
       )}
 
       {/* Sidebar */}
-      <View style={[styles.sidebar, menuOpen ? styles.sidebarOpen : styles.sidebarClosed]}>
-        <View style={styles.sidebarHeader}>
+      <View
+        style={[
+          styles.sidebar,
+          menuOpen ? styles.sidebarOpen : styles.sidebarClosed,
+          isPhone && menuOpen && styles.sidebarMobileOpen,
+        ]}
+      >
+        <View
+          style={[
+            styles.sidebarHeader,
+            !menuOpen && styles.sidebarHeaderCollapsed,
+            isPhone && menuOpen && styles.sidebarHeaderMobile,
+          ]}
+        >
           {menuOpen ? (
             <>
               <Feather name="scissors" size={20} color="#c9a84c" />
               <Text style={styles.shopName} numberOfLines={1}>
                 {user?.barbershopName || "AgendaPlay"}
               </Text>
+              {isPhone && (
+                <Pressable
+                  accessibilityLabel="Fechar menu"
+                  style={styles.closeMenuButton}
+                  onPress={() => setMenuOpen(false)}
+                >
+                  <Feather name="x" size={20} color="#aaa" />
+                </Pressable>
+              )}
             </>
           ) : (
             <Feather name="scissors" size={20} color="#c9a84c" />
@@ -182,6 +204,7 @@ export default function DashboardScreen() {
                   key={item.id}
                   style={[
                     styles.menuItem,
+                    isPhone && menuOpen && styles.menuItemMobile,
                     !menuOpen && styles.menuItemCollapsed,
                     isSelected && (menuOpen ? styles.menuItemSelected : styles.menuItemSelectedCollapsed),
                     isFocused && !isSelected && styles.menuItemFocused,
@@ -310,7 +333,19 @@ const styles = StyleSheet.create({
     width: 220,
   },
   sidebarClosed: {
-    width: 56,
+    width: 52,
+  },
+  sidebarMobileOpen: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 210,
+    shadowColor: "#000",
+    shadowOffset: { width: 5, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 12,
   },
   sidebarHeader: {
     flexDirection: "row",
@@ -322,11 +357,27 @@ const styles = StyleSheet.create({
     borderBottomColor: "#1a1a1a",
     minHeight: 56,
   },
+  sidebarHeaderCollapsed: {
+    justifyContent: "center",
+    paddingHorizontal: 0,
+  },
+  sidebarHeaderMobile: {
+    paddingVertical: 12,
+    minHeight: 52,
+  },
   shopName: {
     fontSize: 15,
     fontWeight: "700",
     color: "#f5f5f5",
     flex: 1,
+  },
+  closeMenuButton: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#1a1a1a",
   },
   menu: {
     paddingHorizontal: 8,
@@ -342,6 +393,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: "transparent",
+  },
+  menuItemMobile: {
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   menuItemCollapsed: {
     justifyContent: "center",
