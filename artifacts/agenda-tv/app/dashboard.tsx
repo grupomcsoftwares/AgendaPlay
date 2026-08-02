@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   hamburgerBtn: {
     position: "absolute",
     top: 12,
-    left: 12,
+    right: 12,
     zIndex: 20,
     width: 40,
     height: 40,

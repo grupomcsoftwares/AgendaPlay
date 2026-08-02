@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agenda Play",
     "slug": "agenda-tv",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "agenda-tv",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.agendaplay.tv",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0c0c0c"

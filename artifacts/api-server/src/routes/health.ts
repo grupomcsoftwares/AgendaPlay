@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.6";
+export const APP_VERSION = "1.0.7";
 
 // When a new APK is ready, update APP_VERSION above and set APK_URL to the
 // direct EAS download link (from expo.dev → Builds → the build → "Download").
 export const APK_URL: string | null =
-  "https://expo.dev/artifacts/eas/4xEgR0_NPyfrFSB6O0f1Dp0AGId_4TzTQRuYM1yhn1E.apk";
+  "https://expo.dev/artifacts/eas/OTh62EvDj2HiX9N6mGapUJlpe61BfnaWCdIpNb0GoQU.apk";
 
 const router: IRouter = Router();
 
