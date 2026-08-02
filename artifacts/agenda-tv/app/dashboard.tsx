@@ -155,111 +155,113 @@ export default function DashboardScreen() {
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <View
-        style={[
-          styles.sidebar,
-          menuOpen ? styles.sidebarOpen : styles.sidebarClosed,
-          isPhone && menuOpen && styles.sidebarMobileOpen,
-        ]}
-      >
+      {/* Sidebar: hidden completely on phones until the hamburger is pressed. */}
+      {(!isPhone || menuOpen) && (
         <View
           style={[
-            styles.sidebarHeader,
-            !menuOpen && styles.sidebarHeaderCollapsed,
-            isPhone && menuOpen && styles.sidebarHeaderMobile,
+            styles.sidebar,
+            menuOpen ? styles.sidebarOpen : styles.sidebarClosed,
+            isPhone && menuOpen && styles.sidebarMobileOpen,
           ]}
         >
-          {menuOpen ? (
-            <>
-              <Feather name="scissors" size={20} color="#c9a84c" />
-              <Text style={styles.shopName} numberOfLines={1}>
-                {user?.barbershopName || "AgendaPlay"}
-              </Text>
-              {isPhone && (
-                <Pressable
-                  accessibilityLabel="Fechar menu"
-                  style={styles.closeMenuButton}
-                  onPress={() => setMenuOpen(false)}
-                >
-                  <Feather name="x" size={20} color="#aaa" />
-                </Pressable>
-              )}
-            </>
-          ) : (
-            <Feather name="scissors" size={20} color="#c9a84c" />
-          )}
-        </View>
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: botPad + 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.menu}>
-            {activeMenu.map((item, idx) => {
-              const isSelected = selectedId === item.id;
-              const isFocused = focusedId === item.id;
-
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[
-                    styles.menuItem,
-                    isPhone && menuOpen && styles.menuItemMobile,
-                    !menuOpen && styles.menuItemCollapsed,
-                    isSelected && (menuOpen ? styles.menuItemSelected : styles.menuItemSelectedCollapsed),
-                    isFocused && !isSelected && styles.menuItemFocused,
-                  ]}
-                  onPress={() => handlePress(item)}
-                  onFocus={() => {
-                    setFocusedId(item.id);
-                    setFocusedIdx(idx);
-                  }}
-                  onBlur={() => setFocusedId((prev) => (prev === item.id ? null : prev))}
-                  focusable
-                  hasTVPreferredFocus={idx === 0}
-                >
-                  <Feather
-                    name={item.icon}
-                    size={18}
-                    color={isSelected ? "#0f0f0f" : isFocused ? "#c9a84c" : "#aaa"}
-                  />
-                  {menuOpen && (
-                    <Text
-                      style={[
-                        styles.menuLabel,
-                        isSelected && styles.menuLabelSelected,
-                        !isSelected && isFocused && styles.menuLabelFocused,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  )}
-                  {menuOpen && isSelected && <View style={styles.selectedDot} />}
-                </Pressable>
-              );
-            })}
-
-            {bookingUrl && !isTV && (
+          <View
+            style={[
+              styles.sidebarHeader,
+              !menuOpen && styles.sidebarHeaderCollapsed,
+              isPhone && menuOpen && styles.sidebarHeaderMobile,
+            ]}
+          >
+            {menuOpen ? (
               <>
-                <View style={styles.menuDivider} />
-                <Pressable
-                  style={[
-                    styles.menuItem,
-                    styles.shareButton,
-                    !menuOpen && styles.menuItemCollapsed,
-                  ]}
-                  onPress={handleShare}
-                >
-                  <Feather name="share-2" size={18} color="#c9a84c" />
-                  {menuOpen && (
-                    <Text style={styles.shareLabel}>Compartilhar link</Text>
-                  )}
-                </Pressable>
+                <Feather name="scissors" size={20} color="#c9a84c" />
+                <Text style={styles.shopName} numberOfLines={1}>
+                  {user?.barbershopName || "AgendaPlay"}
+                </Text>
+                {isPhone && (
+                  <Pressable
+                    accessibilityLabel="Fechar menu"
+                    style={styles.closeMenuButton}
+                    onPress={() => setMenuOpen(false)}
+                  >
+                    <Feather name="x" size={20} color="#aaa" />
+                  </Pressable>
+                )}
               </>
+            ) : (
+              <Feather name="scissors" size={20} color="#c9a84c" />
             )}
           </View>
-        </ScrollView>
-      </View>
+          <ScrollView
+            contentContainerStyle={{ paddingBottom: botPad + 24 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.menu}>
+              {activeMenu.map((item, idx) => {
+                const isSelected = selectedId === item.id;
+                const isFocused = focusedId === item.id;
+
+                return (
+                  <Pressable
+                    key={item.id}
+                    style={[
+                      styles.menuItem,
+                      isPhone && menuOpen && styles.menuItemMobile,
+                      !menuOpen && styles.menuItemCollapsed,
+                      isSelected && (menuOpen ? styles.menuItemSelected : styles.menuItemSelectedCollapsed),
+                      isFocused && !isSelected && styles.menuItemFocused,
+                    ]}
+                    onPress={() => handlePress(item)}
+                    onFocus={() => {
+                      setFocusedId(item.id);
+                      setFocusedIdx(idx);
+                    }}
+                    onBlur={() => setFocusedId((prev) => (prev === item.id ? null : prev))}
+                    focusable
+                    hasTVPreferredFocus={idx === 0}
+                  >
+                    <Feather
+                      name={item.icon}
+                      size={18}
+                      color={isSelected ? "#0f0f0f" : isFocused ? "#c9a84c" : "#aaa"}
+                    />
+                    {menuOpen && (
+                      <Text
+                        style={[
+                          styles.menuLabel,
+                          isSelected && styles.menuLabelSelected,
+                          !isSelected && isFocused && styles.menuLabelFocused,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    )}
+                    {menuOpen && isSelected && <View style={styles.selectedDot} />}
+                  </Pressable>
+                );
+              })}
+
+              {bookingUrl && !isTV && (
+                <>
+                  <View style={styles.menuDivider} />
+                  <Pressable
+                    style={[
+                      styles.menuItem,
+                      styles.shareButton,
+                      !menuOpen && styles.menuItemCollapsed,
+                    ]}
+                    onPress={handleShare}
+                  >
+                    <Feather name="share-2" size={18} color="#c9a84c" />
+                    {menuOpen && (
+                      <Text style={styles.shareLabel}>Compartilhar link</Text>
+                    )}
+                  </Pressable>
+                </>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Content area */}
       <View style={styles.content}>
