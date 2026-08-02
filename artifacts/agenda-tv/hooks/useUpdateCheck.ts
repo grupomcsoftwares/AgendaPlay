@@ -10,7 +10,7 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.7";
+export const APP_VERSION = "1.0.9";
 
 /** Returns true only when `server` is a valid version strictly greater than `current`. */
 function isNewerVersion(server: string, current: string): boolean {

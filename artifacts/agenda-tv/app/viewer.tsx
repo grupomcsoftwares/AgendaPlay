@@ -43,6 +43,7 @@ export default function ViewerScreen() {
   const [showBack, setShowBack] = useState(false);
   const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
+  const isTV = Platform.isTV || false;
 
   // Hardware back button (Android) + TV remote back key
   useEffect(() => {
@@ -118,7 +119,7 @@ export default function ViewerScreen() {
               return u.toString();
             })() }}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded="window.__AGENDAPLAY_MOBILE__ = true;"
+            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
             injectedJavaScript={injectedCookie || ""}
             onLoadStart={() => {
               setLoading(true);
@@ -185,14 +186,19 @@ export default function ViewerScreen() {
 
           {showBack && !loading && !error && (
             <Pressable
-              style={[styles.backBtn, { top: insets.top + 12 }, backFocused && styles.backBtnFocused]}
+              style={[
+                styles.backBtn,
+                isTV && styles.backBtnTv,
+                { top: insets.top + (isTV ? 8 : 12) },
+                backFocused && styles.backBtnFocused,
+              ]}
               onPress={() => router.back()}
               onFocus={() => setBackFocused(true)}
               onBlur={() => setBackFocused(false)}
               focusable
               testID="back-button"
             >
-              <Feather name="arrow-left" size={16} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
+              <Feather name="arrow-left" size={isTV ? 12 : 16} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
             </Pressable>
           )}
         </>
@@ -241,6 +247,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#333",
+  },
+  backBtnTv: {
+    left: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderWidth: 1,
+    borderColor: "#222",
   },
   backBtnFocused: { borderColor: "#c9a84c", backgroundColor: "rgba(201,168,76,0.15)" },
 });

@@ -153,6 +153,12 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
 }
 
 export default function Queue() {
+  const hideAddButton =
+    typeof window !== "undefined" &&
+    (!!(window as any).__AGENDAPLAY_MOBILE__ ||
+      !!(window as any).__AGENDAPLAY_TV__ ||
+      window.location.search.includes("view=mobile"));
+
   const { data: queue, isLoading } = useListQueue({
     query: {
       queryKey: getListQueueQueryKey(),
@@ -399,27 +405,29 @@ export default function Queue() {
           </span>
         </div>
         <div className="flex items-center" style={{ gap: "1.2em" }}>
-          <button
-            onClick={() => setIsAddOpen(true)}
-            data-testid="button-add-queue"
-            data-tvfocus
-            tabIndex={0}
-            className="flex items-center transition-opacity hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-amber-400"
-            style={{
-              gap: "0.4em",
-              padding: "0.3em 0.75em",
-              borderRadius: "0.3em",
-              fontSize: "0.75em",
-              fontWeight: 600,
-              backgroundColor: "hsl(var(--sidebar-primary))",
-              color: "hsl(var(--sidebar-primary-foreground))",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <Plus style={{ width: "0.9em", height: "0.9em" }} />
-            Adicionar
-          </button>
+          {!hideAddButton && (
+            <button
+              onClick={() => setIsAddOpen(true)}
+              data-testid="button-add-queue"
+              data-tvfocus
+              tabIndex={0}
+              className="flex items-center transition-opacity hover:opacity-80 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-amber-400"
+              style={{
+                gap: "0.4em",
+                padding: "0.3em 0.75em",
+                borderRadius: "0.3em",
+                fontSize: "0.75em",
+                fontWeight: 600,
+                backgroundColor: "hsl(var(--sidebar-primary))",
+                color: "hsl(var(--sidebar-primary-foreground))",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <Plus style={{ width: "0.9em", height: "0.9em" }} />
+              Adicionar
+            </button>
+          )}
           <LiveClock />
         </div>
       </div>

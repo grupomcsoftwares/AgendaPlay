@@ -208,7 +208,7 @@ export default function DashboardScreen() {
                       isPhone && menuOpen && styles.menuItemMobile,
                       !menuOpen && styles.menuItemCollapsed,
                       isSelected && (menuOpen ? styles.menuItemSelected : styles.menuItemSelectedCollapsed),
-                      isFocused && !isSelected && styles.menuItemFocused,
+                    isFocused && !isSelected && !isPhone && styles.menuItemFocused,
                     ]}
                     onPress={() => handlePress(item)}
                     onFocus={() => {
@@ -216,20 +216,20 @@ export default function DashboardScreen() {
                       setFocusedIdx(idx);
                     }}
                     onBlur={() => setFocusedId((prev) => (prev === item.id ? null : prev))}
-                    focusable
-                    hasTVPreferredFocus={idx === 0}
+                    focusable={!isPhone}
+                    hasTVPreferredFocus={!isPhone && idx === 0}
                   >
                     <Feather
                       name={item.icon}
                       size={18}
-                      color={isSelected ? "#0f0f0f" : isFocused ? "#c9a84c" : "#aaa"}
+                      color={isSelected ? "#0f0f0f" : !isPhone && isFocused ? "#c9a84c" : "#aaa"}
                     />
                     {menuOpen && (
                       <Text
                         style={[
                           styles.menuLabel,
                           isSelected && styles.menuLabelSelected,
-                          !isSelected && isFocused && styles.menuLabelFocused,
+                          !isSelected && !isPhone && isFocused && styles.menuLabelFocused,
                         ]}
                       >
                         {item.label}
@@ -291,7 +291,7 @@ export default function DashboardScreen() {
               return u.toString();
             })() }}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true;"}
+            injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = false;"}
             injectedJavaScript={injectedCookie || ""}
             javaScriptEnabled
             domStorageEnabled

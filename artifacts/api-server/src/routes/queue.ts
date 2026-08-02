@@ -155,16 +155,14 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
 
 router.get("/queue", async (req, res): Promise<void> => {
   const userId = req.session.userId!;
-  const rows = await db.transaction(async (tx) => {
-    await autoAdvanceInTx(tx, userId);
-    const rows = await tx
-      .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
-      .from(queueTable)
-      .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
-      .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
-    return rows;
-  });
+  // Reading the queue must never change its state. In particular, opening the
+  // TV must not start the next client or reset a startedAt timestamp.
+  const rows = await db
+    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
+    .from(queueTable)
+    .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
+    .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
+    .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
 
@@ -232,6 +230,21 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
   }
   const userId = req.session.userId!;
   const entry = await db.transaction(async (tx) => {
+    // Serialize starts and only allow an entry that is still waiting to start.
+    // A stale TV/panel request must not restart an in-progress or completed row.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742002")})`);
+
+    const [candidate] = await tx
+      .select({ id: queueTable.id })
+      .from(queueTable)
+      .where(and(
+        eq(queueTable.id, params.data.id),
+        eq(queueTable.userId, userId),
+        eq(queueTable.status, "waiting"),
+      ))
+      .limit(1);
+    if (!candidate) return null;
+
     const previouslyActive = await tx
       .update(queueTable)
       .set({ status: "completed" })
@@ -250,9 +263,14 @@ router.post("/queue/:id/start", async (req, res): Promise<void> => {
     const [started] = await tx
       .update(queueTable)
       .set({ status: "in_progress", startedAt: new Date() })
-      .where(and(eq(queueTable.id, params.data.id), eq(queueTable.userId, userId)))
+      .where(and(
+        eq(queueTable.id, params.data.id),
+        eq(queueTable.userId, userId),
+        eq(queueTable.status, "waiting"),
+      ))
       .returning();
     if (!started) return null;
+
     if (started.appointmentId) {
       await tx
         .update(appointmentsTable)
