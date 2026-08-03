@@ -1,10 +1,11 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { eq, and, gte, lt, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
+import { broadcastQueueUpdate } from "./queue.js";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -79,28 +80,56 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
  */
 async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
   const now = new Date();
-  // pending → in_progress
-  await db
-    .update(appointmentsTable)
-    .set({ status: "in_progress" })
-    .where(
-      and(
-        eq(appointmentsTable.userId, userId),
-        eq(appointmentsTable.status, "pending"),
-        lt(appointmentsTable.scheduledAt, now),
-      ),
-    );
-  // in_progress → completed when scheduledAt + serviceDuration <= now
-  await db
-    .update(appointmentsTable)
-    .set({ status: "completed" })
-    .where(
-      and(
-        eq(appointmentsTable.userId, userId),
-        eq(appointmentsTable.status, "in_progress"),
-        sql`${appointmentsTable.scheduledAt} + (${appointmentsTable.serviceDuration} * interval '1 minute') <= ${now}`,
-      ),
-    );
+  let queueChanged = false;
+
+  await db.transaction(async (tx) => {
+    // Keep the appointment and its live-queue row in the same state. Without
+    // this, an appointment could be completed while the TV still showed
+    // "Iniciar Agora" for its waiting queue entry.
+    const started = await tx
+      .update(appointmentsTable)
+      .set({ status: "in_progress" })
+      .where(
+        and(
+          eq(appointmentsTable.userId, userId),
+          eq(appointmentsTable.status, "pending"),
+          lt(appointmentsTable.scheduledAt, now),
+        ),
+      )
+      .returning({ id: appointmentsTable.id });
+
+    if (started.length > 0) {
+      queueChanged = true;
+      await tx
+        .update(queueTable)
+        .set({ status: "in_progress", startedAt: now })
+        .where(and(
+          inArray(queueTable.appointmentId, started.map((appointment) => appointment.id)),
+          sql`${queueTable.status} = 'waiting'`,
+        ));
+    }
+
+    const completed = await tx
+      .update(appointmentsTable)
+      .set({ status: "completed" })
+      .where(
+        and(
+          eq(appointmentsTable.userId, userId),
+          eq(appointmentsTable.status, "in_progress"),
+          sql`${appointmentsTable.scheduledAt} + (${appointmentsTable.serviceDuration} * interval '1 minute') <= ${now}`,
+        ),
+      )
+      .returning({ id: appointmentsTable.id });
+
+    if (completed.length > 0) {
+      queueChanged = true;
+      await tx
+        .delete(queueTable)
+        .where(inArray(queueTable.appointmentId, completed.map((appointment) => appointment.id)));
+    }
+  });
+
+  if (queueChanged) broadcastQueueUpdate(userId);
 }
 
 router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
@@ -648,15 +677,28 @@ router.post("/appointments/:id/start", requireAuth, async (req, res): Promise<vo
     return;
   }
   const userId = req.session.userId!;
-  const [appointment] = await db
-    .update(appointmentsTable)
-    .set({ status: "in_progress" })
-    .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
-    .returning();
+  const appointment = await db.transaction(async (tx) => {
+    const [started] = await tx
+      .update(appointmentsTable)
+      .set({ status: "in_progress" })
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+      .returning();
+    if (!started) return null;
+
+    await tx
+      .update(queueTable)
+      .set({ status: "in_progress", startedAt: new Date() })
+      .where(and(
+        eq(queueTable.appointmentId, started.id),
+        sql`${queueTable.status} = 'waiting'`,
+      ));
+    return started;
+  });
   if (!appointment) {
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  broadcastQueueUpdate(userId);
   res.json(formatAppointment(appointment));
 });
 
@@ -681,6 +723,7 @@ router.post("/appointments/:id/complete", requireAuth, async (req, res): Promise
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  broadcastQueueUpdate(userId);
   res.json(formatAppointment(appointment));
 });
 

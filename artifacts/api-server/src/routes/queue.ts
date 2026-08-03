@@ -161,7 +161,13 @@ router.get("/queue", async (req, res): Promise<void> => {
     .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
-    .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`))
+    .where(and(
+      eq(queueTable.userId, userId),
+      sql`${queueTable.status} != 'completed'`,
+      // Do not show stale appointment rows after the appointment was
+      // completed/cancelled, even if an older queue row was left behind.
+      sql`(${queueTable.appointmentId} IS NULL OR ${appointmentsTable.status} NOT IN ('completed', 'cancelled'))`,
+    ))
     .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
