@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode, Mail, MessageSquare } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -45,26 +45,6 @@ export default function Dashboard() {
       const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText())}`;
       window.open(waUrl, "_blank", "noopener,noreferrer");
     }
-  };
-
-  const handleWhatsApp = () => {
-    if (!bookingUrl) return;
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText())}`;
-    window.open(waUrl, "_blank", "noopener,noreferrer");
-  };
-
-  const handleSMS = () => {
-    if (!bookingUrl) return;
-    const smsUrl = `sms:?body=${encodeURIComponent(shareText())}`;
-    window.open(smsUrl, "_self");
-  };
-
-  const handleEmail = () => {
-    if (!bookingUrl) return;
-    const shopName = user?.barbershopName || "minha barbearia";
-    const subject = encodeURIComponent(`Agende seu horário na ${shopName}`);
-    const body = encodeURIComponent(shareText());
-    window.open(`mailto:?subject=${subject}&body=${body}`, "_self");
   };
 
   const handleCopy = () => {
@@ -161,7 +141,7 @@ export default function Dashboard() {
                 <span>Compartilhar</span>
               </Button>
             </div>
-            <div className="flex items-center gap-2 mt-3">
+            {/* <div className="flex items-center gap-2 mt-3">
               <span className="text-xs text-muted-foreground mr-1">Enviar via:</span>
               <Button
                 size="sm"
@@ -198,7 +178,7 @@ export default function Dashboard() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Compartilhe este link com seus clientes para que eles possam agendar online.
-            </p>
+            </p> */}
           </CardContent>
         </Card>
       )}
