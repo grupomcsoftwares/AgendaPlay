@@ -16,3 +16,4 @@
 - [APK release versioning](apk-release-versioning.md) — changing the app version after a build does not update installed APKs; bump versionCode and release a fresh artifact before updating the server link.
 - [Expo/EAS version alignment](expo-eas-version-alignment.md) — keep Expo native modules on the same SDK major and use one authoritative Expo version before EAS builds.
 - [Queue state source](queue-state-source.md) — reading the live queue must be side-effect-free; only an explicit barber action may start an entry.
+- [Loyalty point expiry](loyalty-point-expiry.md) — expiry is inactivity-based on the aggregate balance timestamp; 0 disables expiry and legacy configs default to 0.

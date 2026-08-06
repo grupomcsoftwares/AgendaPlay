@@ -328,12 +328,27 @@ export interface FinancialSummary {
   commissionByBarber: CommissionByBarber[];
 }
 
+/**
+ * Days without movement before the client's points expire; 0 disables expiration
+ */
+export type LoyaltyConfigExpirationDays = typeof LoyaltyConfigExpirationDays[keyof typeof LoyaltyConfigExpirationDays];
+
+
+export const LoyaltyConfigExpirationDays = {
+  NUMBER_0: 0,
+  NUMBER_30: 30,
+  NUMBER_60: 60,
+  NUMBER_90: 90,
+} as const;
+
 export interface LoyaltyConfig {
   enabled: boolean;
   /** Points earned per R$1 spent */
   pointsPerReal: number;
   /** Points needed to redeem R$1 discount */
   pointsPerRedemptionUnit: number;
+  /** Days without movement before the client's points expire; 0 disables expiration */
+  expirationDays?: LoyaltyConfigExpirationDays;
 }
 
 export interface LoyaltyClientBalance {
@@ -342,11 +357,22 @@ export interface LoyaltyClientBalance {
   points: number;
 }
 
+export type LoyaltyBalanceExpirationDays = typeof LoyaltyBalanceExpirationDays[keyof typeof LoyaltyBalanceExpirationDays];
+
+
+export const LoyaltyBalanceExpirationDays = {
+  NUMBER_0: 0,
+  NUMBER_30: 30,
+  NUMBER_60: 60,
+  NUMBER_90: 90,
+} as const;
+
 export interface LoyaltyBalance {
   enabled: boolean;
   points: number;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
+  expirationDays: LoyaltyBalanceExpirationDays;
   /** R$ value per redemption unit (always 1) */
   discountPerUnit: number;
 }

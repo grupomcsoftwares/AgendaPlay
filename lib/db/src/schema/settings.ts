@@ -8,6 +8,7 @@ export type LoyaltyConfig = {
   enabled: boolean;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
+  expirationDays?: 0 | 30 | 60 | 90;
 };
 
 export type DaySchedule = {

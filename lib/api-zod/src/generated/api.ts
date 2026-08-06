@@ -1185,7 +1185,8 @@ export const GetSettingsResponse = zod.object({
   "loyaltyConfig": zod.union([zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
-  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(getSettingsResponseServiceExclusionsItemServicesMin).max(getSettingsResponseServiceExclusionsItemServicesMax),
@@ -1279,7 +1280,8 @@ export const UpdateSettingsBody = zod.object({
   "loyaltyConfig": zod.union([zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
-  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(updateSettingsBodyServiceExclusionsItemServicesMin).max(updateSettingsBodyServiceExclusionsItemServicesMax),
@@ -1373,7 +1375,8 @@ export const UpdateSettingsResponse = zod.object({
   "loyaltyConfig": zod.union([zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
-  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount')
+  "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(updateSettingsResponseServiceExclusionsItemServicesMin).max(updateSettingsResponseServiceExclusionsItemServicesMax),
@@ -1410,6 +1413,7 @@ export const GetLoyaltyBalanceResponse = zod.object({
   "points": zod.number(),
   "pointsPerReal": zod.number(),
   "pointsPerRedemptionUnit": zod.number(),
+  "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]),
   "discountPerUnit": zod.number().describe('R$ value per redemption unit (always 1)')
 })
 

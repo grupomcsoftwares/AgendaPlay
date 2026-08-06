@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gt, lt, sql } from "drizzle-orm";
 import { db, settingsTable, loyaltyPointsTable, clientsTable, type LoyaltyConfig } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
 
@@ -17,6 +17,24 @@ function normalizePhone(raw: string): string {
 
 router.get("/loyalty/clients", requireAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+  const [settings] = await db
+    .select({ loyaltyConfig: settingsTable.loyaltyConfig })
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, userId))
+    .limit(1);
+  const loyaltyConfig = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
+  const expirationDays = loyaltyConfig?.expirationDays ?? 0;
+
+  if (expirationDays > 0) {
+    await db
+      .update(loyaltyPointsTable)
+      .set({ points: 0, updatedAt: new Date() })
+      .where(and(
+        eq(loyaltyPointsTable.userId, userId),
+        gt(loyaltyPointsTable.points, 0),
+        lt(loyaltyPointsTable.updatedAt, sql`NOW() - (${expirationDays} * INTERVAL '1 day')`),
+      ));
+  }
 
   // Buscar clientes da loja para lookup de nome
   const clients = await db
@@ -58,8 +76,21 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
   const loyaltyConfig = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
 
   if (!loyaltyConfig?.enabled) {
-    res.json({ enabled: false, points: 0, pointsPerReal: 0, pointsPerRedemptionUnit: 0, discountPerUnit: 1 });
+    res.json({ enabled: false, points: 0, pointsPerReal: 0, pointsPerRedemptionUnit: 0, expirationDays: 0, discountPerUnit: 1 });
     return;
+  }
+
+  const expirationDays = loyaltyConfig.expirationDays ?? 0;
+  if (expirationDays > 0) {
+    await db
+      .update(loyaltyPointsTable)
+      .set({ points: 0, updatedAt: new Date() })
+      .where(and(
+        eq(loyaltyPointsTable.userId, shopId),
+        eq(loyaltyPointsTable.clientPhone, phone),
+        gt(loyaltyPointsTable.points, 0),
+        lt(loyaltyPointsTable.updatedAt, sql`NOW() - (${expirationDays} * INTERVAL '1 day')`),
+      ));
   }
 
   const [row] = await db
@@ -73,6 +104,7 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
     points: row?.points ?? 0,
     pointsPerReal: loyaltyConfig.pointsPerReal,
     pointsPerRedemptionUnit: loyaltyConfig.pointsPerRedemptionUnit,
+    expirationDays,
     discountPerUnit: 1,
   });
 });

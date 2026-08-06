@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and, gte, lt, sql, inArray } from "drizzle-orm";
+import { eq, and, gte, gt, lt, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
 import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
@@ -359,6 +359,18 @@ router.post("/appointments", async (req, res): Promise<void> => {
       res.status(400).json({ error: "Programa de fidelidade não está ativo" });
       return;
     }
+    const expirationDays = loyaltyConfig.expirationDays ?? 0;
+    if (expirationDays > 0) {
+      await db
+        .update(loyaltyPointsTable)
+        .set({ points: 0, updatedAt: new Date() })
+        .where(and(
+          eq(loyaltyPointsTable.userId, shopId),
+          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
+          gt(loyaltyPointsTable.points, 0),
+          lt(loyaltyPointsTable.updatedAt, sql`NOW() - (${expirationDays} * INTERVAL '1 day')`),
+        ));
+    }
     const [balanceRow] = await db
       .select({ points: loyaltyPointsTable.points })
       .from(loyaltyPointsTable)
@@ -425,6 +437,19 @@ router.post("/appointments", async (req, res): Promise<void> => {
     let hash = 0;
     for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
     await tx.execute(sql`SELECT pg_advisory_xact_lock(742003, ${hash})`);
+
+    const expirationDays = loyaltyConfig?.expirationDays ?? 0;
+    if (expirationDays > 0 && loyaltyPhone) {
+      await tx
+        .update(loyaltyPointsTable)
+        .set({ points: 0, updatedAt: new Date() })
+        .where(and(
+          eq(loyaltyPointsTable.userId, shopId),
+          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
+          gt(loyaltyPointsTable.points, 0),
+          lt(loyaltyPointsTable.updatedAt, sql`NOW() - (${expirationDays} * INTERVAL '1 day')`),
+        ));
+    }
 
     const dayStart = new Date(`${localDate}T00:00:00Z`);
     const before = new Date(dayStart.getTime() - 24 * 3600 * 1000);

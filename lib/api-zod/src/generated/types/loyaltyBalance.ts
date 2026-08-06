@@ -5,12 +5,14 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { LoyaltyBalanceExpirationDays } from './loyaltyBalanceExpirationDays';
 
 export interface LoyaltyBalance {
   enabled: boolean;
   points: number;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
+  expirationDays: LoyaltyBalanceExpirationDays;
   /** R$ value per redemption unit (always 1) */
   discountPerUnit: number;
 }

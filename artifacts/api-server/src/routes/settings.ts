@@ -6,6 +6,14 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
+function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyaltyConfig"]) {
+  if (!config) return config;
+  return {
+    ...config,
+    expirationDays: config.expirationDays ?? 0,
+  };
+}
+
 function resolveShop(req: Request): string | null {
   if (req.session?.userId) return req.session.userId;
   const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
@@ -51,6 +59,7 @@ router.get("/settings", async (req, res): Promise<void> => {
     .limit(1);
   res.json({
     ...settings,
+    loyaltyConfig: normalizeLoyaltyConfig(settings.loyaltyConfig),
     barbershopName: user?.barbershopName ?? settings.barbershopName,
     ownerName: user?.ownerName ?? settings.ownerName,
     phone: user?.phone ?? settings.phone,
@@ -70,6 +79,12 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
   const { barbershopName: _barbershopName, ownerName: _ownerName, phone: _phone, ...mutableData } = parsed.data;
   const updateData = {
     ...mutableData,
+    loyaltyConfig: parsed.data.loyaltyConfig
+      ? {
+          ...parsed.data.loyaltyConfig,
+          expirationDays: parsed.data.loyaltyConfig.expirationDays ?? 0,
+        }
+      : parsed.data.loyaltyConfig,
     serviceExclusions: parsed.data.serviceExclusions?.map((item) => ({
       ...item,
       services: [item.services[0], item.services[1]] as [number, number],
@@ -84,7 +99,10 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Settings not found" });
     return;
   }
-  res.json(updated);
+  res.json({
+    ...updated,
+    loyaltyConfig: normalizeLoyaltyConfig(updated.loyaltyConfig),
+  });
 });
 
 export default router;

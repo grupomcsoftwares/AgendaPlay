@@ -52,6 +52,11 @@ type DaySchedule = {
 };
 
 type WeeklySchedule = Record<DayKey, DaySchedule>;
+type LoyaltyExpirationDays = 0 | 30 | 60 | 90;
+
+const normalizeLoyaltyExpirationDays = (value: number | undefined): LoyaltyExpirationDays => {
+  return value === 30 || value === 60 || value === 90 ? value : 0;
+};
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
   { key: "monday",    label: "Segunda-feira", short: "Segunda" },
@@ -210,6 +215,7 @@ export default function Settings() {
     loyaltyEnabled: boolean;
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
+    loyaltyPointsExpirationDays: 0 | 30 | 60 | 90;
     serviceExclusions: { services: [number, number]; enabled: boolean }[];
     combosEnabled: boolean;
     serviceRestrictionsEnabled: boolean;
@@ -234,6 +240,7 @@ export default function Settings() {
     loyaltyEnabled: false,
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
+    loyaltyPointsExpirationDays: 0 as LoyaltyExpirationDays,
     serviceExclusions: [],
     combosEnabled: true,
     serviceRestrictionsEnabled: true,
@@ -252,7 +259,7 @@ export default function Settings() {
           if (incoming[key]) merged[key] = { ...merged[key], ...incoming[key] };
         }
       }
-      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number } | null | undefined;
+      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; expirationDays?: number } | null | undefined;
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
@@ -272,6 +279,7 @@ export default function Settings() {
         loyaltyEnabled: lc?.enabled ?? false,
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
+        loyaltyPointsExpirationDays: normalizeLoyaltyExpirationDays(lc?.expirationDays),
         serviceExclusions: ((settings.serviceExclusions ?? []) as unknown[]).map(item =>
           Array.isArray(item)
             ? { services: [item[0], item[1]] as [number, number], enabled: true }
@@ -299,6 +307,7 @@ export default function Settings() {
       enabled: fd.loyaltyEnabled,
       pointsPerReal: fd.loyaltyPointsPerReal,
       pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
+      expirationDays: fd.loyaltyPointsExpirationDays,
     },
     receiptPrinterSize: fd.receiptPrinterSize,
     serviceExclusions: fd.serviceExclusions,
@@ -1317,6 +1326,26 @@ export default function Settings() {
                   />
                   <p className="text-xs text-muted-foreground">Ex: 100 → 100 pts = R$1 de desconto</p>
                 </div>
+              </div>
+              <div className="space-y-1.5 max-w-sm">
+                <Label className="text-xs font-medium">Expiração dos pontos</Label>
+                <Select
+                  value={String(formData.loyaltyPointsExpirationDays)}
+                  onValueChange={(value) => setFormData({ ...formData, loyaltyPointsExpirationDays: normalizeLoyaltyExpirationDays(Number(value)) })}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione o prazo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Desligado</SelectItem>
+                    <SelectItem value="30">30 dias</SelectItem>
+                    <SelectItem value="60">60 dias</SelectItem>
+                    <SelectItem value="90">90 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Se o cliente ficar esse período sem movimentar os pontos, o saldo será zerado.
+                </p>
               </div>
 
               <div

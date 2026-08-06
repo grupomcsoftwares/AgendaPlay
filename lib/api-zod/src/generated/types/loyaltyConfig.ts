@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { LoyaltyConfigExpirationDays } from './loyaltyConfigExpirationDays';
 
 export interface LoyaltyConfig {
   enabled: boolean;
@@ -12,4 +13,6 @@ export interface LoyaltyConfig {
   pointsPerReal: number;
   /** Points needed to redeem R$1 discount */
   pointsPerRedemptionUnit: number;
+  /** Days without movement before the client's points expire; 0 disables expiration */
+  expirationDays?: LoyaltyConfigExpirationDays;
 }

@@ -1648,6 +1648,10 @@ components:
         pointsPerRedemptionUnit:
           type: number
           description: Points needed to redeem R$1 discount
+        expirationDays:
+          type: integer
+          enum: [0, 30, 60, 90]
+          description: Days without movement before the client's points expire; 0 disables expiration
 
     LoyaltyClientBalance:
       type: object
@@ -1662,7 +1666,7 @@ components:
 
     LoyaltyBalance:
       type: object
-      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, discountPerUnit]
+      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, expirationDays, discountPerUnit]
       properties:
         enabled:
           type: boolean
@@ -1672,6 +1676,9 @@ components:
           type: number
         pointsPerRedemptionUnit:
           type: number
+        expirationDays:
+          type: integer
+          enum: [0, 30, 60, 90]
         discountPerUnit:
           type: number
           description: R$ value per redemption unit (always 1)
