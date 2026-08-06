@@ -11,6 +11,7 @@ function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyal
   return {
     ...config,
     expirationDays: config.expirationDays ?? 0,
+    expirationWarningDays: config.expirationWarningDays ?? 7,
   };
 }
 
@@ -83,6 +84,7 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
       ? {
           ...parsed.data.loyaltyConfig,
           expirationDays: parsed.data.loyaltyConfig.expirationDays ?? 0,
+          expirationWarningDays: parsed.data.loyaltyConfig.expirationWarningDays ?? 7,
         }
       : parsed.data.loyaltyConfig,
     serviceExclusions: parsed.data.serviceExclusions?.map((item) => ({

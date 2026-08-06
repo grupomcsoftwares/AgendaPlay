@@ -1652,6 +1652,10 @@ components:
           type: integer
           enum: [0, 30, 60, 90]
           description: Days without movement before the client's points expire; 0 disables expiration
+        expirationWarningDays:
+          type: integer
+          enum: [7, 15, 30]
+          description: Show the client a warning when this many days or fewer remain before points expire
 
     LoyaltyClientBalance:
       type: object
@@ -1666,7 +1670,7 @@ components:
 
     LoyaltyBalance:
       type: object
-      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, expirationDays, daysUntilExpiration, discountPerUnit]
+      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, expirationDays, expirationWarningDays, daysUntilExpiration, discountPerUnit]
       properties:
         enabled:
           type: boolean
@@ -1679,6 +1683,10 @@ components:
         expirationDays:
           type: integer
           enum: [0, 30, 60, 90]
+        expirationWarningDays:
+          type: integer
+          enum: [7, 15, 30]
+          description: Configured number of days before expiration when the client warning is shown
         daysUntilExpiration:
           type: ["integer", "null"]
           description: Days remaining before the current points balance expires; null when expiration is disabled or there are no points

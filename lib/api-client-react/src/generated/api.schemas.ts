@@ -341,6 +341,18 @@ export const LoyaltyConfigExpirationDays = {
   NUMBER_90: 90,
 } as const;
 
+/**
+ * Show the client a warning when this many days or fewer remain before points expire
+ */
+export type LoyaltyConfigExpirationWarningDays = typeof LoyaltyConfigExpirationWarningDays[keyof typeof LoyaltyConfigExpirationWarningDays];
+
+
+export const LoyaltyConfigExpirationWarningDays = {
+  NUMBER_7: 7,
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+} as const;
+
 export interface LoyaltyConfig {
   enabled: boolean;
   /** Points earned per R$1 spent */
@@ -349,6 +361,8 @@ export interface LoyaltyConfig {
   pointsPerRedemptionUnit: number;
   /** Days without movement before the client's points expire; 0 disables expiration */
   expirationDays?: LoyaltyConfigExpirationDays;
+  /** Show the client a warning when this many days or fewer remain before points expire */
+  expirationWarningDays?: LoyaltyConfigExpirationWarningDays;
 }
 
 export interface LoyaltyClientBalance {
@@ -367,12 +381,26 @@ export const LoyaltyBalanceExpirationDays = {
   NUMBER_90: 90,
 } as const;
 
+/**
+ * Configured number of days before expiration when the client warning is shown
+ */
+export type LoyaltyBalanceExpirationWarningDays = typeof LoyaltyBalanceExpirationWarningDays[keyof typeof LoyaltyBalanceExpirationWarningDays];
+
+
+export const LoyaltyBalanceExpirationWarningDays = {
+  NUMBER_7: 7,
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+} as const;
+
 export interface LoyaltyBalance {
   enabled: boolean;
   points: number;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
   expirationDays: LoyaltyBalanceExpirationDays;
+  /** Configured number of days before expiration when the client warning is shown */
+  expirationWarningDays: LoyaltyBalanceExpirationWarningDays;
   /**
      * Days remaining before the current points balance expires; null when expiration is disabled or there are no points
      * @nullable

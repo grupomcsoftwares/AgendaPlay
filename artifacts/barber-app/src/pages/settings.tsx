@@ -53,9 +53,14 @@ type DaySchedule = {
 
 type WeeklySchedule = Record<DayKey, DaySchedule>;
 type LoyaltyExpirationDays = 0 | 30 | 60 | 90;
+type LoyaltyExpirationWarningDays = 7 | 15 | 30;
 
 const normalizeLoyaltyExpirationDays = (value: number | undefined): LoyaltyExpirationDays => {
   return value === 30 || value === 60 || value === 90 ? value : 0;
+};
+const normalizeLoyaltyExpirationWarningDays = (value: number | undefined): LoyaltyExpirationWarningDays => {
+  if (value === 15 || value === 30) return value;
+  return 7;
 };
 
 const DAYS: { key: DayKey; label: string; short: string }[] = [
@@ -216,6 +221,7 @@ export default function Settings() {
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
     loyaltyPointsExpirationDays: 0 | 30 | 60 | 90;
+    loyaltyPointsExpirationWarningDays: 7 | 15 | 30;
     serviceExclusions: { services: [number, number]; enabled: boolean }[];
     combosEnabled: boolean;
     serviceRestrictionsEnabled: boolean;
@@ -241,6 +247,7 @@ export default function Settings() {
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
     loyaltyPointsExpirationDays: 0 as LoyaltyExpirationDays,
+    loyaltyPointsExpirationWarningDays: 7 as LoyaltyExpirationWarningDays,
     serviceExclusions: [],
     combosEnabled: true,
     serviceRestrictionsEnabled: true,
@@ -259,7 +266,7 @@ export default function Settings() {
           if (incoming[key]) merged[key] = { ...merged[key], ...incoming[key] };
         }
       }
-      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; expirationDays?: number } | null | undefined;
+      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; expirationDays?: number; expirationWarningDays?: number } | null | undefined;
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
@@ -280,6 +287,7 @@ export default function Settings() {
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
         loyaltyPointsExpirationDays: normalizeLoyaltyExpirationDays(lc?.expirationDays),
+        loyaltyPointsExpirationWarningDays: normalizeLoyaltyExpirationWarningDays(lc?.expirationWarningDays),
         serviceExclusions: ((settings.serviceExclusions ?? []) as unknown[]).map(item =>
           Array.isArray(item)
             ? { services: [item[0], item[1]] as [number, number], enabled: true }
@@ -308,6 +316,7 @@ export default function Settings() {
       pointsPerReal: fd.loyaltyPointsPerReal,
       pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
       expirationDays: fd.loyaltyPointsExpirationDays,
+      expirationWarningDays: fd.loyaltyPointsExpirationWarningDays,
     },
     receiptPrinterSize: fd.receiptPrinterSize,
     serviceExclusions: fd.serviceExclusions,
@@ -1345,6 +1354,25 @@ export default function Settings() {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Se o cliente ficar esse período sem movimentar os pontos, o saldo será zerado.
+                </p>
+              </div>
+              <div className="space-y-1.5 max-w-sm">
+                <Label className="text-xs font-medium">Avisar sobre expiração</Label>
+                <Select
+                  value={String(formData.loyaltyPointsExpirationWarningDays)}
+                  onValueChange={(value) => setFormData({ ...formData, loyaltyPointsExpirationWarningDays: normalizeLoyaltyExpirationWarningDays(Number(value)) })}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Selecione quando avisar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 dias antes</SelectItem>
+                    <SelectItem value="15">15 dias antes</SelectItem>
+                    <SelectItem value="30">30 dias antes</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  O cliente verá um aviso no agendamento quando faltarem esse número de dias ou menos.
                 </p>
               </div>
 

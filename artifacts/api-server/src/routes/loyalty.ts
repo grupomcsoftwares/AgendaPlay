@@ -82,6 +82,7 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
       pointsPerReal: 0,
       pointsPerRedemptionUnit: 0,
       expirationDays: 0,
+      expirationWarningDays: 7,
       daysUntilExpiration: null,
       discountPerUnit: 1,
     });
@@ -89,6 +90,7 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
   }
 
   const expirationDays = loyaltyConfig.expirationDays ?? 0;
+  const expirationWarningDays = loyaltyConfig.expirationWarningDays ?? 7;
   if (expirationDays > 0) {
     await db
       .update(loyaltyPointsTable)
@@ -120,6 +122,7 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
     pointsPerReal: loyaltyConfig.pointsPerReal,
     pointsPerRedemptionUnit: loyaltyConfig.pointsPerRedemptionUnit,
     expirationDays,
+    expirationWarningDays,
     daysUntilExpiration,
     discountPerUnit: 1,
   });

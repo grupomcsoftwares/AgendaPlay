@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LoyaltyBalanceExpirationDays } from './loyaltyBalanceExpirationDays';
+import type { LoyaltyBalanceExpirationWarningDays } from './loyaltyBalanceExpirationWarningDays';
 
 export interface LoyaltyBalance {
   enabled: boolean;
@@ -13,6 +14,8 @@ export interface LoyaltyBalance {
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
   expirationDays: LoyaltyBalanceExpirationDays;
+  /** Configured number of days before expiration when the client warning is shown */
+  expirationWarningDays: LoyaltyBalanceExpirationWarningDays;
   /**
      * Days remaining before the current points balance expires; null when expiration is disabled or there are no points
      * @nullable

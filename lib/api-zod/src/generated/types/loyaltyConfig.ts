@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LoyaltyConfigExpirationDays } from './loyaltyConfigExpirationDays';
+import type { LoyaltyConfigExpirationWarningDays } from './loyaltyConfigExpirationWarningDays';
 
 export interface LoyaltyConfig {
   enabled: boolean;
@@ -15,4 +16,6 @@ export interface LoyaltyConfig {
   pointsPerRedemptionUnit: number;
   /** Days without movement before the client's points expire; 0 disables expiration */
   expirationDays?: LoyaltyConfigExpirationDays;
+  /** Show the client a warning when this many days or fewer remain before points expire */
+  expirationWarningDays?: LoyaltyConfigExpirationWarningDays;
 }

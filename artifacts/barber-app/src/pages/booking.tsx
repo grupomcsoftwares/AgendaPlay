@@ -926,7 +926,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
             {loyaltyBalance?.enabled &&
               loyaltyBalance.points > 0 &&
               loyaltyBalance.daysUntilExpiration !== null &&
-              loyaltyBalance.daysUntilExpiration <= 7 && (
+              loyaltyBalance.daysUntilExpiration <= loyaltyBalance.expirationWarningDays && (
                 <div
                   className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
                   style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.45)", color: AMBER }}
