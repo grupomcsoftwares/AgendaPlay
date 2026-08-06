@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
 const AMBER = "hsl(38 88% 55%)";
@@ -923,6 +923,28 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 </span>
               </div>
             )}
+            {loyaltyBalance?.enabled &&
+              loyaltyBalance.points > 0 &&
+              loyaltyBalance.daysUntilExpiration !== null &&
+              loyaltyBalance.daysUntilExpiration <= 7 && (
+                <div
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium"
+                  style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: "1px solid hsl(38 88% 55% / 0.45)", color: AMBER }}
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>
+                    Seus pontos expiram{" "}
+                    <strong>
+                      {loyaltyBalance.daysUntilExpiration === 0
+                        ? "hoje"
+                        : loyaltyBalance.daysUntilExpiration === 1
+                          ? "amanhã"
+                          : `em ${loyaltyBalance.daysUntilExpiration} dias`}
+                    </strong>
+                    . Use-os antes que expirem.
+                  </span>
+                </div>
+              )}
 
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {

@@ -13,6 +13,11 @@ export interface LoyaltyBalance {
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
   expirationDays: LoyaltyBalanceExpirationDays;
+  /**
+     * Days remaining before the current points balance expires; null when expiration is disabled or there are no points
+     * @nullable
+     */
+  daysUntilExpiration: number | null;
   /** R$ value per redemption unit (always 1) */
   discountPerUnit: number;
 }

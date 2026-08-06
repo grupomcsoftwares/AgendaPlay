@@ -1666,7 +1666,7 @@ components:
 
     LoyaltyBalance:
       type: object
-      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, expirationDays, discountPerUnit]
+      required: [enabled, points, pointsPerReal, pointsPerRedemptionUnit, expirationDays, daysUntilExpiration, discountPerUnit]
       properties:
         enabled:
           type: boolean
@@ -1679,6 +1679,9 @@ components:
         expirationDays:
           type: integer
           enum: [0, 30, 60, 90]
+        daysUntilExpiration:
+          type: ["integer", "null"]
+          description: Days remaining before the current points balance expires; null when expiration is disabled or there are no points
         discountPerUnit:
           type: number
           description: R$ value per redemption unit (always 1)

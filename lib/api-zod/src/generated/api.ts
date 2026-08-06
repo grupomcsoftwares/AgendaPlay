@@ -1414,6 +1414,7 @@ export const GetLoyaltyBalanceResponse = zod.object({
   "pointsPerReal": zod.number(),
   "pointsPerRedemptionUnit": zod.number(),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]),
+  "daysUntilExpiration": zod.number().nullable().describe('Days remaining before the current points balance expires; null when expiration is disabled or there are no points'),
   "discountPerUnit": zod.number().describe('R$ value per redemption unit (always 1)')
 })
 

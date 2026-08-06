@@ -76,7 +76,15 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
   const loyaltyConfig = (settings?.loyaltyConfig ?? null) as LoyaltyConfig | null;
 
   if (!loyaltyConfig?.enabled) {
-    res.json({ enabled: false, points: 0, pointsPerReal: 0, pointsPerRedemptionUnit: 0, expirationDays: 0, discountPerUnit: 1 });
+    res.json({
+      enabled: false,
+      points: 0,
+      pointsPerReal: 0,
+      pointsPerRedemptionUnit: 0,
+      expirationDays: 0,
+      daysUntilExpiration: null,
+      discountPerUnit: 1,
+    });
     return;
   }
 
@@ -99,12 +107,20 @@ router.get("/loyalty/balance", async (req, res): Promise<void> => {
     .where(and(eq(loyaltyPointsTable.userId, shopId), eq(loyaltyPointsTable.clientPhone, phone)))
     .limit(1);
 
+  const daysUntilExpiration = row && row.points > 0 && expirationDays > 0
+    ? Math.max(0, Math.ceil(
+        (new Date(row.updatedAt).getTime() + expirationDays * 24 * 60 * 60 * 1000 - Date.now()) /
+          (24 * 60 * 60 * 1000),
+      ))
+    : null;
+
   res.json({
     enabled: true,
     points: row?.points ?? 0,
     pointsPerReal: loyaltyConfig.pointsPerReal,
     pointsPerRedemptionUnit: loyaltyConfig.pointsPerRedemptionUnit,
     expirationDays,
+    daysUntilExpiration,
     discountPerUnit: 1,
   });
 });

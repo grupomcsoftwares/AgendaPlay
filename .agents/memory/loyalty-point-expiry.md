@@ -7,4 +7,4 @@ The loyalty balance uses inactivity-based expiry: when configured for 30, 60, or
 
 **Why:** The current loyalty model stores one aggregate balance per client phone, not per-point lots or earning events, so individual point-level expiry cannot be calculated without a schema redesign.
 
-**How to apply:** Enforce expiry before balance display, client balance listings, and point redemption. Keep the configuration embedded in the existing settings loyalty object unless the product later requires per-earning-date expiration.
+**How to apply:** Enforce expiry before balance display, client balance listings, and point redemption. On the public booking page, warn clients with a positive balance when seven or fewer days remain. Keep the configuration embedded in the existing settings loyalty object unless the product later requires per-earning-date expiration.
