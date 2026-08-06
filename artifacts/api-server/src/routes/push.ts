@@ -1,8 +1,16 @@
 import { Router } from "express";
 import webpush from "web-push";
 import { db } from "@workspace/db";
-import { pushSubscriptionsTable, adminPushSubscriptionsTable, appointmentsTable, settingsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  pushSubscriptionsTable,
+  adminPushSubscriptionsTable,
+  appointmentsTable,
+  settingsTable,
+  usersTable,
+  clientsTable,
+  clientReengagementPushSubscriptionsTable,
+} from "@workspace/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -37,6 +45,80 @@ router.post("/push/subscribe", async (req, res) => {
       target: pushSubscriptionsTable.cancelToken,
       set: { endpoint, p256dh, auth, scheduledAt: new Date(scheduledAt), notify15Sent: false },
     });
+  res.json({ ok: true });
+});
+
+// Registers the same browser subscription for the inactive-client automation.
+// The appointment token is used as the source of truth for the shop and client.
+router.post("/push/reengagement-subscribe", async (req, res) => {
+  const { cancelToken, endpoint, p256dh, auth } = req.body ?? {};
+  if (
+    typeof cancelToken !== "string" || !cancelToken ||
+    typeof endpoint !== "string" || !endpoint.startsWith("https://") ||
+    typeof p256dh !== "string" || !p256dh ||
+    typeof auth !== "string" || !auth
+  ) {
+    res.status(400).json({ error: "Dados inválidos." });
+    return;
+  }
+
+  const [appointment] = await db
+    .select({
+      userId: appointmentsTable.userId,
+      clientName: appointmentsTable.clientName,
+      clientPhone: clientsTable.phone,
+      createdAt: appointmentsTable.createdAt,
+    })
+    .from(appointmentsTable)
+    .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
+    .where(eq(appointmentsTable.cancelToken, cancelToken))
+    .limit(1);
+
+  if (!appointment || !appointment.clientPhone) {
+    res.status(404).json({ error: "Agendamento ou cliente não encontrado." });
+    return;
+  }
+
+  await db
+    .insert(clientReengagementPushSubscriptionsTable)
+    .values({
+      userId: appointment.userId,
+      clientPhone: appointment.clientPhone,
+      clientName: appointment.clientName,
+      endpoint,
+      p256dh,
+      auth,
+      lastAppointmentAt: appointment.createdAt,
+      reengagementSentAt: null,
+    })
+    .onConflictDoUpdate({
+      target: [
+        clientReengagementPushSubscriptionsTable.userId,
+        clientReengagementPushSubscriptionsTable.clientPhone,
+        clientReengagementPushSubscriptionsTable.endpoint,
+      ],
+      set: {
+        clientName: appointment.clientName,
+        lastAppointmentAt: appointment.createdAt,
+        reengagementSentAt: null,
+        p256dh,
+        auth,
+        updatedAt: new Date(),
+      },
+    });
+  await db
+    .update(clientReengagementPushSubscriptionsTable)
+    .set({
+      clientName: appointment.clientName,
+      lastAppointmentAt: appointment.createdAt,
+      reengagementSentAt: null,
+      updatedAt: new Date(),
+    })
+    .where(and(
+      eq(clientReengagementPushSubscriptionsTable.userId, appointment.userId),
+      eq(clientReengagementPushSubscriptionsTable.clientPhone, appointment.clientPhone),
+    ));
+
   res.json({ ok: true });
 });
 
@@ -143,7 +225,8 @@ router.post("/push/trigger-reminders", async (req, res) => {
         }
       }
     }
-    res.json({ sent });
+    const reengagementSent = await sendClientReengagementPushes();
+    res.json({ sent, reengagementSent });
   } catch {
     res.json({ sent: 0 });
   }
@@ -273,8 +356,89 @@ export async function runPushScheduler() {
           await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, row.id));
         }
       }
+      await sendClientReengagementPushes();
     } catch { /* ignore scheduler errors */ }
   }, 60_000);
+}
+
+function renderReengagementMessage(template: string, values: {
+  name: string;
+  days: number;
+  shopName: string;
+}) {
+  return template
+    .replace(/\{\{\s*nome\s*\}\}/gi, values.name)
+    .replace(/\{\{\s*dias\s*\}\}/gi, String(values.days))
+    .replace(/\{\{\s*barbearia\s*\}\}/gi, values.shopName);
+}
+
+export async function sendClientReengagementPushes(): Promise<number> {
+  if (!process.env.VAPID_PUBLIC_KEY) return 0;
+
+  const rows = await db
+    .select({
+      id: clientReengagementPushSubscriptionsTable.id,
+      clientName: clientReengagementPushSubscriptionsTable.clientName,
+      endpoint: clientReengagementPushSubscriptionsTable.endpoint,
+      p256dh: clientReengagementPushSubscriptionsTable.p256dh,
+      auth: clientReengagementPushSubscriptionsTable.auth,
+      lastAppointmentAt: clientReengagementPushSubscriptionsTable.lastAppointmentAt,
+      config: settingsTable.clientReengagementConfig,
+      shopName: settingsTable.barbershopName,
+      shopSlug: usersTable.slug,
+    })
+    .from(clientReengagementPushSubscriptionsTable)
+    .innerJoin(settingsTable, eq(clientReengagementPushSubscriptionsTable.userId, settingsTable.userId))
+    .leftJoin(usersTable, eq(clientReengagementPushSubscriptionsTable.userId, usersTable.id))
+    .where(isNull(clientReengagementPushSubscriptionsTable.reengagementSentAt));
+
+  const now = Date.now();
+  let sent = 0;
+
+  for (const row of rows) {
+    const config = row.config;
+    if (!config?.enabled) continue;
+    const inactiveDays = config.inactiveDays === 15 ? 15 : 30;
+    const ageDays = Math.floor((now - new Date(row.lastAppointmentAt).getTime()) / (24 * 60 * 60 * 1000));
+    if (ageDays < inactiveDays) continue;
+
+    // Claim before sending so simultaneous scheduler/trigger calls do not send twice.
+    const claimed = await db
+      .update(clientReengagementPushSubscriptionsTable)
+      .set({ reengagementSentAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(clientReengagementPushSubscriptionsTable.id, row.id),
+        isNull(clientReengagementPushSubscriptionsTable.reengagementSentAt),
+      ))
+      .returning({ id: clientReengagementPushSubscriptionsTable.id });
+    if (claimed.length === 0) continue;
+
+    const body = renderReengagementMessage(config.message, {
+      name: row.clientName,
+      days: inactiveDays,
+      shopName: row.shopName ?? "sua barbearia",
+    });
+
+    try {
+      await webpush.sendNotification(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        JSON.stringify({
+          title: row.shopName ?? "AgendaPlay",
+          body,
+          tag: `reengagement-${row.id}`,
+          url: row.shopSlug ? `/b/${encodeURIComponent(row.shopSlug)}` : "/",
+        }),
+      );
+      sent++;
+    } catch {
+      await db
+        .update(clientReengagementPushSubscriptionsTable)
+        .set({ reengagementSentAt: null, updatedAt: new Date() })
+        .where(eq(clientReengagementPushSubscriptionsTable.id, row.id));
+    }
+  }
+
+  return sent;
 }
 
 export default router;

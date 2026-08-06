@@ -20,6 +20,8 @@ export * from './barberUpdate';
 export * from './checkSubscriptionParams';
 export * from './client';
 export * from './clientInput';
+export * from './clientReengagementConfig';
+export * from './clientReengagementConfigInactiveDays';
 export * from './clientSubscription';
 export * from './clientSubscriptionInput';
 export * from './clientSubscriptionStatus';

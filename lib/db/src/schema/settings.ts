@@ -3,6 +3,11 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export type ServiceExclusion = { services: [number, number]; enabled: boolean };
+export type ClientReengagementConfig = {
+  enabled: boolean;
+  inactiveDays: 15 | 30;
+  message: string;
+};
 
 export type LoyaltyConfig = {
   enabled: boolean;
@@ -51,6 +56,7 @@ export const settingsTable = pgTable("settings", {
   slotIntervalMinutes: integer("slot_interval_minutes").notNull().default(15),
   smartSlots: boolean("smart_slots").notNull().default(false),
   loyaltyConfig: jsonb("loyalty_config").$type<LoyaltyConfig>(),
+  clientReengagementConfig: jsonb("client_reengagement_config").$type<ClientReengagementConfig>(),
   serviceExclusions: jsonb("service_exclusions").$type<ServiceExclusion[]>().default([]),
   combosEnabled: boolean("combos_enabled").notNull().default(true),
   serviceRestrictionsEnabled: boolean("service_restrictions_enabled").notNull().default(true),

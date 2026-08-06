@@ -15,6 +15,16 @@ function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyal
   };
 }
 
+function normalizeClientReengagementConfig(config: typeof settingsTable.$inferSelect["clientReengagementConfig"]) {
+  return {
+    enabled: config?.enabled ?? false,
+    inactiveDays: config?.inactiveDays === 15 ? 15 : 30,
+    message:
+      config?.message?.trim() ||
+      "Olá {{nome}}, estamos sentindo sua falta! Já faz {{dias}} dias que você agendou um horário. Agende novamente com a {{barbearia}}.",
+  };
+}
+
 function resolveShop(req: Request): string | null {
   if (req.session?.userId) return req.session.userId;
   const shopId = typeof req.query.shopId === "string" ? req.query.shopId.trim() : "";
@@ -61,6 +71,7 @@ router.get("/settings", async (req, res): Promise<void> => {
   res.json({
     ...settings,
     loyaltyConfig: normalizeLoyaltyConfig(settings.loyaltyConfig),
+    clientReengagementConfig: normalizeClientReengagementConfig(settings.clientReengagementConfig),
     barbershopName: user?.barbershopName ?? settings.barbershopName,
     ownerName: user?.ownerName ?? settings.ownerName,
     phone: user?.phone ?? settings.phone,
@@ -87,6 +98,9 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
           expirationWarningDays: parsed.data.loyaltyConfig.expirationWarningDays ?? 7,
         }
       : parsed.data.loyaltyConfig,
+    clientReengagementConfig: parsed.data.clientReengagementConfig
+      ? normalizeClientReengagementConfig(parsed.data.clientReengagementConfig)
+      : parsed.data.clientReengagementConfig,
     serviceExclusions: parsed.data.serviceExclusions?.map((item) => ({
       ...item,
       services: [item.services[0], item.services[1]] as [number, number],
@@ -104,6 +118,7 @@ router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
   res.json({
     ...updated,
     loyaltyConfig: normalizeLoyaltyConfig(updated.loyaltyConfig),
+    clientReengagementConfig: normalizeClientReengagementConfig(updated.clientReengagementConfig),
   });
 });
 

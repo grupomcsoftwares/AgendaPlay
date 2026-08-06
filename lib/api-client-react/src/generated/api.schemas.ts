@@ -365,6 +365,29 @@ export interface LoyaltyConfig {
   expirationWarningDays?: LoyaltyConfigExpirationWarningDays;
 }
 
+/**
+ * Days without a new booking before sending the message
+ */
+export type ClientReengagementConfigInactiveDays = typeof ClientReengagementConfigInactiveDays[keyof typeof ClientReengagementConfigInactiveDays];
+
+
+export const ClientReengagementConfigInactiveDays = {
+  NUMBER_15: 15,
+  NUMBER_30: 30,
+} as const;
+
+export interface ClientReengagementConfig {
+  /** Enable automatic browser notifications for inactive clients */
+  enabled: boolean;
+  /** Days without a new booking before sending the message */
+  inactiveDays: ClientReengagementConfigInactiveDays;
+  /**
+     * Custom message. Supports {{nome}}, {{dias}}, and {{barbearia}} placeholders.
+     * @maxLength 500
+     */
+  message: string;
+}
+
 export interface LoyaltyClientBalance {
   clientPhone: string;
   clientName?: string;
@@ -575,6 +598,7 @@ export interface Settings {
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  clientReengagementConfig?: ClientReengagementConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: SettingsServiceExclusionsItem[];
   /** Tamanho da impressora para comprovantes. */
@@ -656,6 +680,7 @@ export interface SettingsUpdate {
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  clientReengagementConfig?: ClientReengagementConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: SettingsUpdateServiceExclusionsItem[];
   /** Se false, nenhum desconto por combo é aplicado. */

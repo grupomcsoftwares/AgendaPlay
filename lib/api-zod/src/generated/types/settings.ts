@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { ClientReengagementConfig } from './clientReengagementConfig';
 import type { LoyaltyConfig } from './loyaltyConfig';
 import type { SettingsReceiptPrinterSize } from './settingsReceiptPrinterSize';
 import type { SettingsServiceExclusionsItem } from './settingsServiceExclusionsItem';
@@ -45,6 +46,7 @@ export interface Settings {
   /** When true, slot step equals service duration for tighter scheduling. */
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  clientReengagementConfig?: ClientReengagementConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: SettingsServiceExclusionsItem[];
   /** Tamanho da impressora para comprovantes. */

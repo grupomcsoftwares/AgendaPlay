@@ -25,3 +25,9 @@ Browsers keep JavaScript timers running while the tab is open. Multiple clients 
 
 - Relevant when: implementing scheduled push notifications, email digests, or any time-based task on autoscale.
 - Always pair server-side scheduling with at least one client-driven fallback for critical reminders.
+
+## Client re-engagement
+
+The inactive-client reminder uses a separate browser push subscription tied to the shop, normalized client phone, and browser endpoint. The barber configures a 15- or 30-day threshold and a template with `{{nome}}`, `{{dias}}`, and `{{barbearia}}`; a new booking resets the cycle and the reminder is claimed before sending to prevent duplicates.
+
+**Important:** The customer must grant browser notification permission after booking. Without permission, the browser cannot display the automatic re-engagement message.

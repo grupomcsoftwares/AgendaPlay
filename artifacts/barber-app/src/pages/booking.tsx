@@ -148,12 +148,31 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
   const [pushState, setPushState] = useState<"unknown" | "idle" | "subscribed" | "denied">("unknown");
   const [pendingPushSub, setPendingPushSub] = useState<PushSubscriptionJSON | null>(null);
 
+  // Keep the autoscale-safe push trigger alive while a public booking page is open.
+  // The server scheduler remains the fallback when the page is closed.
+  useEffect(() => {
+    if (!shopId || adminUser) return;
+    const ping = () => {
+      fetch(`${BASE}/api/push/trigger-reminders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopId }),
+      }).catch(() => {});
+    };
+    ping();
+    const id = window.setInterval(ping, 60_000);
+    return () => window.clearInterval(id);
+  }, [BASE, shopId, adminUser]);
+
   useEffect(() => {
     if (adminUser) return; // no push prompt for admin
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) { setPushState("denied"); return; }
     if (Notification.permission === "denied") { setPushState("denied"); return; }
     navigator.serviceWorker.register("/sw.js").then((reg) =>
-      reg.pushManager.getSubscription().then((sub) => setPushState(sub ? "subscribed" : "idle"))
+      reg.pushManager.getSubscription().then((sub) => {
+        setPendingPushSub(sub?.toJSON() ?? null);
+        setPushState(sub ? "subscribed" : "idle");
+      })
     ).catch(() => setPushState("denied"));
   }, [adminUser]);
 
@@ -330,6 +349,16 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 body: JSON.stringify({
                   cancelToken: created.cancelToken,
                   scheduledAt: created.scheduledAt,
+                  endpoint: json.endpoint,
+                  p256dh: json.keys.p256dh,
+                  auth: json.keys.auth,
+                }),
+              }).catch(() => {});
+              fetch(`${BASE}/api/push/reengagement-subscribe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  cancelToken: created.cancelToken,
                   endpoint: json.endpoint,
                   p256dh: json.keys.p256dh,
                   auth: json.keys.auth,
@@ -1880,7 +1909,7 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
                 Ative as notificações
               </p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-                Receba um aviso 15 minutos antes do seu horário.
+                 Receba o lembrete do horário e, se ficar sem agendar, uma mensagem de retorno da barbearia.
               </p>
               <div className="flex gap-2 mt-3">
                 <button

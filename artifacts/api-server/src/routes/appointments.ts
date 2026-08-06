@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, gt, lt, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
@@ -604,6 +604,23 @@ router.post("/appointments", async (req, res): Promise<void> => {
   if (conflict || !appointment) {
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
+  }
+
+  // A new booking restarts the inactivity cycle for every browser subscription
+  // registered for this client, including subscriptions from older devices.
+  if (loyaltyPhone && appointment.clientName) {
+    await db
+      .update(clientReengagementPushSubscriptionsTable)
+      .set({
+        clientName: appointment.clientName,
+        lastAppointmentAt: appointment.createdAt,
+        reengagementSentAt: null,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(clientReengagementPushSubscriptionsTable.userId, appointment.userId),
+        eq(clientReengagementPushSubscriptionsTable.clientPhone, loyaltyPhone),
+      ));
   }
 
   // Notify admin via push

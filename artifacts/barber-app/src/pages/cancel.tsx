@@ -124,6 +124,16 @@ export default function CancelBooking() {
           auth: json.keys.auth,
         }),
       });
+      await fetch(`${BASE}/api/push/reengagement-subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cancelToken: token,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        }),
+      });
       setPushState("subscribed");
       if (fromGate) passGate();
     } catch { setPushState("idle"); if (fromGate) passGate(); }
@@ -203,7 +213,7 @@ export default function CancelBooking() {
           <div className="space-y-2">
             <p className="text-base font-semibold">Ativar lembrete do agendamento</p>
             <p className="text-sm text-muted-foreground">
-              Receba uma notificação 15 minutos antes do seu corte para não perder o horário.
+              Receba uma notificação 15 minutos antes do seu corte e lembretes da barbearia quando ficar muito tempo sem agendar.
             </p>
           </div>
 

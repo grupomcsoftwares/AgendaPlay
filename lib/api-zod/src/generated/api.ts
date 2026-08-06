@@ -1105,6 +1105,8 @@ export const GetSettingsQueryParams = zod.object({
 
 export const getSettingsResponseLogoUrlMax = 3000000;
 
+export const getSettingsResponseClientReengagementConfigOneMessageMax = 500;
+
 export const getSettingsResponseServiceExclusionsItemServicesMin = 2;
 export const getSettingsResponseServiceExclusionsItemServicesMax = 2;
 
@@ -1189,6 +1191,11 @@ export const GetSettingsResponse = zod.object({
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
 }),zod.null()]).optional(),
+  "clientReengagementConfig": zod.union([zod.object({
+  "enabled": zod.boolean().describe('Enable automatic browser notifications for inactive clients'),
+  "inactiveDays": zod.union([zod.literal(15),zod.literal(30)]).describe('Days without a new booking before sending the message'),
+  "message": zod.string().max(getSettingsResponseClientReengagementConfigOneMessageMax).describe('Custom message. Supports {{nome}}, {{dias}}, and {{barbearia}} placeholders.')
+}),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(getSettingsResponseServiceExclusionsItemServicesMin).max(getSettingsResponseServiceExclusionsItemServicesMax),
   "enabled": zod.boolean()
@@ -1204,6 +1211,8 @@ export const GetSettingsResponse = zod.object({
  * @summary Update barbershop settings
  */
 export const updateSettingsBodyLogoUrlMax = 3000000;
+
+export const updateSettingsBodyClientReengagementConfigOneMessageMax = 500;
 
 export const updateSettingsBodyServiceExclusionsItemServicesMin = 2;
 export const updateSettingsBodyServiceExclusionsItemServicesMax = 2;
@@ -1285,6 +1294,11 @@ export const UpdateSettingsBody = zod.object({
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
 }),zod.null()]).optional(),
+  "clientReengagementConfig": zod.union([zod.object({
+  "enabled": zod.boolean().describe('Enable automatic browser notifications for inactive clients'),
+  "inactiveDays": zod.union([zod.literal(15),zod.literal(30)]).describe('Days without a new booking before sending the message'),
+  "message": zod.string().max(updateSettingsBodyClientReengagementConfigOneMessageMax).describe('Custom message. Supports {{nome}}, {{dias}}, and {{barbearia}} placeholders.')
+}),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(updateSettingsBodyServiceExclusionsItemServicesMin).max(updateSettingsBodyServiceExclusionsItemServicesMax),
   "enabled": zod.boolean()
@@ -1296,6 +1310,8 @@ export const UpdateSettingsBody = zod.object({
 })
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
+
+export const updateSettingsResponseClientReengagementConfigOneMessageMax = 500;
 
 export const updateSettingsResponseServiceExclusionsItemServicesMin = 2;
 export const updateSettingsResponseServiceExclusionsItemServicesMax = 2;
@@ -1380,6 +1396,11 @@ export const UpdateSettingsResponse = zod.object({
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
+}),zod.null()]).optional(),
+  "clientReengagementConfig": zod.union([zod.object({
+  "enabled": zod.boolean().describe('Enable automatic browser notifications for inactive clients'),
+  "inactiveDays": zod.union([zod.literal(15),zod.literal(30)]).describe('Days without a new booking before sending the message'),
+  "message": zod.string().max(updateSettingsResponseClientReengagementConfigOneMessageMax).describe('Custom message. Supports {{nome}}, {{dias}}, and {{barbearia}} placeholders.')
 }),zod.null()]).optional(),
   "serviceExclusions": zod.array(zod.object({
   "services": zod.array(zod.number()).min(updateSettingsResponseServiceExclusionsItemServicesMin).max(updateSettingsResponseServiceExclusionsItemServicesMax),

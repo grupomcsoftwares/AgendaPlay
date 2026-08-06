@@ -1657,6 +1657,22 @@ components:
           enum: [7, 15, 30]
           description: Show the client a warning when this many days or fewer remain before points expire
 
+    ClientReengagementConfig:
+      type: object
+      required: [enabled, inactiveDays, message]
+      properties:
+        enabled:
+          type: boolean
+          description: Enable automatic browser notifications for inactive clients
+        inactiveDays:
+          type: integer
+          enum: [15, 30]
+          description: Days without a new booking before sending the message
+        message:
+          type: string
+          maxLength: 500
+          description: Custom message. Supports {{nome}}, {{dias}}, and {{barbearia}} placeholders.
+
     LoyaltyClientBalance:
       type: object
       required: [clientPhone, points]
@@ -1876,6 +1892,10 @@ components:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
             - type: "null"
+        clientReengagementConfig:
+          oneOf:
+            - $ref: "#/components/schemas/ClientReengagementConfig"
+            - type: "null"
         serviceExclusions:
           type: array
           items:
@@ -1979,6 +1999,10 @@ components:
         loyaltyConfig:
           oneOf:
             - $ref: "#/components/schemas/LoyaltyConfig"
+            - type: "null"
+        clientReengagementConfig:
+          oneOf:
+            - $ref: "#/components/schemas/ClientReengagementConfig"
             - type: "null"
         serviceExclusions:
           type: array

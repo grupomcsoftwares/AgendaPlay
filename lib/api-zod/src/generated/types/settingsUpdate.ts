@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { ClientReengagementConfig } from './clientReengagementConfig';
 import type { LoyaltyConfig } from './loyaltyConfig';
 import type { SettingsUpdateReceiptPrinterSize } from './settingsUpdateReceiptPrinterSize';
 import type { SettingsUpdateServiceExclusionsItem } from './settingsUpdateServiceExclusionsItem';
@@ -39,6 +40,7 @@ export interface SettingsUpdate {
   slotIntervalMinutes?: number;
   smartSlots?: boolean;
   loyaltyConfig?: LoyaltyConfig | null;
+  clientReengagementConfig?: ClientReengagementConfig | null;
   /** Lista de combinações proibidas de serviços */
   serviceExclusions?: SettingsUpdateServiceExclusionsItem[];
   /** Se false, nenhum desconto por combo é aplicado. */

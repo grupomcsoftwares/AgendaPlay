@@ -222,6 +222,9 @@ export default function Settings() {
     loyaltyPointsPerRedemptionUnit: number;
     loyaltyPointsExpirationDays: 0 | 30 | 60 | 90;
     loyaltyPointsExpirationWarningDays: 7 | 15 | 30;
+    clientReengagementEnabled: boolean;
+    clientReengagementDays: 15 | 30;
+    clientReengagementMessage: string;
     serviceExclusions: { services: [number, number]; enabled: boolean }[];
     combosEnabled: boolean;
     serviceRestrictionsEnabled: boolean;
@@ -248,6 +251,9 @@ export default function Settings() {
     loyaltyPointsPerRedemptionUnit: 100,
     loyaltyPointsExpirationDays: 0 as LoyaltyExpirationDays,
     loyaltyPointsExpirationWarningDays: 7 as LoyaltyExpirationWarningDays,
+    clientReengagementEnabled: false,
+    clientReengagementDays: 30,
+    clientReengagementMessage: "Olá {{nome}}, estamos sentindo sua falta! Já faz {{dias}} dias que você agendou um horário. Agende novamente com a {{barbearia}}.",
     serviceExclusions: [],
     combosEnabled: true,
     serviceRestrictionsEnabled: true,
@@ -267,6 +273,7 @@ export default function Settings() {
         }
       }
       const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; expirationDays?: number; expirationWarningDays?: number } | null | undefined;
+      const rc = (settings as any).clientReengagementConfig as { enabled?: boolean; inactiveDays?: number; message?: string } | null | undefined;
       setFormData({
         barbershopName: settings.barbershopName || "",
         ownerName: settings.ownerName || "",
@@ -288,6 +295,9 @@ export default function Settings() {
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
         loyaltyPointsExpirationDays: normalizeLoyaltyExpirationDays(lc?.expirationDays),
         loyaltyPointsExpirationWarningDays: normalizeLoyaltyExpirationWarningDays(lc?.expirationWarningDays),
+        clientReengagementEnabled: rc?.enabled ?? false,
+        clientReengagementDays: rc?.inactiveDays === 15 ? 15 : 30,
+        clientReengagementMessage: rc?.message || "Olá {{nome}}, estamos sentindo sua falta! Já faz {{dias}} dias que você agendou um horário. Agende novamente com a {{barbearia}}.",
         serviceExclusions: ((settings.serviceExclusions ?? []) as unknown[]).map(item =>
           Array.isArray(item)
             ? { services: [item[0], item[1]] as [number, number], enabled: true }
@@ -317,6 +327,11 @@ export default function Settings() {
       pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
       expirationDays: fd.loyaltyPointsExpirationDays,
       expirationWarningDays: fd.loyaltyPointsExpirationWarningDays,
+    },
+    clientReengagementConfig: {
+      enabled: fd.clientReengagementEnabled,
+      inactiveDays: fd.clientReengagementDays,
+      message: fd.clientReengagementMessage.trim(),
     },
     receiptPrinterSize: fd.receiptPrinterSize,
     serviceExclusions: fd.serviceExclusions,
@@ -867,6 +882,56 @@ export default function Settings() {
                     <><Bell className="h-3.5 w-3.5" /> Ativar</>
                   )}
                 </Button>
+              </div>
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Lembrar clientes que sumiram</p>
+                    <p className="text-xs text-muted-foreground">
+                      Envia uma mensagem no navegador depois que o cliente fica sem agendar.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.clientReengagementEnabled}
+                    onCheckedChange={(v) => setFormData({ ...formData, clientReengagementEnabled: v })}
+                  />
+                </div>
+                {formData.clientReengagementEnabled && (
+                  <>
+                    <div className="space-y-1.5 max-w-sm">
+                      <Label className="text-xs font-medium">Enviar depois de</Label>
+                      <Select
+                        value={String(formData.clientReengagementDays)}
+                        onValueChange={(value) => setFormData({
+                          ...formData,
+                          clientReengagementDays: Number(value) === 15 ? 15 : 30,
+                        })}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Selecione o prazo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="15">15 dias sem agendar</SelectItem>
+                          <SelectItem value="30">30 dias sem agendar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-medium">Mensagem para o cliente</Label>
+                      <Textarea
+                        value={formData.clientReengagementMessage}
+                        onChange={(e) => setFormData({ ...formData, clientReengagementMessage: e.target.value.slice(0, 500) })}
+                        placeholder="Olá {{nome}}, estamos sentindo sua falta..."
+                        rows={3}
+                        className="text-sm resize-none"
+                        maxLength={500}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use <strong>{"{{nome}}"}</strong>, <strong>{"{{dias}}"}</strong> e <strong>{"{{barbearia}}"}</strong> para personalizar automaticamente.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
