@@ -25,7 +25,7 @@ type AuthState = {
   login: (email: string, password: string) => Promise<void>;
   register: (data: { email: string; documentType: "cpf" | "cnpj"; documentNumber: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<void>;
   logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<AuthUser | null>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let data = await res.json();
         // Server-side sync is now handled in /auth/me itself; no client-side sync needed.
         setUser(data);
+        return data as AuthUser;
       } else if (res.status === 401) {
         setUser(null);
       }
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // network error — keep current user state (don't force logout)
     }
+    return null;
   }, []);
 
   useEffect(() => {

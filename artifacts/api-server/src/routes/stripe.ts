@@ -49,10 +49,15 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
     }
 
     const stripe = await getUncachableStripeClient();
+    const requestOrigin = req.get("origin");
     const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-    const baseUrl = domain ? `https://${domain}` : `${req.protocol}://${req.get("host")}`;
+    const baseUrl = requestOrigin?.startsWith("http")
+      ? requestOrigin
+      : domain
+        ? `https://${domain}`
+        : `${req.protocol}://${req.get("host")}`;
     const checkoutUrls = {
-      success_url: `${baseUrl}/subscribe?subscribed=1`,
+      success_url: `${baseUrl}/subscribe?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/subscribe?canceled=1`,
     };
 
@@ -68,6 +73,8 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
     const createCheckoutSession = (customerId: string) =>
       stripe.checkout.sessions.create({
         customer: customerId,
+        client_reference_id: userId,
+        metadata: { userId },
         payment_method_types: ["card"],
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
@@ -187,24 +194,97 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
   });
 });
 
-router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const userId = req.session.userId!;
-  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user || !user.stripeCustomerId) {
-    res.json({ hasSubscription: false });
-    return;
-  }
-
+router.post("/stripe/sync-subscription", async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = await getUncachableStripeClient();
-    // Check active and trialing; also fall back to "all" to find past_due etc.
-    const subscriptions = await stripe.subscriptions.list({
-      customer: user.stripeCustomerId,
-      limit: 5,
-    });
+    const { sessionId } = (req.body ?? {}) as { sessionId?: string };
+    let subscription: Stripe.Subscription | null = null;
+    let customerId: string | null = null;
+    let checkoutUserId: string | null = null;
 
-    if (subscriptions.data.length > 0) {
-      const sub = subscriptions.data[0];
+    // Prefer the checkout session returned by Stripe. This avoids selecting an
+    // older subscription when the customer has more than one billing record.
+    if (sessionId) {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["subscription"],
+      });
+      customerId =
+        typeof checkoutSession.customer === "string"
+          ? checkoutSession.customer
+          : checkoutSession.customer?.id ?? null;
+      checkoutUserId =
+        checkoutSession.client_reference_id ??
+        checkoutSession.metadata?.userId ??
+        null;
+
+      if (checkoutSession.status !== "complete" || !customerId) {
+        res.json({ hasSubscription: false, pending: true });
+        return;
+      }
+      const expandedSubscription = checkoutSession.subscription;
+      if (expandedSubscription && typeof expandedSubscription !== "string") {
+        subscription = expandedSubscription;
+      } else if (typeof expandedSubscription === "string") {
+        subscription = await stripe.subscriptions.retrieve(expandedSubscription);
+      }
+    }
+
+    const authenticatedUserId = req.session.userId ?? null;
+    if (
+      authenticatedUserId &&
+      checkoutUserId &&
+      authenticatedUserId !== checkoutUserId
+    ) {
+      res.status(403).json({ error: "Sessão de pagamento inválida." });
+      return;
+    }
+
+    // If the redirect lost the browser cookie, recover the account from the
+    // Stripe customer attached to the completed checkout session.
+    const targetUserId = authenticatedUserId ?? checkoutUserId;
+    let user = targetUserId
+      ? (await db.select(userCols).from(usersTable).where(eq(usersTable.id, targetUserId)))[0]
+      : undefined;
+
+    if (!user && customerId) {
+      user = (await db.select(userCols).from(usersTable).where(eq(usersTable.stripeCustomerId, customerId)))[0];
+    }
+
+    if (!user || !user.stripeCustomerId) {
+      res.status(401).json({ error: "Não foi possível restaurar a conta do pagamento." });
+      return;
+    }
+
+    if (customerId && customerId !== user.stripeCustomerId) {
+      res.status(403).json({ error: "Sessão de pagamento inválida." });
+      return;
+    }
+
+    // Restore the app session so the following /auth/me request sees the
+    // subscription immediately after returning from Stripe.
+    if (!req.session.userId) {
+      req.session.userId = user.id;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((error) => (error ? reject(error) : resolve()));
+      });
+    }
+
+    // The webhook and Stripe's customer index can lag the browser redirect.
+    // Fall back to the newest active/trialing subscription when the session
+    // is not available yet.
+    if (!subscription) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId ?? user.stripeCustomerId,
+        status: "all",
+        limit: 20,
+      });
+      subscription =
+        subscriptions.data.find((item) => item.status === "active" || item.status === "trialing") ??
+        null;
+    }
+
+    if (subscription) {
+      const sub = subscription;
       const priceItem = sub.items?.data?.[0];
       const stripePriceId = priceItem?.price?.id ?? null;
       const productId = typeof priceItem?.price?.product === "string" ? priceItem.price.product : null;
@@ -225,10 +305,19 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
         ? new Date((sub as any).current_period_end * 1000)
         : null;
 
-      await db.update(usersTable)
-        .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
-        .where(eq(usersTable.id, userId));
-      res.json({ hasSubscription: true, subscriptionId: sub.id, stripePriceId, maxBarbers, subscriptionDueDate: periodEnd?.toISOString() ?? null });
+      const isActive = sub.status === "active" || sub.status === "trialing";
+      if (isActive) {
+        await db.update(usersTable)
+          .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+          .where(eq(usersTable.id, user.id));
+      }
+      res.json({
+        hasSubscription: isActive,
+        subscriptionId: isActive ? sub.id : null,
+        stripePriceId: isActive ? stripePriceId : null,
+        maxBarbers: isActive ? maxBarbers : null,
+        subscriptionDueDate: isActive ? periodEnd?.toISOString() ?? null : null,
+      });
     } else {
       res.json({ hasSubscription: false });
     }

@@ -39,6 +39,7 @@ export default function Subscribe() {
 
   const params = new URLSearchParams(window.location.search);
   const justSubscribed = params.get("subscribed") === "1";
+  const checkoutSessionId = params.get("session_id");
   const isTVView =
     Boolean((window as Window & { __AGENDAPLAY_TV__?: boolean }).__AGENDAPLAY_TV__) ||
     params.get("tv") === "1" ||
@@ -48,13 +49,30 @@ export default function Subscribe() {
     if (justSubscribed) {
       setCheckingSubscription(true);
       const syncAndCheck = async () => {
-        await fetch(`${BASE}/api/stripe/sync-subscription`, { method: "POST", credentials: "include" });
-        await refresh();
+        // Stripe can redirect before the webhook reaches our server. Retry
+        // briefly so a successful payment never falls back to the plans page.
+        for (let attempt = 0; attempt < 12; attempt += 1) {
+          try {
+            await fetch(`${BASE}/api/stripe/sync-subscription`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ sessionId: checkoutSessionId || undefined }),
+            });
+          } catch {
+            // Keep retrying while Stripe finishes the checkout.
+          }
+          const refreshedUser = await refresh();
+          if (refreshedUser?.hasActiveSubscription) break;
+          if (attempt < 11) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          }
+        }
         setCheckingSubscription(false);
       };
       syncAndCheck();
     }
-  }, [justSubscribed, refresh]);
+  }, [justSubscribed, checkoutSessionId, refresh]);
 
   useEffect(() => {
     if (user?.hasActiveSubscription && !checkingSubscription) {
