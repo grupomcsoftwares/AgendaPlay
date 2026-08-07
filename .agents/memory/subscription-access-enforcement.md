@@ -8,3 +8,9 @@ An expired account must be denied by the server for both new public bookings and
 **Why:** Public URLs, TV WebViews, and cached mobile sessions can bypass a visual-only lock. Webhooks and cached account data can also leave an old subscription ID behind after its period has ended.
 
 **How to apply:** Keep the access decision centralized, enforce it before public shop data/appointment creation and queue endpoints, and have clients revalidate periodically so an already-open TV screen also becomes unavailable.
+
+The shared Expo app must keep the expired-subscription payment action on phone screens but show only the expiration notice on TV screens.
+
+**Why:** A TV is a display endpoint, not the place where the shop owner should complete billing; exposing checkout controls there creates the wrong interaction path.
+
+**How to apply:** Gate the blocked-state actions with the platform's TV check in both the home screen and already-open queue viewer; leave the web app's subscription route unchanged.

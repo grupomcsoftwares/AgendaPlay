@@ -108,22 +108,18 @@ export default function HomeScreen() {
     return (
       <View style={[styles.root, styles.blockedRoot, { paddingTop: topPad, paddingBottom: botPad }]}>
         <Feather name="lock" size={44} color="#c9a84c" />
-        <Text style={styles.blockedTitle}>Fila ao vivo bloqueada</Text>
+        <Text style={styles.blockedTitle}>Assinatura expirada</Text>
         <Text style={styles.blockedText}>
-          A assinatura desta barbearia expirou. Reative a assinatura para voltar a exibir a fila na TV.
+          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
         </Text>
-        <Pressable
-          style={styles.blockedButton}
-          onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}
-          focusable
-          hasTVPreferredFocus
-        >
-          <Text style={styles.blockedButtonText}>Reativar assinatura</Text>
-        </Pressable>
-        <Pressable style={styles.logoutRow} onPress={logout} focusable>
-          <Feather name="log-out" size={13} color="#777" />
-          <Text style={styles.logoutText}>Sair da conta</Text>
-        </Pressable>
+        {!isTV && (
+          <Pressable
+            style={styles.blockedButton}
+            onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}
+          >
+            <Text style={styles.blockedButtonText}>Reativar assinatura</Text>
+          </Pressable>
+        )}
       </View>
     );
   }

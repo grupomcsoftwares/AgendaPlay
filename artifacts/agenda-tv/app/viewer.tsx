@@ -125,17 +125,21 @@ export default function ViewerScreen() {
       <View style={[styles.center, { paddingHorizontal: 28 }]}>
         <Feather name="lock" size={48} color="#c9a84c" />
         <Text style={[styles.msgText, { marginTop: 18, textAlign: "center" }]}>
-          Fila ao vivo bloqueada
+          Assinatura expirada
         </Text>
         <Text style={[styles.loadingText, { textAlign: "center", marginTop: 10 }]}>
-          A assinatura desta barbearia expirou. Reative a assinatura para voltar a usar a fila na TV.
+          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
         </Text>
-        <Pressable style={styles.retryBtn} onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)} focusable hasTVPreferredFocus>
-          <Text style={styles.retryText}>Reativar assinatura</Text>
-        </Pressable>
-        <Pressable style={[styles.retryBtn, { marginTop: 10 }]} onPress={() => router.back()} focusable>
-          <Text style={styles.retryText}>Voltar</Text>
-        </Pressable>
+        {!isTV && (
+          <>
+            <Pressable style={styles.retryBtn} onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}>
+              <Text style={styles.retryText}>Reativar assinatura</Text>
+            </Pressable>
+            <Pressable style={[styles.retryBtn, { marginTop: 10 }]} onPress={() => router.back()}>
+              <Text style={styles.retryText}>Voltar</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     );
   }
