@@ -301,8 +301,11 @@ router.post("/stripe/sync-subscription", async (req: Request, res: Response): Pr
         } catch { /* ignore */ }
       }
 
-      const periodEnd = (sub as any).current_period_end
-        ? new Date((sub as any).current_period_end * 1000)
+      const periodEndValue =
+        (sub as any).current_period_end ??
+        sub.items?.data?.[0]?.current_period_end;
+      const periodEnd = periodEndValue
+        ? new Date(periodEndValue * 1000)
         : null;
 
       const isActive = sub.status === "active" || sub.status === "trialing";

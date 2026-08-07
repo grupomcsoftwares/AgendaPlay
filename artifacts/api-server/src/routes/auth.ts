@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
+import type Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 
@@ -50,21 +51,47 @@ function normalizePhone(value: unknown): string {
 
 async function reconcileActiveSubscription(user: {
   id: string;
+  email: string;
   stripeCustomerId: string | null;
 }): Promise<void> {
-  if (!user.stripeCustomerId) return;
-
   try {
     const stripe = await getUncachableStripeClient();
-    const subscriptions = await stripe.subscriptions.list({
-      customer: user.stripeCustomerId,
-      status: "all",
+    const customerIds = new Set<string>();
+    if (user.stripeCustomerId) customerIds.add(user.stripeCustomerId);
+
+    // A checkout can create a second Stripe customer when the original
+    // customer belongs to another Stripe environment. Search by the account
+    // email as a safe recovery path before treating the payment as missing.
+    const matchingCustomers = await stripe.customers.list({
+      email: user.email,
       limit: 20,
     });
-    const subscription = subscriptions.data.find(
-      (item) => item.status === "active" || item.status === "trialing",
-    );
-    if (!subscription) return;
+    for (const customer of matchingCustomers.data) {
+      customerIds.add(customer.id);
+    }
+
+    let matchedCustomerId: string | null = null;
+    let subscription: Stripe.Subscription | undefined;
+    for (const customerId of customerIds) {
+      try {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 20,
+        });
+        const activeSubscription = subscriptions.data.find(
+          (item) => item.status === "active" || item.status === "trialing",
+        );
+        if (activeSubscription) {
+          matchedCustomerId = customerId;
+          subscription = activeSubscription;
+          break;
+        }
+      } catch {
+        // Ignore stale customer IDs and continue with email-matched customers.
+      }
+    }
+    if (!subscription || !matchedCustomerId) return;
 
     const priceItem = subscription.items.data[0];
     const stripePriceId = priceItem?.price?.id ?? null;
@@ -84,13 +111,16 @@ async function reconcileActiveSubscription(user: {
       }
     }
 
-    const currentPeriodEndValue = (subscription as unknown as { current_period_end?: number }).current_period_end;
+    const currentPeriodEndValue =
+      (subscription as unknown as { current_period_end?: number }).current_period_end ??
+      subscription.items.data[0]?.current_period_end;
     const currentPeriodEnd = currentPeriodEndValue
       ? new Date(currentPeriodEndValue * 1000)
       : null;
     await db
       .update(usersTable)
       .set({
+        stripeCustomerId: matchedCustomerId,
         stripeSubscriptionId: subscription.id,
         stripePriceId,
         maxBarbers,
@@ -326,8 +356,11 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
       });
       if (subscriptions.data.length > 0) {
         const sub = subscriptions.data[0]!;
-        const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
-          ? new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000)
+        const periodEndValue =
+          (sub as unknown as { current_period_end?: number }).current_period_end ??
+          sub.items.data[0]?.current_period_end;
+        const periodEnd = periodEndValue
+          ? new Date(periodEndValue * 1000)
           : null;
         if (periodEnd) {
           await db.update(usersTable)
@@ -343,7 +376,18 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     }
   }
 
-  const status = getAccountStatus(user);
+  let status = getAccountStatus(user);
+  if (!status.hasActiveSubscription && status.trialExpired) {
+    await reconcileActiveSubscription(user);
+    const [reconciledUser] = await db
+      .select(userCols)
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id));
+    if (reconciledUser) {
+      user = reconciledUser;
+      status = getAccountStatus(user);
+    }
+  }
 
   res.json({
     id: user.id,
