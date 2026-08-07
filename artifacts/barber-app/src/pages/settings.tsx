@@ -7,7 +7,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
+import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -209,6 +209,69 @@ export default function Settings() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [nativePush, setNativePush] = useState(false);
+
+  // Subscription management
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const { data: subscriptionStatus } = useQuery<{
+    hasActiveSubscription: boolean;
+    subscriptionId: string | null;
+    stripePriceId: string | null;
+    maxBarbers: number | null;
+    trialDaysLeft: number;
+    trialExpired: boolean;
+    canAccess: boolean;
+    subscriptionDueDate: string | null;
+    subscriptionDaysLeft: number | null;
+  }>({
+    queryKey: ["stripe-subscription-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/subscription-status", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch subscription status");
+      return res.json();
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: stripeePlans } = useQuery<{
+    data: Array<{ price_id: string; product_name: string; unit_amount: number; currency: string; maxBarbers: number | null }>;
+  }>({
+    queryKey: ["stripe-plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/plans");
+      if (!res.ok) return { data: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+    enabled: !!subscriptionStatus?.hasActiveSubscription,
+  });
+
+  const currentPlan = stripeePlans?.data?.find(
+    (p) => p.price_id === subscriptionStatus?.stripePriceId
+  );
+
+  const openCustomerPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/customer-portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        toast({ title: data.error ?? "Erro ao abrir portal de assinatura", variant: "destructive" });
+        return;
+      }
+      const { url } = await res.json() as { url: string };
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      toast({ title: "Não foi possível abrir o portal. Tente novamente.", variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   const [formData, setFormData] = useState<{
     barbershopName: string;
@@ -1582,6 +1645,186 @@ export default function Settings() {
         </CardContent>
       </Card>
       </div>{/* end Row 3 grid */}
+
+      {/* ── Minha Assinatura ───────────────────────────────── */}
+      <div className="max-w-7xl">
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Minha Assinatura</CardTitle>
+            </div>
+            <CardDescription className="text-xs">
+              Gerencie seu plano, faturas e dados de pagamento
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Status badge */}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                {subscriptionStatus?.hasActiveSubscription ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-500/15 text-green-500 border border-green-500/30">
+                        Ativa
+                      </span>
+                      {currentPlan && (
+                        <span className="text-sm font-semibold">
+                          {currentPlan.product_name}
+                        </span>
+                      )}
+                      {subscriptionStatus.maxBarbers != null && (
+                        <span className="text-xs text-muted-foreground">
+                          · Até {subscriptionStatus.maxBarbers} {subscriptionStatus.maxBarbers === 1 ? "profissional" : "profissionais"}
+                        </span>
+                      )}
+                    </div>
+                    {subscriptionStatus.subscriptionDueDate && (
+                      <p className="text-xs text-muted-foreground">
+                        Próxima cobrança:{" "}
+                        <span className="font-medium text-foreground">
+                          {new Date(subscriptionStatus.subscriptionDueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                        </span>
+                        {subscriptionStatus.subscriptionDaysLeft != null && (
+                          <span className="ml-1 text-muted-foreground">
+                            ({subscriptionStatus.subscriptionDaysLeft} {subscriptionStatus.subscriptionDaysLeft === 1 ? "dia" : "dias"})
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {currentPlan && (
+                      <p className="text-xs text-muted-foreground">
+                        {(currentPlan.unit_amount / 100).toLocaleString("pt-BR", { style: "currency", currency: currentPlan.currency.toUpperCase() })}/mês
+                      </p>
+                    )}
+                  </>
+                ) : subscriptionStatus && !subscriptionStatus.trialExpired ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                        Período grátis
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {subscriptionStatus.trialDaysLeft === 1
+                        ? "Último dia de período grátis"
+                        : `${subscriptionStatus.trialDaysLeft} dias restantes no período grátis`}
+                    </p>
+                  </>
+                ) : subscriptionStatus?.trialExpired && !subscriptionStatus.hasActiveSubscription ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive border border-destructive/30">
+                      Sem plano ativo
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Carregando...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              {subscriptionStatus?.hasActiveSubscription ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs"
+                    onClick={openCustomerPortal}
+                    disabled={portalLoading}
+                  >
+                    {portalLoading ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    )}
+                    Trocar plano
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs"
+                    onClick={openCustomerPortal}
+                    disabled={portalLoading}
+                  >
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Ver faturas
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    onClick={() => setCancelDialogOpen(true)}
+                    disabled={portalLoading}
+                  >
+                    Cancelar assinatura
+                  </Button>
+                </>
+              ) : !subscriptionStatus?.trialExpired ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => window.location.href = "/subscribe"}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Assinar agora
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => window.location.href = "/subscribe"}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Escolher plano
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Cancel subscription confirmation dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Cancelar assinatura
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              Você será redirecionado para o portal de assinatura do Stripe, onde poderá cancelar seu plano com segurança.
+              <br /><br />
+              Após o cancelamento, você ainda terá acesso até o fim do período já pago.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={portalLoading}
+            >
+              Voltar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={portalLoading}
+              onClick={async () => {
+                setCancelDialogOpen(false);
+                await openCustomerPortal();
+              }}
+            >
+              {portalLoading ? "Abrindo..." : "Ir para o portal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="max-w-7xl flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
         <div className="flex items-center gap-2">

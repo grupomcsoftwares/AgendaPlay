@@ -329,4 +329,42 @@ router.post("/stripe/sync-subscription", async (req: Request, res: Response): Pr
   }
 });
 
+router.post("/stripe/customer-portal", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.session.userId!;
+    const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+    if (!user.stripeCustomerId) {
+      res.status(400).json({ error: "Nenhuma assinatura encontrada para este usuário." });
+      return;
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const requestOrigin = req.get("origin");
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    const baseUrl = requestOrigin?.startsWith("http")
+      ? requestOrigin
+      : domain
+        ? `https://${domain}`
+        : `${req.protocol}://${req.get("host")}`;
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${baseUrl}/settings`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err: unknown) {
+    const stripeError = err as { message?: string; code?: string };
+    console.error("Stripe customer portal failed", {
+      code: stripeError.code,
+      message: stripeError.message,
+    });
+    res.status(400).json({ error: "Não foi possível abrir o portal de assinatura. Tente novamente." });
+  }
+});
+
 export default router;
