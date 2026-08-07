@@ -10,6 +10,7 @@ type StripeSubscriptionEvent = {
     object: {
       id: string;
       customer: string;
+      // subscription fields
       status?: string;
       current_period_end?: number;
       items?: {
@@ -20,6 +21,9 @@ type StripeSubscriptionEvent = {
           };
         }>;
       };
+      // checkout.session fields
+      mode?: string;
+      subscription?: string | null;
     };
   };
 };
@@ -64,6 +68,41 @@ export class WebhookHandlers {
     const customerId = obj?.customer;
 
     if (!customerId || typeof customerId !== 'string') return;
+
+    if (type === 'checkout.session.completed') {
+      // Only act on subscription-mode sessions
+      if (obj?.mode !== 'subscription') return;
+      const subscriptionId = typeof obj?.subscription === 'string' ? obj.subscription : null;
+      if (!subscriptionId) return;
+
+      try {
+        const stripe = await getUncachableStripeClient();
+        const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ['items.data.price.product'],
+        });
+
+        const priceItem = sub.items?.data?.[0];
+        const stripePriceId = priceItem?.price?.id ?? null;
+        const productId = typeof priceItem?.price?.product === 'string'
+          ? priceItem.price.product
+          : (priceItem?.price?.product as { id?: string } | undefined)?.id ?? null;
+        const maxBarbers = productId ? await getMaxBarbersForProduct(productId) : null;
+        const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
+          ? new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000)
+          : null;
+
+        if (sub.status === 'active' || sub.status === 'trialing') {
+          await db
+            .update(usersTable)
+            .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+            .where(eq(usersTable.stripeCustomerId, customerId));
+          logger.info({ customerId, subscriptionId: sub.id, stripePriceId, maxBarbers, periodEnd }, 'User subscription activated via checkout.session.completed webhook');
+        }
+      } catch (err) {
+        logger.error({ err, customerId, subscriptionId }, 'Failed to process checkout.session.completed webhook');
+      }
+      return;
+    }
 
     if (type === 'customer.subscription.created' || type === 'customer.subscription.updated') {
       const subscriptionId = obj?.id;
