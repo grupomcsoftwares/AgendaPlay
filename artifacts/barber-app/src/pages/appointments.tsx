@@ -60,11 +60,7 @@ export default function Appointments() {
   const [dateEnd, setDateEnd] = useState<Date>(new Date());
   const dateStartStr = format(dateStart, "yyyy-MM-dd");
   const dateEndStr = format(dateEnd, "yyyy-MM-dd");
-  const [periodOpen, setPeriodOpen] = useState(false);
-  const [pendingStart, setPendingStart] = useState<Date>(new Date());
-  const [pendingEnd, setPendingEnd] = useState<Date>(new Date());
-  const [calMode, setCalMode] = useState<"start" | "end">("start");
-  const [calOpen, setCalOpen] = useState(false);
+  const [dayPickerOpen, setDayPickerOpen] = useState(false);
 
   const rangeParams = { dateStart: dateStartStr, dateEnd: dateEndStr };
 
@@ -79,30 +75,6 @@ export default function Appointments() {
     },
   );
 
-  const handleOpenPeriod = () => {
-    setPendingStart(dateStart);
-    setPendingEnd(dateEnd);
-    setPeriodOpen(true);
-  };
-
-  const handleConfirmPeriod = () => {
-    setDateStart(pendingStart);
-    setDateEnd(pendingEnd);
-    setPeriodOpen(false);
-  };
-
-  const handleQuickPeriod = (days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - days);
-    setDateStart(start);
-    setDateEnd(end);
-  };
-
-  const periodLabel =
-    dateStartStr === dateEndStr
-      ? format(dateStart, "dd 'de' MMMM, yyyy", { locale: ptBR })
-      : `${format(dateStart, "dd/MM/yyyy")} - ${format(dateEnd, "dd/MM/yyyy")}`;
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
   const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
@@ -301,6 +273,29 @@ export default function Appointments() {
   }, []);
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  // The agenda day strip starts today and stays scrollable so the barber can
+  // browse upcoming days without opening a separate range selector.
+  const agendaDayOptions = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+
+    // Keep a date selected from the calendar visible in the strip as well.
+    if (!days.some((d) => sameDay(d, dateStart))) {
+      days.push(new Date(dateStart));
+      days.sort((a, b) => a.getTime() - b.getTime());
+    }
+
+    return days;
+  }, [dateStartStr]);
+  const selectAgendaDay = (day: Date) => {
+    setDateStart(day);
+    setDateEnd(day);
+  };
   const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
 
   // Refresh every surface that depends on appointment data.
@@ -533,81 +528,12 @@ export default function Appointments() {
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agendamentos</h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">Gerencie a agenda do dia.</p>
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+            Gerencie a agenda de {format(dateStart, "dd 'de' MMMM", { locale: ptBR })}.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Quick range buttons */}
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(6)}>7 dias</Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(29)}>30 dias</Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickPeriod(89)}>90 dias</Button>
-          <Button
-            variant="outline"
-            className="justify-start gap-2 font-normal min-w-[180px]"
-            onClick={handleOpenPeriod}
-          >
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            {periodLabel}
-          </Button>
-
-          {/* Period picker dialog — same as financeiro */}
-          <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
-            <DialogContent className="sm:max-w-[380px] p-0 gap-0 overflow-hidden border-border/60">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
-                <DialogTitle className="text-xl font-semibold tracking-tight">
-                  Selecione o período
-                </DialogTitle>
-              </DialogHeader>
-              <div className="px-6 py-5 space-y-4">
-                <div className="space-y-1.5">
-                  <span className="text-sm font-medium text-foreground">Data de início</span>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-2 font-normal"
-                    onClick={() => { setCalMode("start"); setCalOpen(true); }}
-                  >
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    {format(pendingStart, "EEE, dd MMM yyyy", { locale: ptBR })}
-                  </Button>
-                </div>
-                <div className="space-y-1.5">
-                  <span className="text-sm font-medium text-foreground">Data de término</span>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-2 font-normal"
-                    onClick={() => { setCalMode("end"); setCalOpen(true); }}
-                  >
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                    {format(pendingEnd, "EEE, dd MMM yyyy", { locale: ptBR })}
-                  </Button>
-                </div>
-                {calOpen && (
-                  <div className="border rounded-xl p-2">
-                    <Calendar
-                      mode="single"
-                      locale={ptBR}
-                      selected={calMode === "start" ? pendingStart : pendingEnd}
-                      onSelect={(d) => {
-                        if (!d) return;
-                        if (calMode === "start") setPendingStart(d);
-                        else setPendingEnd(d);
-                        setCalOpen(false);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
-                <Button variant="ghost" onClick={() => setPeriodOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleConfirmPeriod}>
-                  OK
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
+        <div className="flex items-center gap-2">
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2" data-testid="button-new-appointment">
@@ -916,6 +842,85 @@ export default function Appointments() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card px-3 py-3 md:px-4">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium text-foreground">Data</span>
+          <Dialog open={dayPickerOpen} onOpenChange={setDayPickerOpen}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setDayPickerOpen(true)}
+              data-testid="button-calendar-appointment-day"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              Escolher data
+            </Button>
+            <DialogContent className="w-auto max-w-[calc(100vw-2rem)] p-0">
+              <DialogHeader className="px-6 pt-6">
+                <DialogTitle>Escolha o dia dos agendamentos</DialogTitle>
+              </DialogHeader>
+              <div className="px-4 pb-5 pt-2">
+                <Calendar
+                  mode="single"
+                  locale={ptBR}
+                  selected={dateStart}
+                  onSelect={(day) => {
+                    if (!day) return;
+                    selectAgendaDay(day);
+                    setDayPickerOpen(false);
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {agendaDayOptions.map((day) => {
+            const selected = sameDay(day, dateStart) && sameDay(day, dateEnd);
+            const today = sameDay(day, new Date());
+            return (
+              <button
+                key={format(day, "yyyy-MM-dd")}
+                type="button"
+                onClick={() => selectAgendaDay(day)}
+                className={cn(
+                  "flex h-[78px] w-[68px] shrink-0 flex-col items-center justify-center rounded-lg border px-1 transition-colors",
+                  selected
+                    ? "border-amber-500 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.15)]"
+                    : "border-border bg-background/30 hover:border-muted-foreground/50 hover:bg-muted/30",
+                )}
+                data-testid={`button-agenda-day-${format(day, "yyyy-MM-dd")}`}
+                aria-label={`Ver agendamentos de ${format(day, "dd/MM/yyyy")}`}
+                aria-pressed={selected}
+              >
+                <span className={cn(
+                  "text-[10px] font-semibold uppercase leading-none",
+                  selected ? "text-amber-400" : "text-muted-foreground",
+                )}>
+                  {format(day, "EEE", { locale: ptBR }).replace(".", "").toUpperCase()}
+                </span>
+                <span className={cn(
+                  "mt-1 h-3 text-[9px] font-bold uppercase leading-none",
+                  today ? "text-amber-500" : "text-transparent",
+                )}>
+                  Hoje
+                </span>
+                <span className="text-2xl font-bold leading-none text-foreground">
+                  {format(day, "d")}
+                </span>
+                <span className={cn(
+                  "mt-1 text-[10px] font-semibold uppercase leading-none",
+                  selected ? "text-amber-400" : "text-muted-foreground",
+                )}>
+                  {format(day, "MMM", { locale: ptBR }).replace(".", "").toUpperCase()}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
