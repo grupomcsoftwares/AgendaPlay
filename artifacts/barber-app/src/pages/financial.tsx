@@ -116,7 +116,7 @@ export default function Financial() {
 
       {/* Period picker dialog */}
       <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
-        <DialogContent className="sm:max-w-[720px] p-0 gap-0 overflow-hidden border-border/60">
+        <DialogContent className="sm:max-w-[430px] p-0 gap-0 overflow-hidden border-border/60">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
             <DialogTitle className="text-xl font-semibold tracking-tight">
               Escolha o período do relatório
@@ -137,7 +137,7 @@ export default function Financial() {
               <Calendar
                 mode="range"
                 locale={ptBR}
-                numberOfMonths={2}
+                numberOfMonths={1}
                 selected={{ from: pendingStart, to: pendingEnd }}
                 onSelect={handleRangeSelect}
                 className="w-full justify-center"
