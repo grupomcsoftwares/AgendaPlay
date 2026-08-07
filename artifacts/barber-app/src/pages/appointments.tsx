@@ -36,7 +36,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -60,7 +59,6 @@ export default function Appointments() {
   const [dateEnd, setDateEnd] = useState<Date>(new Date());
   const dateStartStr = format(dateStart, "yyyy-MM-dd");
   const dateEndStr = format(dateEnd, "yyyy-MM-dd");
-  const [dayPickerOpen, setDayPickerOpen] = useState(false);
 
   const rangeParams = { dateStart: dateStartStr, dateEnd: dateEndStr };
 
@@ -268,12 +266,6 @@ export default function Appointments() {
     start.setHours(0, 0, 0, 0);
     return start;
   }, []);
-  const bookingWindowEnd = useMemo(() => {
-    const end = new Date(bookingWindowStart);
-    end.setDate(end.getDate() + maxBookingDays - 1);
-    return end;
-  }, [bookingWindowStart, maxBookingDays]);
-
   // The agenda day strip follows the same booking window configured in
   // Settings, starting today and showing exactly that many days.
   const agendaDayOptions = useMemo(() => {
@@ -840,41 +832,8 @@ export default function Appointments() {
       </div>
 
       <div className="rounded-lg border border-border bg-card px-3 py-3 md:px-4">
-        <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="mb-2">
           <span className="text-sm font-medium text-foreground">Data</span>
-          <Dialog open={dayPickerOpen} onOpenChange={setDayPickerOpen}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-2 text-muted-foreground hover:text-foreground"
-              onClick={() => setDayPickerOpen(true)}
-              data-testid="button-calendar-appointment-day"
-            >
-              <CalendarIcon className="h-4 w-4" />
-              Escolher data
-            </Button>
-            <DialogContent className="w-auto max-w-[calc(100vw-2rem)] p-0">
-              <DialogHeader className="px-6 pt-6">
-                <DialogTitle>Escolha o dia dos agendamentos</DialogTitle>
-              </DialogHeader>
-              <div className="px-4 pb-5 pt-2">
-                <Calendar
-                  mode="single"
-                  locale={ptBR}
-                  selected={dateStart}
-                  disabled={{
-                    before: bookingWindowStart,
-                    after: bookingWindowEnd,
-                  }}
-                  onSelect={(day) => {
-                    if (!day) return;
-                    selectAgendaDay(day);
-                    setDayPickerOpen(false);
-                  }}
-                />
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {agendaDayOptions.map((day) => {
