@@ -78,12 +78,23 @@ export default function Subscribe() {
         credentials: "include",
         body: JSON.stringify({ priceId }),
       });
-      if (!res.ok) {
-        const err = await res.json() as { error?: string };
-        throw new Error(err.error ?? "Erro ao criar sessão de pagamento.");
+      const responseText = await res.text();
+      let responseData: { error?: string; url?: string };
+      try {
+        responseData = JSON.parse(responseText) as { error?: string; url?: string };
+      } catch {
+        throw new Error(
+          res.ok
+            ? "Resposta inválida do servidor de pagamento."
+            : "Não foi possível iniciar o pagamento. Tente novamente.",
+        );
       }
-      const { url } = await res.json() as { url: string };
+      if (!res.ok) {
+        throw new Error(responseData.error ?? "Erro ao criar sessão de pagamento.");
+      }
+      const { url } = responseData;
       if (url) window.location.href = url;
+      else throw new Error("O servidor não retornou um link de pagamento.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao processar pagamento.");
     } finally {

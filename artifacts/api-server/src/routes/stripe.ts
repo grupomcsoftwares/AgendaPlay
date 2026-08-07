@@ -34,44 +34,75 @@ function requireAuth(req: Request, res: Response, next: () => void): void {
 }
 
 router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const userId = req.session.userId!;
-  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
-  if (!user) {
-    res.status(404).json({ error: "Usuário não encontrado." });
-    return;
-  }
+  try {
+    const userId = req.session.userId!;
+    const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
 
-  const { priceId } = req.body as { priceId?: string };
-  if (!priceId) {
-    res.status(400).json({ error: "priceId é obrigatório." });
-    return;
-  }
+    const { priceId } = req.body as { priceId?: string };
+    if (!priceId) {
+      res.status(400).json({ error: "priceId é obrigatório." });
+      return;
+    }
 
-  const stripe = await getUncachableStripeClient();
+    const stripe = await getUncachableStripeClient();
+    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
+    const baseUrl = domain ? `https://${domain}` : `${req.protocol}://${req.get("host")}`;
+    const checkoutUrls = {
+      success_url: `${baseUrl}/subscribe?subscribed=1`,
+      cancel_url: `${baseUrl}/subscribe?canceled=1`,
+    };
 
-  let customerId = user.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: { userId },
+    const createCustomer = async (): Promise<string> => {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId },
+      });
+      await db.update(usersTable).set({ stripeCustomerId: customer.id }).where(eq(usersTable.id, userId));
+      return customer.id;
+    };
+
+    const createCheckoutSession = (customerId: string) =>
+      stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: "subscription",
+        ...checkoutUrls,
+      });
+
+    let customerId = user.stripeCustomerId ?? await createCustomer();
+    let session: Stripe.Checkout.Session;
+
+    try {
+      session = await createCheckoutSession(customerId);
+    } catch (err: unknown) {
+      // A customer ID can become invalid when the Stripe environment/account
+      // changes. Replace it instead of exposing Stripe's raw error to the UI.
+      const stripeError = err as { code?: string; param?: string };
+      const missingCustomer =
+        stripeError.code === "resource_missing" &&
+        stripeError.param === "customer" &&
+        Boolean(user.stripeCustomerId);
+
+      if (!missingCustomer) throw err;
+
+      customerId = await createCustomer();
+      session = await createCheckoutSession(customerId);
+    }
+
+    res.json({ url: session.url });
+  } catch (err: unknown) {
+    const stripeError = err as { message?: string; code?: string };
+    console.error("Stripe checkout failed", {
+      code: stripeError.code,
+      message: stripeError.message,
     });
-    await db.update(usersTable).set({ stripeCustomerId: customer.id }).where(eq(usersTable.id, userId));
-    customerId = customer.id;
+    res.status(400).json({ error: "Não foi possível iniciar o pagamento. Tente novamente." });
   }
-
-  const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  const baseUrl = domain ? `https://${domain}` : `${req.protocol}://${req.get("host")}`;
-
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    payment_method_types: ["card"],
-    line_items: [{ price: priceId, quantity: 1 }],
-    mode: "subscription",
-    success_url: `${baseUrl}/subscribe?subscribed=1`,
-    cancel_url: `${baseUrl}/subscribe?canceled=1`,
-  });
-
-  res.json({ url: session.url });
 });
 
 router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> => {

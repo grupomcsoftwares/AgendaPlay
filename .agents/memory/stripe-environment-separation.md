@@ -8,3 +8,9 @@ Production Stripe must resolve credentials from the environment-aware Replit con
 **Why:** Development and production Stripe connections can both be healthy at the same time, while a shared secret remains present and points to test mode. The symptom is a healthy app with an empty or test-only production catalog.
 
 **How to apply:** Keep test credentials for development, live credentials/connection for production, and after every production publish verify the public plans endpoint returns the expected live catalog and that webhook deliveries succeed.
+
+Persisted Stripe customer IDs are scoped to the Stripe account and mode. If checkout receives `resource_missing` for the saved customer, create and persist a replacement customer before retrying once.
+
+**Why:** Switching Stripe accounts or modes can leave valid-looking IDs in the application database that do not exist in the currently connected account.
+
+**How to apply:** Treat a missing customer as recoverable during checkout, but do not expose the provider's raw error payload to the client.
