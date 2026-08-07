@@ -36,6 +36,23 @@ const MENU_ITEMS = [
 
 const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings");
 
+function getMobileRoute(url: string) {
+  const nextUrl = new URL(url);
+  nextUrl.searchParams.set("view", "mobile");
+  return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+}
+
+function createMobileNavigationScript(route: string) {
+  return `
+    (function () {
+      var nextRoute = ${JSON.stringify(route)};
+      window.history.pushState({}, "", nextRoute);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    })();
+    true;
+  `;
+}
+
 // TV remote D-pad handler
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -81,15 +98,25 @@ export default function DashboardScreen() {
   const [cookieReady, setCookieReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
   const webViewRef = useRef<WebView>(null);
+  const pendingMobileRouteRef = useRef<string | null>(null);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
+    if (isPhone) {
+      const route = getMobileRoute(item.url);
+      pendingMobileRouteRef.current = route;
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript(createMobileNavigationScript(route));
+        pendingMobileRouteRef.current = null;
+      }
+      setMenuOpen(false);
+      return;
+    }
     setLoading(true);
-    if (!isTablet && !isTV) setMenuOpen(false);
-  }, [isTablet, isTV]);
+  }, [isPhone]);
 
   const bookingUrl = user?.slug
     ? `https://agendaplay.net/b/${user.slug}`
@@ -308,18 +335,28 @@ export default function DashboardScreen() {
         {cookieReady && (
           <WebView
             ref={webViewRef}
-            source={{ uri: (() => {
-              const u = new URL(selectedItem.url);
-              u.searchParams.set("view", "mobile");
-              return u.toString();
-            })() }}
+            source={{
+              uri: (() => {
+                const initialItem = isPhone ? activeMenu[0] : selectedItem;
+                const u = new URL(initialItem.url);
+                u.searchParams.set("view", "mobile");
+                return u.toString();
+              })(),
+            }}
             style={styles.webview}
             injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = false;"}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
             javaScriptEnabled
             domStorageEnabled
-            onLoadEnd={() => setLoading(false)}
+            onLoadEnd={() => {
+              setLoading(false);
+              const pendingRoute = pendingMobileRouteRef.current;
+              if (isPhone && pendingRoute) {
+                webViewRef.current?.injectJavaScript(createMobileNavigationScript(pendingRoute));
+                pendingMobileRouteRef.current = null;
+              }
+            }}
             onError={() => setLoading(false)}
             startInLoadingState={false}
           />
