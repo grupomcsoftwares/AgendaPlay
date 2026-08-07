@@ -48,6 +48,65 @@ function normalizePhone(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function reconcileActiveSubscription(user: {
+  id: string;
+  stripeCustomerId: string | null;
+}): Promise<void> {
+  if (!user.stripeCustomerId) return;
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const subscriptions = await stripe.subscriptions.list({
+      customer: user.stripeCustomerId,
+      status: "all",
+      limit: 20,
+    });
+    const subscription = subscriptions.data.find(
+      (item) => item.status === "active" || item.status === "trialing",
+    );
+    if (!subscription) return;
+
+    const priceItem = subscription.items.data[0];
+    const stripePriceId = priceItem?.price?.id ?? null;
+    const productId =
+      typeof priceItem?.price?.product === "string"
+        ? priceItem.price.product
+        : priceItem?.price?.product?.id ?? null;
+    let maxBarbers: number | null = null;
+
+    if (productId) {
+      try {
+        const product = await stripe.products.retrieve(productId);
+        const parsed = Number.parseInt(product.metadata?.maxBarbers ?? "", 10);
+        maxBarbers = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      } catch {
+        // The subscription itself is enough to grant access; plan metadata is optional.
+      }
+    }
+
+    const currentPeriodEndValue = (subscription as unknown as { current_period_end?: number }).current_period_end;
+    const currentPeriodEnd = currentPeriodEndValue
+      ? new Date(currentPeriodEndValue * 1000)
+      : null;
+    await db
+      .update(usersTable)
+      .set({
+        stripeSubscriptionId: subscription.id,
+        stripePriceId,
+        maxBarbers,
+        stripeCurrentPeriodEnd: currentPeriodEnd,
+      })
+      .where(eq(usersTable.id, user.id));
+
+  } catch (error) {
+    console.error("Stripe subscription reconciliation failed during login", {
+      userId: user.id,
+      message: error instanceof Error ? error.message : "unknown error",
+    });
+    return;
+  }
+}
+
 function isValidCpf(cpf: string): boolean {
   if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
 
@@ -190,7 +249,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -200,6 +259,15 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   if (!valid) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
+  }
+
+  await reconcileActiveSubscription(user);
+  if (user.stripeCustomerId) {
+    const [reconciledUser] = await db
+      .select(userCols)
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id));
+    if (reconciledUser) user = reconciledUser;
   }
 
   req.session.userId = user.id;
