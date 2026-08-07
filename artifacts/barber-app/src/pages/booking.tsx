@@ -265,34 +265,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     };
   });
 
-  // ── Next available banner ───────────────────────────────────────────────────
-  const [nextAvail, setNextAvail] = useState<{ nextDate: string | null; nextTime: string | null } | null>(null);
-
-  useEffect(() => {
-    if (!slugProp) return;
-    let cancelled = false;
-    const params = new URLSearchParams();
-    if (formData.barberId) params.set("barberId", formData.barberId);
-    fetch(`${BASE}/api/b/${encodeURIComponent(slugProp)}/next-available?${params}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (!cancelled) setNextAvail(data ?? null); })
-      .catch(() => { /* silent */ });
-    return () => { cancelled = true; };
-  }, [slugProp, formData.barberId, BASE]);
-
-  // ── Busyness indicator ──────────────────────────────────────────────────────
-  const [busyness, setBusyness] = useState<{ dayClosed: boolean; level: "low" | "moderate" | "high" | "critical" | "closed"; ratio: number } | null>(null);
-
-  useEffect(() => {
-    if (!slugProp) return;
-    let cancelled = false;
-    fetch(`${BASE}/api/b/${encodeURIComponent(slugProp)}/busyness`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (!cancelled) setBusyness(data ?? null); })
-      .catch(() => { /* silent */ });
-    return () => { cancelled = true; };
-  }, [slugProp, BASE]);
-
   // Sync client name from DB on mount — in case the barber edited the name in the panel.
   // Only runs when the phone is already known from localStorage (returning client).
   useEffect(() => {
@@ -749,68 +721,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
-
-        {/* Next available banner — shown on public booking pages when slug is known */}
-        {slugProp && nextAvail?.nextDate && (
-          <div
-            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-            style={{ backgroundColor: AMBER_SOFT, border: `1px solid ${AMBER}55`, color: AMBER }}
-            data-testid="next-available-banner"
-          >
-            <Clock className="w-4 h-4 shrink-0" />
-            <span>
-              {(() => {
-                const today = new Date().toISOString().slice(0, 10);
-                const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-                const label =
-                  nextAvail.nextDate === today
-                    ? "hoje"
-                    : nextAvail.nextDate === tomorrow
-                    ? "amanhã"
-                    : new Date(`${nextAvail.nextDate}T12:00:00Z`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" });
-                return (
-                  <>
-                    {formData.barberId && selectedBarber
-                      ? <><strong>{selectedBarber.name}</strong> está disponível </>
-                      : "Próximo horário disponível: "}
-                    <strong>{label} às {nextAvail.nextTime}</strong>
-                  </>
-                );
-              })()}
-            </span>
-          </div>
-        )}
-
-        {/* Busyness indicator — shown on public booking pages for today's availability */}
-        {slugProp && busyness && !busyness.dayClosed && (
-          <div
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium"
-            data-testid="busyness-indicator"
-            style={(() => {
-              const styles: Record<string, { bg: string; border: string; color: string }> = {
-                low:      { bg: "hsl(142 60% 45% / 0.12)", border: "hsl(142 60% 45% / 0.35)", color: "hsl(142 55% 38%)" },
-                moderate: { bg: "hsl(38 88% 55% / 0.12)",  border: "hsl(38 88% 55% / 0.35)",  color: "hsl(38 80% 42%)"  },
-                high:     { bg: "hsl(25 90% 55% / 0.12)",  border: "hsl(25 90% 55% / 0.35)",  color: "hsl(25 80% 42%)"  },
-                critical: { bg: "hsl(0 72% 51% / 0.12)",   border: "hsl(0 72% 51% / 0.35)",   color: "hsl(0 65% 44%)"   },
-              };
-              const s = styles[busyness.level] ?? styles.low;
-              return { backgroundColor: s.bg, border: `1px solid ${s.border}`, color: s.color };
-            })()}
-          >
-            <span style={{ fontSize: 14 }}>
-              {busyness.level === "low"      && "●"}
-              {busyness.level === "moderate" && "●"}
-              {busyness.level === "high"     && "●"}
-              {busyness.level === "critical" && "●"}
-            </span>
-            <span>
-              {busyness.level === "low"      && "Bastante disponível hoje"}
-              {busyness.level === "moderate" && "Disponibilidade moderada hoje"}
-              {busyness.level === "high"     && "Poucas vagas hoje"}
-              {busyness.level === "critical" && "Agenda quase cheia hoje"}
-            </span>
-          </div>
-        )}
 
         {/* Link desativado pelo dono da barbearia */}
         {(settings as any)?.bookingEnabled === false && (
