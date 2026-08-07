@@ -16,10 +16,41 @@ import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
 import shopRouter from "./shop.js";
 import pushRouter from "./push.js";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { accountCanAccess } from "./accountStatus.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+  next();
+}
+
+async function requireActiveAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const userId = req.session?.userId;
+  if (!userId) {
+    res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+  const [user] = await db
+    .select({
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!user || !accountCanAccess(user)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "A assinatura ou o período de teste expirou.",
+    });
     return;
   }
   next();
@@ -50,10 +81,17 @@ router.use(subscriptionsRouter);
 const adminRouter = Router();
 adminRouter.use(requireAuth);
 adminRouter.use(clientsRouter);
-adminRouter.use(queueRouter);
 adminRouter.use(dashboardRouter);
 adminRouter.use(financialRouter);
 
 router.use(adminRouter);
+
+// Queue access is separately guarded because the TV app consumes these
+// endpoints directly and must stop working as soon as billing expires.
+const activeQueueRouter = Router();
+activeQueueRouter.use(requireAuth);
+activeQueueRouter.use(requireActiveAccount);
+activeQueueRouter.use(queueRouter);
+router.use(activeQueueRouter);
 
 export default router;

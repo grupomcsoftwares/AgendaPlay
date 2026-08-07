@@ -1,11 +1,12 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, gt, lt, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
+import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, usersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
 import { broadcastQueueUpdate } from "./queue.js";
+import { accountCanAccess } from "./accountStatus.js";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -303,6 +304,28 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const shopId = req.session?.userId ?? (typeof req.body?.shopId === "string" ? req.body.shopId.trim() : "");
   if (!shopId) {
     res.status(400).json({ error: "shopId obrigatório" });
+    return;
+  }
+  const [account] = await db
+    .select({
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, shopId))
+    .limit(1);
+  if (!account) {
+    res.status(404).json({ error: "Barbearia não encontrada" });
+    return;
+  }
+  if (!accountCanAccess(account)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "Não é possível criar agendamentos porque a assinatura expirou.",
+    });
     return;
   }
 

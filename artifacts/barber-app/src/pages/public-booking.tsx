@@ -22,11 +22,13 @@ export default function PublicBooking() {
   const [shopInfo, setShopInfo] = useState<ShopInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
     setNotFound(false);
+    setSubscriptionExpired(false);
     fetch(`${BASE}/api/b/${encodeURIComponent(slug)}`, { redirect: "manual" })
       .then(async (res) => {
         if (res.status === 301 || res.type === "opaqueredirect") {
@@ -39,6 +41,15 @@ export default function PublicBooking() {
           return;
         }
         if (res.status === 404) {
+          setNotFound(true);
+          return;
+        }
+        if (res.status === 403) {
+          const data = await res.json().catch(() => ({})) as { code?: string };
+          if (data.code === "SUBSCRIPTION_EXPIRED") {
+            setSubscriptionExpired(true);
+            return;
+          }
           setNotFound(true);
           return;
         }
@@ -60,6 +71,23 @@ export default function PublicBooking() {
           <Scissors className="w-8 h-8" />
         </div>
         <p className="text-sm text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (subscriptionExpired) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <div
+          className="rounded-full flex items-center justify-center"
+          style={{ width: 72, height: 72, backgroundColor: AMBER_SOFT, color: AMBER }}
+        >
+          <Scissors className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold">Agendamentos temporariamente indisponíveis</h1>
+        <p className="text-muted-foreground text-sm max-w-sm">
+          A assinatura desta barbearia expirou. O link voltará a funcionar assim que a assinatura for reativada.
+        </p>
       </div>
     );
   }

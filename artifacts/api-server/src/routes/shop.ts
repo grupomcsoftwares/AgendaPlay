@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt } from "drizzle-orm";
 import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { accountCanAccess } from "./accountStatus.js";
 
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
@@ -50,7 +51,16 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
   }
 
   const [user] = await db
-    .select({ id: usersTable.id, barbershopName: usersTable.barbershopName, slug: usersTable.slug })
+    .select({
+      id: usersTable.id,
+      barbershopName: usersTable.barbershopName,
+      slug: usersTable.slug,
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
     .from(usersTable)
     .where(eq(usersTable.slug, slug))
     .limit(1);
@@ -67,6 +77,14 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
     } else {
       res.status(404).json({ error: "Barbearia não encontrada" });
     }
+    return;
+  }
+
+  if (!accountCanAccess(user)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "O link de agendamento está temporariamente indisponível.",
+    });
     return;
   }
 
@@ -97,13 +115,27 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     : null;
 
   const [user] = await db
-    .select({ id: usersTable.id })
+    .select({
+      id: usersTable.id,
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
     .from(usersTable)
     .where(eq(usersTable.slug, slug))
     .limit(1);
 
   if (!user) {
     res.status(404).json({ error: "Barbearia não encontrada" });
+    return;
+  }
+  if (!accountCanAccess(user)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "O link de agendamento está temporariamente indisponível.",
+    });
     return;
   }
 
@@ -219,13 +251,27 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
   }
 
   const [user] = await db
-    .select({ id: usersTable.id })
+    .select({
+      id: usersTable.id,
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
     .from(usersTable)
     .where(eq(usersTable.slug, slug))
     .limit(1);
 
   if (!user) {
     res.status(404).json({ error: "Barbearia não encontrada" });
+    return;
+  }
+  if (!accountCanAccess(user)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "A fila ao vivo está temporariamente indisponível.",
+    });
     return;
   }
 

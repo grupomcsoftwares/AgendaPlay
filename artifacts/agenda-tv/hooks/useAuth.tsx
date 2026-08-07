@@ -23,6 +23,7 @@ type AuthState = {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
   getSessionCookie: () => Promise<string | null>;
 };
 
@@ -33,14 +34,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(USER_KEY).then((raw) => {
-      if (raw) {
+    let mounted = true;
+    AsyncStorage.multiGet([USER_KEY, COOKIE_KEY]).then(async ([userEntry, cookieEntry]) => {
+      const raw = userEntry[1];
+      const cookie = cookieEntry[1];
+      if (raw && mounted) {
         try {
           setUser(JSON.parse(raw));
         } catch {}
       }
-      setLoading(false);
+
+      // Revalidate the cached account before showing the home screen. This
+      // prevents an expired subscription from keeping the TV queue open.
+      if (cookie) {
+        try {
+          const res = await fetch(`${API_BASE}/auth/me`, {
+            headers: { Cookie: cookie },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (mounted) {
+              setUser(data);
+              await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
+            }
+          } else if (res.status === 401 && mounted) {
+            setUser(null);
+            await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
+          }
+        } catch {
+          // Keep cached state when the server is temporarily unreachable.
+        }
+      }
+      if (mounted) setLoading(false);
     });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -63,6 +92,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
   }, []);
 
+  const refresh = useCallback(async () => {
+    const cookie = await AsyncStorage.getItem(COOKIE_KEY);
+    if (!cookie) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { Cookie: cookie },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
+      } else if (res.status === 401) {
+        setUser(null);
+        await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
+      }
+    } catch {
+      // Keep the current state during a temporary network interruption.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(() => {
+      void refresh();
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [refresh, user]);
+
   const logout = useCallback(async () => {
     await fetch(`${API_BASE}/auth/logout`, { method: "POST" }).catch(() => {});
     setUser(null);
@@ -75,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, getSessionCookie }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh, getSessionCookie }}>
       {children}
     </AuthContext.Provider>
   );

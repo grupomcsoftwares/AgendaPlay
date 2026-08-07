@@ -7,12 +7,14 @@ import {
   ActivityIndicator,
   Platform,
   BackHandler,
+  Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
+const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -37,7 +39,7 @@ export default function ViewerScreen() {
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { getSessionCookie } = useAuth();
+  const { user, getSessionCookie } = useAuth();
   const webViewRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -45,6 +47,7 @@ export default function ViewerScreen() {
   const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
   const isTV = Platform.isTV || false;
+  const subscriptionBlocked = !!user && !user.canAccess;
 
   const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
     let message: { type?: string; action?: "subscribe" | "unsubscribe" };
@@ -112,6 +115,26 @@ export default function ViewerScreen() {
         <Text style={styles.msgText}>Disponível no app nativo Android/iOS</Text>
         <Pressable style={styles.retryBtn} onPress={() => router.back()}>
           <Text style={styles.retryText}>← Voltar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (subscriptionBlocked) {
+    return (
+      <View style={[styles.center, { paddingHorizontal: 28 }]}>
+        <Feather name="lock" size={48} color="#c9a84c" />
+        <Text style={[styles.msgText, { marginTop: 18, textAlign: "center" }]}>
+          Fila ao vivo bloqueada
+        </Text>
+        <Text style={[styles.loadingText, { textAlign: "center", marginTop: 10 }]}>
+          A assinatura desta barbearia expirou. Reative a assinatura para voltar a usar a fila na TV.
+        </Text>
+        <Pressable style={styles.retryBtn} onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)} focusable hasTVPreferredFocus>
+          <Text style={styles.retryText}>Reativar assinatura</Text>
+        </Pressable>
+        <Pressable style={[styles.retryBtn, { marginTop: 10 }]} onPress={() => router.back()} focusable>
+          <Text style={styles.retryText}>Voltar</Text>
         </Pressable>
       </View>
     );

@@ -62,7 +62,7 @@ function useTVRemote(onEvent: (type: string) => void) {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
   const isTV = Platform.isTV || false;
@@ -73,6 +73,7 @@ export default function HomeScreen() {
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);
+  const subscriptionBlocked = !loading && !!user && !user.canAccess;
 
   const handlePress = useCallback((mode: HomeMode) => {
     if (mode.id === "management") {
@@ -102,6 +103,30 @@ export default function HomeScreen() {
       if (mode) handlePress(mode);
     }
   });
+
+  if (subscriptionBlocked) {
+    return (
+      <View style={[styles.root, styles.blockedRoot, { paddingTop: topPad, paddingBottom: botPad }]}>
+        <Feather name="lock" size={44} color="#c9a84c" />
+        <Text style={styles.blockedTitle}>Fila ao vivo bloqueada</Text>
+        <Text style={styles.blockedText}>
+          A assinatura desta barbearia expirou. Reative a assinatura para voltar a exibir a fila na TV.
+        </Text>
+        <Pressable
+          style={styles.blockedButton}
+          onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}
+          focusable
+          hasTVPreferredFocus
+        >
+          <Text style={styles.blockedButtonText}>Reativar assinatura</Text>
+        </Pressable>
+        <Pressable style={styles.logoutRow} onPress={logout} focusable>
+          <Feather name="log-out" size={13} color="#777" />
+          <Text style={styles.logoutText}>Sair da conta</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -194,6 +219,30 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#0c0c0c" },
+  blockedRoot: { alignItems: "center", justifyContent: "center", paddingHorizontal: 28 },
+  blockedTitle: {
+    color: "#f5f5f5",
+    fontSize: 24,
+    fontWeight: "700",
+    marginTop: 18,
+    textAlign: "center",
+  },
+  blockedText: {
+    color: "#999",
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 10,
+    maxWidth: 460,
+    textAlign: "center",
+  },
+  blockedButton: {
+    backgroundColor: "#c9a84c",
+    borderRadius: 12,
+    marginTop: 24,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+  },
+  blockedButtonText: { color: "#111", fontSize: 14, fontWeight: "700" },
   content: { paddingHorizontal: 20, paddingTop: 4 },
   header: { marginBottom: 28 },
   logoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 },

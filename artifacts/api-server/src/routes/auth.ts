@@ -5,6 +5,7 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import { getUncachableStripeClient } from "../stripeClient.js";
+import { getAccountStatus } from "./accountStatus.js";
 
 declare module "express-session" {
   interface SessionData {
@@ -33,8 +34,6 @@ const userCols = {
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
-
-const TRIAL_DAYS = 7;
 
 function normalizeCpf(value: unknown): string {
   return typeof value === "string" ? value.replace(/\D/g, "") : "";
@@ -65,38 +64,6 @@ function isValidCpf(cpf: string): boolean {
   }
   const secondCheck = (secondSum * 10) % 11;
   return (secondCheck === 10 ? 0 : secondCheck) === Number(cpf[10]);
-}
-
-function getAccountStatus(user: { trialStartedAt: Date; stripeSubscriptionId: string | null; stripeCurrentPeriodEnd: Date | null; subscriptionExpiresAt?: Date | null; maxBarbers?: number | null }) {
-  const trialStarted = new Date(user.trialStartedAt);
-  const now = new Date();
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const daysSinceTrial = Math.floor((now.getTime() - trialStarted.getTime()) / msPerDay);
-  const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
-  const trialExpired = trialDaysLeft === 0;
-
-  // Stripe period end takes priority; fall back to manually-set expiry date
-  const periodEnd = user.stripeCurrentPeriodEnd
-    ? new Date(user.stripeCurrentPeriodEnd)
-    : user.subscriptionExpiresAt
-      ? new Date(user.subscriptionExpiresAt)
-      : null;
-
-  const daysUntilPeriodEnd = periodEnd
-    ? Math.max(0, Math.floor((periodEnd.getTime() - now.getTime()) / msPerDay))
-    : null;
-
-  const hasActiveSubscription = !!user.stripeSubscriptionId || !!user.subscriptionExpiresAt;
-
-  return {
-    trialDaysLeft,
-    trialExpired,
-    hasActiveSubscription,
-    canAccess: !trialExpired || hasActiveSubscription,
-    maxBarbers: user.maxBarbers ?? null,
-    subscriptionDueDate: periodEnd?.toISOString() ?? null,
-    subscriptionDaysLeft: daysUntilPeriodEnd,
-  };
 }
 
 function isValidCnpj(cnpj: string): boolean {

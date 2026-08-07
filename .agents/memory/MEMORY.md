@@ -2,6 +2,7 @@
 - [Expo workflow port detection bug](expo-workflow-port-bug.md) — port detection broken for kind=mobile in this env; workaround: configureWorkflow without waitForPort.
 - [Stripe setup quirks](stripe-setup.md) — runMigrations breaks in esbuild bundle; run via raw Node; STRIPE_SECRET_KEY is primary key source.
 - [Stripe environment separation](stripe-environment-separation.md) — production must use the environment-aware live connection, not a shared test secret; verify live catalog after publishing.
+- [Subscription access enforcement](subscription-access-enforcement.md) — expired billing must be rejected server-side for public booking and queue, with clients only reflecting that decision.
 - [Stale TS declaration cache](ts-cache-stale.md) — lib .tsbuildinfo files can stale cache old declarations, causing "property does not exist" on newly added fields. Fix: `rm -f lib/*/.tsbuildinfo && pnpm run typecheck:libs`.
 - [Push notifications on autoscale](push-notifications-autoscale.md) — server-side `setInterval` schedulers fail on autoscale because processes sleep between requests. Use client-driven pings to a trigger endpoint as primary delivery mechanism.
 - [Account-switch cache isolation](account-cache-isolation.md) — clear React Query and account-scoped browser storage on login, registration, logout, and account deletion to prevent stale shop data.
