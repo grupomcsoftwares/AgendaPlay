@@ -6,6 +6,18 @@ import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
+type ReengagementConfigInput = {
+  enabled?: boolean;
+  inactiveDays?: number;
+  message?: string;
+} | null | undefined;
+
+type NormalizedReengagementConfig = {
+  enabled: boolean;
+  inactiveDays: 15 | 30;
+  message: string;
+};
+
 function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyaltyConfig"]) {
   if (!config) return config;
   return {
@@ -15,7 +27,7 @@ function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyal
   };
 }
 
-function normalizeClientReengagementConfig(config: typeof settingsTable.$inferSelect["clientReengagementConfig"]) {
+function normalizeClientReengagementConfig(config: ReengagementConfigInput): NormalizedReengagementConfig {
   return {
     enabled: config?.enabled ?? false,
     inactiveDays: config?.inactiveDays === 15 ? 15 : 30,

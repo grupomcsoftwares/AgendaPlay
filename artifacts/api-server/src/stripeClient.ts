@@ -2,15 +2,20 @@ import Stripe from 'stripe';
 import { StripeSync } from 'stripe-replit-sync';
 
 async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecret?: string }> {
-  // First try direct env var (fastest path)
-  if (process.env.STRIPE_SECRET_KEY) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const envSecret = process.env.STRIPE_SECRET_KEY;
+
+  // Development keeps using the explicit test secret when present. Production
+  // must prefer the environment-aware Replit Stripe connection so a shared
+  // sk_test_* secret cannot override the live connection.
+  if (!isProduction && envSecret) {
     return {
-      secretKey: process.env.STRIPE_SECRET_KEY,
+      secretKey: envSecret,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     };
   }
 
-  // Fall back to Replit connector proxy
+  // Resolve the Replit connection for the current runtime environment.
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -28,15 +33,36 @@ async function getStripeCredentials(): Promise<{ secretKey: string; webhookSecre
     );
 
     if (resp.ok) {
-      const data = await resp.json() as { items?: Array<{ settings?: { secret_key?: string; webhook_secret?: string } }> };
-      const settings = data.items?.[0]?.settings;
-      if (settings?.secret_key) {
+      const data = await resp.json() as {
+        items?: Array<{
+          environment?: string;
+          settings?: {
+            secret?: string;
+            secret_key?: string;
+            webhook_secret?: string;
+            webhookSecret?: string;
+          };
+        }>;
+      };
+      const desiredEnvironment = isProduction ? "production" : "development";
+      const item = data.items?.find((candidate) => candidate.environment === desiredEnvironment)
+        ?? data.items?.[0];
+      const settings = item?.settings;
+      const secretKey = settings?.secret_key ?? settings?.secret;
+      if (secretKey) {
         return {
-          secretKey: settings.secret_key,
-          webhookSecret: settings.webhook_secret,
+          secretKey,
+          webhookSecret: settings?.webhook_secret ?? settings?.webhookSecret,
         };
       }
     }
+  }
+
+  if (envSecret && (!isProduction || !envSecret.startsWith("sk_test_"))) {
+    return {
+      secretKey: envSecret,
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    };
   }
 
   throw new Error(

@@ -2,6 +2,7 @@ import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient.js";
+import { getUncachableStripeClient } from "./stripeClient.js";
 import { runPushScheduler } from "./routes/push.js";
 
 const rawPort = process.env["PORT"];
@@ -11,6 +12,58 @@ if (!rawPort) {
 const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+const LIVE_PLANS = [
+  { name: "BarberApp — 1 Profissional", amount: 2490, maxBarbers: 1, description: "Para barbearias com 1 profissional." },
+  { name: "BarberApp — 2 Profissionais", amount: 4990, maxBarbers: 2, description: "Para barbearias com até 2 profissionais." },
+  { name: "BarberApp — 3 Profissionais", amount: 7490, maxBarbers: 3, description: "Para barbearias com até 3 profissionais." },
+  { name: "BarberApp — Ilimitado", amount: 9990, maxBarbers: 0, description: "Para barbearias com 4 ou mais profissionais. Sem limites." },
+] as const;
+
+async function ensureLiveSubscriptionPlans() {
+  if (process.env.NODE_ENV !== "production") return;
+
+  const stripe = await getUncachableStripeClient();
+  for (const plan of LIVE_PLANS) {
+    const existing = await stripe.products.search({
+      query: `name:'${plan.name}' AND active:'true'`,
+    });
+    const product = existing.data[0] ?? await stripe.products.create({
+      name: plan.name,
+      description: plan.description,
+      metadata: { maxBarbers: String(plan.maxBarbers) },
+    });
+
+    if (product.metadata?.maxBarbers !== String(plan.maxBarbers)) {
+      await stripe.products.update(product.id, {
+        metadata: { ...product.metadata, maxBarbers: String(plan.maxBarbers) },
+      });
+    }
+
+    const prices = await stripe.prices.list({
+      product: product.id,
+      active: true,
+      type: "recurring",
+      limit: 100,
+    });
+    const hasExpectedPrice = prices.data.some((price) =>
+      price.unit_amount === plan.amount
+      && price.currency === "brl"
+      && price.recurring?.interval === "month"
+      && price.recurring.interval_count === 1
+    );
+
+    if (!hasExpectedPrice) {
+      await stripe.prices.create({
+        product: product.id,
+        unit_amount: plan.amount,
+        currency: "brl",
+        recurring: { interval: "month" },
+      });
+    }
+  }
+  logger.info("Stripe live subscription plans verified");
 }
 
 async function initStripe() {
@@ -25,6 +78,7 @@ async function initStripe() {
     logger.info("Stripe schema ready");
 
     const stripeSync = await getStripeSync();
+    await ensureLiveSubscriptionPlans();
     const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
     if (domain) {
       const webhookUrl = `https://${domain}/api/stripe/webhook`;
