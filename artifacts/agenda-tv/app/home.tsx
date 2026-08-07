@@ -88,22 +88,32 @@ export default function HomeScreen() {
     router.push({ pathname: "/viewer", params: { url: mode.url, title: mode.title } });
   }, [router]);
 
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.replace("/");
+  }, [logout, router]);
+
   useTVRemote((type) => {
+    const logoutIdx = visibleModes.length;
     if (type === "up") {
       setFocusedIdx((prev) => {
         const next = Math.max(0, prev - 1);
-        setFocusedId(visibleModes[next]?.id ?? null);
+        setFocusedId(next === logoutIdx ? "logout" : visibleModes[next]?.id ?? null);
         return next;
       });
     } else if (type === "down") {
       setFocusedIdx((prev) => {
-        const next = Math.min(visibleModes.length - 1, prev + 1);
-        setFocusedId(visibleModes[next]?.id ?? null);
+        const next = Math.min(logoutIdx, prev + 1);
+        setFocusedId(next === logoutIdx ? "logout" : visibleModes[next]?.id ?? null);
         return next;
       });
     } else if (type === "select") {
-      const mode = visibleModes[focusedIdx];
-      if (mode) handlePress(mode);
+      if (focusedIdx === logoutIdx) {
+        void handleLogout();
+      } else {
+        const mode = visibleModes[focusedIdx];
+        if (mode) handlePress(mode);
+      }
     }
   });
 
@@ -192,8 +202,14 @@ export default function HomeScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.logoutRow, pressed && styles.logoutFocused]}
-          onPress={logout}
+          onPress={() => void handleLogout()}
+          onFocus={() => {
+            setFocusedId("logout");
+            setFocusedIdx(visibleModes.length);
+          }}
+          onBlur={() => setFocusedId((prev) => (prev === "logout" ? null : prev))}
           focusable
+          testID="button-logout"
         >
           {({ pressed }) => (
             <>

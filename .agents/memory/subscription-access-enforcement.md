@@ -20,3 +20,9 @@ TV queue WebViews can arrive at the web app as `view=mobile` without a native TV
 **Why:** Relying only on `Platform.isTV` allowed an expired TV session to follow the web `ProtectedRoute` redirect into the subscription plans screen.
 
 **How to apply:** Mark native TV WebViews explicitly, preserve the marker through redirects, and treat a large Android/`view=mobile` display as TV for the expired-subscription route; keep normal phone-sized mobile views eligible for payment.
+
+TV remote actions need an explicit focus index for controls outside the main mode cards, such as logout.
+
+**Why:** A visible `Pressable` can work by touch but remain unreachable through the custom TV D-pad handler when that handler only indexes the cards.
+
+**How to apply:** Include secondary controls in the remote navigation range, update focus state on native focus events, and route select actions to the control's own handler.
