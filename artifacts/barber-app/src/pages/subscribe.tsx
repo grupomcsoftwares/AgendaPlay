@@ -212,8 +212,8 @@ export default function Subscribe() {
                   className="w-full rounded-xl font-semibold transition-opacity hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                   style={{
                     height: 42,
-                    backgroundColor: isPopular ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 14%)",
-                    color: isPopular ? "hsl(var(--sidebar-primary-foreground))" : "hsl(0 0% 90%)",
+                    backgroundColor: "hsl(var(--sidebar-primary))",
+                    color: "hsl(var(--sidebar-primary-foreground))",
                     border: "none",
                     cursor: (isLoading || !stripeReady) ? "not-allowed" : "pointer",
                   }}

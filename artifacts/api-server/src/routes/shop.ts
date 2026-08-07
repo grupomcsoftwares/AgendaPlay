@@ -371,9 +371,3 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
 });
 
 export default router;
-
-      const [current] = await db
-        .select({ slug: usersTable.slug })
-        .from(usersTable)
-        .where(eq(usersTable.id, redirect.userId))
-        .limit(1);
