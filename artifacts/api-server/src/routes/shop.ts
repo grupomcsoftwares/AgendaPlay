@@ -207,4 +207,100 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
   res.json({ nextDate: null, nextTime: null });
 });
 
+// ── Busyness ────────────────────────────────────────────────────────────────
+// Returns how busy the shop is TODAY based on the ratio of blocked slots to
+// total slots. Uses a fixed 30-min scan window (same as next-available) with
+// the shop's configured slotIntervalMinutes as the step.
+router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
+  const slug = String(req.params.slug ?? "").trim().toLowerCase();
+  if (!slug) {
+    res.status(400).json({ error: "Slug obrigatório" });
+    return;
+  }
+
+  const [user] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.slug, slug))
+    .limit(1);
+
+  if (!user) {
+    res.status(404).json({ error: "Barbearia não encontrada" });
+    return;
+  }
+
+  const shopId = user.id;
+
+  const [settings] = await db
+    .select()
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, shopId))
+    .limit(1);
+
+  const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+  const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
+  const SCAN_DURATION = 30;
+
+  const now = new Date();
+  const today = localYMD(now);
+  const dayKey = localDayKey(now);
+
+  const defaults: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
+  const day: DaySchedule = shopWeekly?.[dayKey] ?? defaults;
+
+  if (day.closed) {
+    res.json({ dayClosed: true, totalSlots: 0, bookedSlots: 0, ratio: 0, level: "closed" as const });
+    return;
+  }
+
+  const openMin = parseHHMM(day.open);
+  const closeMin = parseHHMM(day.close);
+  const lunchStart = parseHHMM(day.lunchStart);
+  const lunchEnd = parseHHMM(day.lunchEnd);
+  const hasLunch = lunchEnd > lunchStart;
+
+  // Load today's appointments
+  const dStart = new Date(`${today}T00:00:00Z`);
+  const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
+  const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
+  const appts = await db
+    .select()
+    .from(appointmentsTable)
+    .where(and(
+      eq(appointmentsTable.userId, shopId),
+      gte(appointmentsTable.scheduledAt, before),
+      lt(appointmentsTable.scheduledAt, after),
+    ));
+
+  const blocked: Array<[number, number]> = [];
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    if (localYMD(a.scheduledAt) !== today) continue;
+    const start = parseHHMM(localHHMM(a.scheduledAt));
+    blocked.push([start, start + a.serviceDuration]);
+  }
+
+  const step = Math.max(5, slotIntervalMinutes);
+  let totalSlots = 0;
+  let bookedSlots = 0;
+
+  for (let t = openMin; t + SCAN_DURATION <= closeMin; t += step) {
+    const end = t + SCAN_DURATION;
+    const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
+    if (overlapsLunch) continue;
+    totalSlots++;
+    const overlapsAppt = blocked.some(([s, e]) => t < e && end > s);
+    if (overlapsAppt) bookedSlots++;
+  }
+
+  const ratio = totalSlots === 0 ? 0 : bookedSlots / totalSlots;
+  const level =
+    ratio >= 0.85 ? "critical" :
+    ratio >= 0.60 ? "high" :
+    ratio >= 0.30 ? "moderate" :
+    "low";
+
+  res.json({ dayClosed: false, totalSlots, bookedSlots, ratio, level });
+});
+
 export default router;
