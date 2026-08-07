@@ -379,6 +379,11 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     onLogout: handleLogout,
   };
 
+  // The subscription checkout is intentionally a focused mobile screen.
+  // Do not show the panel header/menu over it when this route is ever rendered
+  // inside the authenticated shell (for example from the mobile WebView).
+  const isSubscriptionPage = location === "/subscribe";
+
   // Desktop: fixed sidebar
   if (!isMobile) {
     return (
@@ -399,6 +404,14 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
   }
 
   // Mobile: top bar + drawer
+  if (isSubscriptionPage) {
+    return (
+      <div className="flex flex-col h-screen w-full bg-background text-foreground">
+        <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-background text-foreground">
       <header
