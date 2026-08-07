@@ -260,38 +260,32 @@ export default function Appointments() {
     );
   };
 
-  // Horizontal day strip shown in the booking modal: the next two weeks starting today.
-  const dayOptions = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const days = (settings as any)?.maxBookingDays ?? 7;
-    return Array.from({ length: days }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d;
-    });
-  }, []);
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-  // The agenda day strip starts today and stays scrollable so the barber can
-  // browse upcoming days without opening a separate range selector.
-  const agendaDayOptions = useMemo(() => {
+  const maxBookingDays = Math.max(1, Number((settings as any)?.maxBookingDays ?? 30));
+  const bookingWindowStart = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
-    const days = Array.from({ length: 30 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
+    return start;
+  }, []);
+  const bookingWindowEnd = useMemo(() => {
+    const end = new Date(bookingWindowStart);
+    end.setDate(end.getDate() + maxBookingDays - 1);
+    return end;
+  }, [bookingWindowStart, maxBookingDays]);
+
+  // The agenda day strip follows the same booking window configured in
+  // Settings, starting today and showing exactly that many days.
+  const agendaDayOptions = useMemo(() => {
+    return Array.from({ length: maxBookingDays }, (_, i) => {
+      const d = new Date(bookingWindowStart);
+      d.setDate(bookingWindowStart.getDate() + i);
       return d;
     });
-
-    // Keep a date selected from the calendar visible in the strip as well.
-    if (!days.some((d) => sameDay(d, dateStart))) {
-      days.push(new Date(dateStart));
-      days.sort((a, b) => a.getTime() - b.getTime());
-    }
-
-    return days;
-  }, [dateStartStr]);
+  }, [bookingWindowStart, maxBookingDays]);
+  // The create-appointment picker uses the same configured window as the
+  // agenda strip and updates when settings finish loading.
+  const dayOptions = agendaDayOptions;
   const selectAgendaDay = (day: Date) => {
     setDateStart(day);
     setDateEnd(day);
@@ -868,6 +862,10 @@ export default function Appointments() {
                   mode="single"
                   locale={ptBR}
                   selected={dateStart}
+                  disabled={{
+                    before: bookingWindowStart,
+                    after: bookingWindowEnd,
+                  }}
                   onSelect={(day) => {
                     if (!day) return;
                     selectAgendaDay(day);

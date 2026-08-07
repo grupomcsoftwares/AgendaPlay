@@ -226,7 +226,9 @@ router.get("/availability", async (req, res): Promise<void> => {
   const requestedDate = new Date(`${date}T12:00:00Z`);
   const todayDate = new Date(`${today}T12:00:00Z`);
   const daysDiff = Math.round((requestedDate.getTime() - todayDate.getTime()) / (24 * 3600 * 1000));
-  if (daysDiff > maxBookingDays) {
+  // maxBookingDays is the number of selectable calendar days including today.
+  // For example, a 7-day window exposes today through today + 6.
+  if (daysDiff >= maxBookingDays) {
     res.json({ date, dayClosed: true, slots: [] });
     return;
   }
