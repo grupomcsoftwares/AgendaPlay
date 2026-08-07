@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -42,7 +42,7 @@ export default function ViewerScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { user, getSessionCookie } = useAuth();
+  const { user, getSessionCookie, logout } = useAuth();
   const webViewRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -51,6 +51,11 @@ export default function ViewerScreen() {
   const [backFocused, setBackFocused] = useState(false);
   const isTV = isTvDevice(width);
   const subscriptionBlocked = !!user && !user.canAccess;
+
+  const handleExit = useCallback(async () => {
+    await logout();
+    router.replace("/");
+  }, [logout, router]);
 
   const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
     let message: { type?: string; action?: "subscribe" | "unsubscribe" };
@@ -82,7 +87,11 @@ export default function ViewerScreen() {
   // TV remote back/menu keys
   useTVRemote((type) => {
     if (type === "back" || type === "menu") {
-      router.back();
+      if (isTV) {
+        void handleExit();
+      } else {
+        router.back();
+      }
     }
   });
 
@@ -125,24 +134,45 @@ export default function ViewerScreen() {
 
   if (subscriptionBlocked) {
     return (
-      <View style={[styles.center, { paddingHorizontal: 28 }]}>
-        <Feather name="lock" size={48} color="#c9a84c" />
-        <Text style={[styles.msgText, { marginTop: 18, textAlign: "center" }]}>
-          Assinatura expirada
-        </Text>
-        <Text style={[styles.loadingText, { textAlign: "center", marginTop: 10 }]}>
-          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
-        </Text>
-        {!isTV && (
-          <>
-            <Pressable style={styles.retryBtn} onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}>
-              <Text style={styles.retryText}>Reativar assinatura</Text>
-            </Pressable>
-            <Pressable style={[styles.retryBtn, { marginTop: 10 }]} onPress={() => router.back()}>
-              <Text style={styles.retryText}>Voltar</Text>
-            </Pressable>
-          </>
+      <View style={styles.container}>
+        {isTV && (
+          <Pressable
+            style={[
+              styles.backBtn,
+              styles.backBtnTv,
+              { top: insets.top + 8 },
+              backFocused && styles.backBtnFocused,
+            ]}
+            onPress={() => void handleExit()}
+            onFocus={() => setBackFocused(true)}
+            onBlur={() => setBackFocused(false)}
+            focusable
+            hasTVPreferredFocus
+            testID="tv-logout-button"
+          >
+            <Feather name="log-out" size={13} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
+            <Text style={[styles.exitText, backFocused && styles.exitTextFocused]}>Sair</Text>
+          </Pressable>
         )}
+        <View style={[styles.center, { paddingHorizontal: 28 }]}>
+          <Feather name="lock" size={48} color="#c9a84c" />
+          <Text style={[styles.msgText, { marginTop: 18, textAlign: "center" }]}>
+            Assinatura expirada
+          </Text>
+          <Text style={[styles.loadingText, { textAlign: "center", marginTop: 10 }]}>
+            A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
+          </Text>
+          {!isTV && (
+            <>
+              <Pressable style={styles.retryBtn} onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}>
+                <Text style={styles.retryText}>Reativar assinatura</Text>
+              </Pressable>
+              <Pressable style={[styles.retryBtn, { marginTop: 10 }]} onPress={() => router.back()}>
+                <Text style={styles.retryText}>Voltar</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
       </View>
     );
   }
@@ -243,13 +273,20 @@ export default function ViewerScreen() {
                 { top: insets.top + (isTV ? 8 : 12) },
                 backFocused && styles.backBtnFocused,
               ]}
-              onPress={() => router.back()}
+              onPress={() => (isTV ? void handleExit() : router.back())}
               onFocus={() => setBackFocused(true)}
               onBlur={() => setBackFocused(false)}
               focusable
-              testID="back-button"
+              testID={isTV ? "tv-logout-button" : "back-button"}
             >
-              <Feather name="arrow-left" size={isTV ? 12 : 16} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
+              <Feather
+                name={isTV ? "log-out" : "arrow-left"}
+                size={isTV ? 13 : 16}
+                color={backFocused ? "#c9a84c" : "#f5f5f5"}
+              />
+              {isTV && (
+                <Text style={[styles.exitText, backFocused && styles.exitTextFocused]}>Sair</Text>
+              )}
             </Pressable>
           )}
         </>
@@ -301,12 +338,17 @@ const styles = StyleSheet.create({
   },
   backBtnTv: {
     left: 10,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 28,
+    height: 30,
+    paddingHorizontal: 9,
+    borderRadius: 15,
     backgroundColor: "rgba(0,0,0,0.4)",
     borderWidth: 1,
     borderColor: "#222",
+    flexDirection: "row",
+    gap: 5,
   },
   backBtnFocused: { borderColor: "#c9a84c", backgroundColor: "rgba(201,168,76,0.15)" },
+  exitText: { color: "#f5f5f5", fontSize: 11, fontWeight: "600" },
+  exitTextFocused: { color: "#c9a84c" },
 });

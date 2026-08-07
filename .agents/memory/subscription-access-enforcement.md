@@ -26,3 +26,9 @@ TV remote actions need an explicit focus index for controls outside the main mod
 **Why:** A visible `Pressable` can work by touch but remain unreachable through the custom TV D-pad handler when that handler only indexes the cards.
 
 **How to apply:** Include secondary controls in the remote navigation range, update focus state on native focus events, and route select actions to the control's own handler.
+
+On TV, successful authentication should open the live queue directly; the queue viewer owns the TV logout control in the upper-left position previously used for back.
+
+**Why:** The TV is a dedicated display endpoint, so an intermediate mode-selection screen adds an unnecessary remote-control step.
+
+**How to apply:** Redirect TV login and cached-session recovery straight to the queue viewer, while preserving the native management menu for phone/tablet users.

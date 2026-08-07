@@ -26,7 +26,7 @@ const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}
 const MENU_ITEMS = [
   { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
   { id: "appointments", label: "Agendamentos",   icon: "list" as const,        url: `${PROD_BASE}/appointments` },
-  { id: "queue",        label: "Painel de Fila", icon: "activity" as const,    url: `${PROD_BASE}/queue` },
+  { id: "queue",        label: "Fila ao vivo",  icon: "activity" as const,    url: `${PROD_BASE}/queue` },
   { id: "clients",      label: "Clientes",        icon: "user" as const,        url: `${PROD_BASE}/clients` },
   { id: "services",     label: "Servi\u00e7os",        icon: "scissors" as const,    url: `${PROD_BASE}/services` },
   { id: "barbers",      label: "Barbeiros",       icon: "users" as const,       url: `${PROD_BASE}/barbers` },

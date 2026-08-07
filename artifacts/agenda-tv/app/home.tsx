@@ -23,8 +23,8 @@ const MODES = [
   {
     id: "queue" as const,
     icon: "users" as const,
-    title: "Painel de Fila",
-    description: "Exibe a fila em tempo real na TV",
+    title: "Fila ao vivo",
+    description: "Exibe a fila em tempo real",
     badge: "TV",
     color: "#c9a84c",
     url: `${PROD_BASE}/queue`,
@@ -148,9 +148,9 @@ export default function HomeScreen() {
             <Feather name="scissors" size={30} color="#c9a84c" />
             <Text style={styles.appName}>AgendaPlay</Text>
           </View>
-          <Text style={styles.tagline}>
-            {isTV ? "Painel de fila da barbearia" : "Escolha o modo de exibição"}
-          </Text>
+           <Text style={styles.tagline}>
+             {isTV ? "Fila ao vivo" : "Escolha o modo de exibição"}
+           </Text>
           {user?.barbershopName ? (
             <Text style={styles.shopName}>{user.barbershopName}</Text>
           ) : null}

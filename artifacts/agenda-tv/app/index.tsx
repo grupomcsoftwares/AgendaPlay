@@ -21,6 +21,7 @@ import UpdateDialog from "@/components/UpdateDialog";
 import { isTvDevice } from "@/lib/device";
 
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
+const QUEUE_URL = `${PROD_BASE}/queue`;
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -35,21 +36,21 @@ export default function LoginScreen() {
   // Auto-redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
-      if (isTvDevice()) {
-        router.replace("/home");
+      if (isTV) {
+        router.replace({ pathname: "/viewer", params: { url: QUEUE_URL, title: "Fila ao vivo" } });
       } else {
         router.replace("/dashboard");
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, isTV, router]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;
     setError("");
     try {
       await login(email.trim(), password.trim());
-      if (isTvDevice()) {
-        router.replace("/home");
+      if (isTV) {
+        router.replace({ pathname: "/viewer", params: { url: QUEUE_URL, title: "Fila ao vivo" } });
       } else {
         router.replace("/dashboard");
       }
