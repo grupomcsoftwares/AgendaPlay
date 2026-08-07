@@ -1043,7 +1043,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                             </span>
                             {hasPromotion && (
                               <span
-                                className="rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
+                                className="promotion-badge rounded-full px-3 py-1 text-xs font-extrabold tracking-wide"
                                 style={{
                                   backgroundColor: "hsl(142 71% 45%)",
                                   color: "hsl(0 0% 7%)",

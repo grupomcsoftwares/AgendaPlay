@@ -150,3 +150,25 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@keyframes promotion-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 hsl(142 71% 45% / 0.45);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 5px hsl(142 71% 45% / 0);
+  }
+}
+
+.promotion-badge {
+  animation: promotion-pulse 1.8s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promotion-badge {
+    animation: none;
+  }
+}
