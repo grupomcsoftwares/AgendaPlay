@@ -92,6 +92,20 @@ sessionPool.query(SESSION_TABLE_SQL).catch((err: Error) => {
   logger.error({ err }, "Failed to create session table");
 });
 
+const SLUG_REDIRECTS_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS "slug_redirects" (
+  "id" serial PRIMARY KEY,
+  "user_id" text NOT NULL,
+  "old_slug" text NOT NULL UNIQUE,
+  "created_at" timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS "idx_slug_redirects_user_id" ON "slug_redirects" ("user_id");
+`;
+
+sessionPool.query(SLUG_REDIRECTS_TABLE_SQL).catch((err: Error) => {
+  logger.error({ err }, "Failed to create slug_redirects table");
+});
+
 app.use(
   session({
     store: new PgSession({

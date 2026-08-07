@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt } from "drizzle-orm";
-import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 import { accountCanAccess } from "./accountStatus.js";
+import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbersTable, slugRedirectsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
@@ -66,17 +66,27 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
     .limit(1);
 
   if (!user) {
-    const [byPrevious] = await db
-      .select({ slug: usersTable.slug })
-      .from(usersTable)
-      .where(eq(usersTable.previousSlug, slug))
+    // Look up the slug_redirects history table for any old slug.
+    const [redirect] = await db
+      .select({ userId: slugRedirectsTable.userId })
+      .from(slugRedirectsTable)
+      .where(eq(slugRedirectsTable.oldSlug, slug))
       .limit(1);
 
-    if (byPrevious?.slug) {
-      res.status(301).json({ redirectToSlug: byPrevious.slug });
-    } else {
-      res.status(404).json({ error: "Barbearia não encontrada" });
+    if (redirect?.userId) {
+      const [current] = await db
+        .select({ slug: usersTable.slug })
+        .from(usersTable)
+        .where(eq(usersTable.id, redirect.userId))
+        .limit(1);
+
+      if (current?.slug) {
+        res.status(301).json({ redirectToSlug: current.slug });
+        return;
+      }
     }
+
+    res.status(404).json({ error: "Barbearia não encontrada" });
     return;
   }
 
@@ -89,7 +99,7 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
   }
 
   const [settings] = await db
-    .select({ logoUrl: settingsTable.logoUrl })
+    .select()
     .from(settingsTable)
     .where(eq(settingsTable.userId, user.id))
     .limit(1);
@@ -127,6 +137,12 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     .where(eq(usersTable.slug, slug))
     .limit(1);
 
+    const [redirect] = await db
+      .select({ userId: slugRedirectsTable.userId })
+      .from(slugRedirectsTable)
+      .where(eq(slugRedirectsTable.oldSlug, slug))
+      .limit(1);
+
   if (!user) {
     res.status(404).json({ error: "Barbearia não encontrada" });
     return;
@@ -134,7 +150,7 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
   if (!accountCanAccess(user)) {
     res.status(403).json({
       code: "SUBSCRIPTION_EXPIRED",
-      error: "O link de agendamento está temporariamente indisponível.",
+      error: "A fila ao vivo está temporariamente indisponível.",
     });
     return;
   }
@@ -182,50 +198,49 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     target.setUTCDate(target.getUTCDate() + dayOffset);
     const date = localYMD(target);
 
-    const dayKey = localDayKey(target);
-    const defaults: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
-    const day: DaySchedule = weekly?.[dayKey] ?? defaults;
+  const dayKey = localDayKey(now);
+  const defaults: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
+  const day: DaySchedule = shopWeekly?.[dayKey] ?? defaults;
 
-    if (day.closed) continue;
+  if (day.closed) {
+    res.json({ dayClosed: true, totalSlots: 0, bookedSlots: 0, ratio: 0, level: "closed" as const });
+    return;
+  }
 
-    const openMin = parseHHMM(day.open);
-    const closeMin = parseHHMM(day.close);
-    const lunchStart = parseHHMM(day.lunchStart);
-    const lunchEnd = parseHHMM(day.lunchEnd);
-    const hasLunch = lunchEnd > lunchStart;
+  const openMin = parseHHMM(day.open);
+  const closeMin = parseHHMM(day.close);
+  const lunchStart = parseHHMM(day.lunchStart);
+  const lunchEnd = parseHHMM(day.lunchEnd);
+  const hasLunch = lunchEnd > lunchStart;
 
-    // Load all shop appointments for the window — same as /availability.
-    const dStart = new Date(`${date}T00:00:00Z`);
-    const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
-    const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
-    const appts = await db
-      .select()
-      .from(appointmentsTable)
-      .where(and(
-        eq(appointmentsTable.userId, shopId),
-        gte(appointmentsTable.scheduledAt, before),
-        lt(appointmentsTable.scheduledAt, after),
-      ));
+  // Load today's appointments
+  const dStart = new Date(`${today}T00:00:00Z`);
+  const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
+  const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
+  const appts = await db
+    .select()
+    .from(appointmentsTable)
+    .where(and(
+      eq(appointmentsTable.userId, shopId),
+      gte(appointmentsTable.scheduledAt, before),
+      lt(appointmentsTable.scheduledAt, after),
+    ));
 
-    const blocked: Array<[number, number]> = [];
-    for (const a of appts) {
-      if (a.status === "cancelled") continue;
-      if (localYMD(a.scheduledAt) !== date) continue;
-      // Mirror /availability blocking logic:
-      // Appointments assigned to a *different* barber don't block this barber.
-      // Appointments with no barber (null) block every barber — same as /availability.
-      if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;
-      const start = parseHHMM(localHHMM(a.scheduledAt));
+  const blocked: Array<[number, number]> = [];
+  for (const a of appts) {
+    if (a.status === "cancelled") continue;
+    if (localYMD(a.scheduledAt) !== today) continue;
+    const start = parseHHMM(localHHMM(a.scheduledAt));
       blocked.push([start, start + a.serviceDuration]);
     }
 
     const nowMin = date === today ? parseHHMM(localHHMM(now)) : -1;
-    const step = Math.max(5, slotIntervalMinutes);
+  const step = Math.max(5, slotIntervalMinutes);
 
-    for (let t = openMin; t + SCAN_DURATION <= closeMin; t += step) {
-      const end = t + SCAN_DURATION;
-      const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
-      const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
+  for (let t = openMin; t + SCAN_DURATION <= closeMin; t += step) {
+    const end = t + SCAN_DURATION;
+    const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
+    const overlapsAppt = blocked.some(([s, e]) => t < e && end > s);
       const inPast = nowMin >= 0 && t < nowMin + minAdvanceMinutes;
       if (!overlapsLunch && !overlapsAppt && !inPast) {
         const hh = Math.floor(t / 60).toString().padStart(2, "0");
@@ -262,6 +277,12 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.slug, slug))
     .limit(1);
+
+    const [redirect] = await db
+      .select({ userId: slugRedirectsTable.userId })
+      .from(slugRedirectsTable)
+      .where(eq(slugRedirectsTable.oldSlug, slug))
+      .limit(1);
 
   if (!user) {
     res.status(404).json({ error: "Barbearia não encontrada" });
@@ -350,3 +371,9 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
 });
 
 export default router;
+
+      const [current] = await db
+        .select({ slug: usersTable.slug })
+        .from(usersTable)
+        .where(eq(usersTable.id, redirect.userId))
+        .limit(1);
