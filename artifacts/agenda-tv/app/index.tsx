@@ -11,6 +11,7 @@ import {
   ScrollView,
   Image,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -25,6 +26,8 @@ export default function LoginScreen() {
   const router = useRouter();
   const { user, login, loading } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
+  const { width } = useWindowDimensions();
+  const isTV = isTvDevice(width);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -61,24 +64,31 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, isTV && styles.tvScroll]}
         keyboardShouldPersistTaps="handled"
       >
         <Image
           source={require("../assets/images/logo.png")}
-          style={styles.logo}
+          style={[styles.logo, isTV && styles.tvLogo]}
           resizeMode="contain"
         />
 
-        <Text style={styles.title}>Entrar na sua conta</Text>
-        <Text style={styles.subtitle}>Acesse o painel da sua barbearia</Text>
+        <Text style={[styles.title, isTV && styles.tvTitle]}>Entrar na sua conta</Text>
+        <Text style={[styles.subtitle, isTV && styles.tvSubtitle]}>
+          Acesse o painel da sua barbearia
+        </Text>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>E-mail</Text>
-          <View style={styles.inputRow}>
-            <Feather name="mail" size={16} color="#555" style={styles.inputIcon} />
+        <View style={[styles.card, isTV && styles.tvCard]}>
+          <Text style={[styles.label, isTV && styles.tvLabel]}>E-mail</Text>
+          <View style={[styles.inputRow, isTV && styles.tvInputRow]}>
+            <Feather
+              name="mail"
+              size={isTV ? 14 : 16}
+              color="#555"
+              style={[styles.inputIcon, isTV && styles.tvInputIcon]}
+            />
             <TextInput
-              style={styles.input}
+              style={[styles.input, isTV && styles.tvInput]}
               placeholder="voce@exemplo.com"
               placeholderTextColor="#555"
               value={email}
@@ -89,11 +99,16 @@ export default function LoginScreen() {
             />
           </View>
 
-          <Text style={styles.label}>Senha</Text>
-          <View style={styles.inputRow}>
-            <Feather name="lock" size={16} color="#555" style={styles.inputIcon} />
+          <Text style={[styles.label, isTV && styles.tvLabel]}>Senha</Text>
+          <View style={[styles.inputRow, isTV && styles.tvInputRow]}>
+            <Feather
+              name="lock"
+              size={isTV ? 14 : 16}
+              color="#555"
+              style={[styles.inputIcon, isTV && styles.tvInputIcon]}
+            />
             <TextInput
-              style={styles.input}
+              style={[styles.input, isTV && styles.tvInput]}
               placeholder="••••••••"
               placeholderTextColor="#555"
               value={password}
@@ -106,7 +121,11 @@ export default function LoginScreen() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <TouchableOpacity
-            style={[styles.button, (loading || !email || !password) && styles.buttonDisabled]}
+            style={[
+              styles.button,
+              isTV && styles.tvButton,
+              (loading || !email || !password) && styles.buttonDisabled,
+            ]}
             onPress={handleLogin}
             disabled={loading || !email || !password}
             activeOpacity={0.8}
@@ -122,7 +141,7 @@ export default function LoginScreen() {
             style={styles.registerRow}
             onPress={() => router.push({ pathname: "/viewer", params: { url: `${PROD_BASE}/register`, title: "Criar conta" } })}
           >
-            <Text style={styles.registerText}>
+            <Text style={[styles.registerText, isTV && styles.tvRegisterText]}>
               Não tem conta? <Text style={styles.registerLink}>Criar barbearia</Text>
             </Text>
           </TouchableOpacity>
@@ -143,9 +162,13 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0c0c0c" },
   scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  tvScroll: { paddingVertical: 12 },
   logo: { width: 200, height: 200, marginBottom: 16 },
+  tvLogo: { width: 100, height: 100, marginBottom: 4 },
   title: { fontSize: 22, fontWeight: "700", color: "#f5f5f5", textAlign: "center", marginBottom: 6 },
+  tvTitle: { fontSize: 18, marginBottom: 2 },
   subtitle: { fontSize: 14, color: "#777", textAlign: "center", marginBottom: 24 },
+  tvSubtitle: { fontSize: 11, marginBottom: 9 },
   card: {
     width: "100%",
     maxWidth: 420,
@@ -156,7 +179,14 @@ const styles = StyleSheet.create({
     borderColor: "#222",
     gap: 12,
   },
+  tvCard: {
+    maxWidth: 380,
+    borderRadius: 13,
+    padding: 14,
+    gap: 6,
+  },
   label: { fontSize: 13, fontWeight: "600", color: "#f0f0f0", marginBottom: 2 },
+  tvLabel: { fontSize: 12 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -167,13 +197,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
   },
+  tvInputRow: { height: 34, borderRadius: 9, paddingHorizontal: 9 },
   inputIcon: { marginRight: 8 },
+  tvInputIcon: { marginRight: 6 },
   input: {
     flex: 1,
     color: "#f5f5f5",
     fontSize: 14,
     height: 46,
   },
+  tvInput: { height: 34, fontSize: 12 },
   error: { color: "#ef4444", fontSize: 13, textAlign: "center", marginTop: 2 },
   button: {
     backgroundColor: "#c9a84c",
@@ -183,9 +216,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 6,
   },
+  tvButton: { height: 38, borderRadius: 10, marginTop: 2 },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: "#0f0f0f", fontWeight: "700", fontSize: 15 },
   registerRow: { alignItems: "center", marginTop: 4 },
   registerText: { color: "#777", fontSize: 13 },
+  tvRegisterText: { fontSize: 11 },
   registerLink: { color: "#c9a84c", fontWeight: "600" },
 });
