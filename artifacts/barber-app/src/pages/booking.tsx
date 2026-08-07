@@ -419,7 +419,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       (services ?? [])
         .filter(service =>
           (service.dayPricing ?? []).some(dayPrice =>
-            Number(dayPrice.price) < Number(service.price)
+            Number(dayPrice.price) !== Number(service.price)
           )
         )
         .map(service => service.id)
@@ -1041,13 +1041,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
                             </span>
-                            <span
-                              className="flex items-center gap-1 font-semibold"
-                              style={{ color: AMBER }}
-                            >
-                              <DollarSign className="w-3.5 h-3.5" />
-                              R$ {service.price.toFixed(2).replace(".", ",")}
-                            </span>
                             {hasPromotion && (
                               <span
                                 className="rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide"
@@ -1058,6 +1051,15 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                 data-testid={`badge-promotion-${service.id}`}
                               >
                                 PROMOÇÃO
+                              </span>
+                            )}
+                            {!hasPromotion && (
+                              <span
+                                className="flex items-center gap-1 font-semibold"
+                                style={{ color: AMBER }}
+                              >
+                                <DollarSign className="w-3.5 h-3.5" />
+                                R$ {service.price.toFixed(2).replace(".", ",")}
                               </span>
                             )}
                             {isBlocked && (
