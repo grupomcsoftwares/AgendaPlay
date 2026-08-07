@@ -81,5 +81,5 @@ export default function PublicBooking() {
     );
   }
 
-  return <Booking shopId={shopInfo.shopId} />;
+  return <Booking shopId={shopInfo.shopId} slug={shopInfo.slug} />;
 }

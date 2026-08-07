@@ -52,7 +52,7 @@ function StepIndicator({ current, labels }: { current: number; labels: readonly 
   );
 }
 
-export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}) {
+export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId?: string; slug?: string } = {}) {
   const [, setLocation] = useLocation();
   const { user: adminUser } = useAuth();
 
@@ -264,6 +264,21 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
       usePlan: false,
     };
   });
+
+  // ── Next available banner ───────────────────────────────────────────────────
+  const [nextAvail, setNextAvail] = useState<{ nextDate: string | null; nextTime: string | null } | null>(null);
+
+  useEffect(() => {
+    if (!slugProp) return;
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (formData.barberId) params.set("barberId", formData.barberId);
+    fetch(`${BASE}/api/b/${encodeURIComponent(slugProp)}/next-available?${params}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (!cancelled) setNextAvail(data ?? null); })
+      .catch(() => { /* silent */ });
+    return () => { cancelled = true; };
+  }, [slugProp, formData.barberId, BASE]);
 
   // Sync client name from DB on mount — in case the barber edited the name in the panel.
   // Only runs when the phone is already known from localStorage (returning client).
@@ -721,6 +736,37 @@ export default function Booking({ shopId: shopIdProp }: { shopId?: string } = {}
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
+
+        {/* Next available banner — shown on public booking pages when slug is known */}
+        {slugProp && nextAvail?.nextDate && (
+          <div
+            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+            style={{ backgroundColor: AMBER_SOFT, border: `1px solid ${AMBER}55`, color: AMBER }}
+            data-testid="next-available-banner"
+          >
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>
+              {(() => {
+                const today = new Date().toISOString().slice(0, 10);
+                const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+                const label =
+                  nextAvail.nextDate === today
+                    ? "hoje"
+                    : nextAvail.nextDate === tomorrow
+                    ? "amanhã"
+                    : new Date(`${nextAvail.nextDate}T12:00:00Z`).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "short" });
+                return (
+                  <>
+                    {formData.barberId && selectedBarber
+                      ? <><strong>{selectedBarber.name}</strong> está disponível </>
+                      : "Próximo horário disponível: "}
+                    <strong>{label} às {nextAvail.nextTime}</strong>
+                  </>
+                );
+              })()}
+            </span>
+          </div>
+        )}
 
         {/* Link desativado pelo dono da barbearia */}
         {(settings as any)?.bookingEnabled === false && (

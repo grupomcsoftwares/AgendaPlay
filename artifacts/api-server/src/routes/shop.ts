@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt } from "drizzle-orm";
-import { db, usersTable, settingsTable, appointmentsTable, clientsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
+import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbersTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
@@ -91,6 +91,11 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     return;
   }
 
+  const barberIdRaw = req.query.barberId;
+  const barberFilter: number | null = barberIdRaw && !Number.isNaN(parseInt(String(barberIdRaw), 10))
+    ? parseInt(String(barberIdRaw), 10)
+    : null;
+
   const [user] = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -110,16 +115,34 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     .where(eq(settingsTable.userId, shopId))
     .limit(1);
 
-  const weekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+  const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
   const maxBookingDays = settings?.maxBookingDays ?? 30;
   const minAdvanceMinutes = settings?.minAdvanceMinutes ?? 0;
   const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
   const SCAN_DURATION = 30;
-  const BUFFER = 5;
+  const BUFFER = 0;
+
+  // If a barber is requested, validate they belong to this shop and load their schedule.
+  let barberWeekly: WeeklySchedule | null = null;
+  if (barberFilter !== null) {
+    const [barber] = await db
+      .select({ weeklySchedule: barbersTable.weeklySchedule })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.id, barberFilter), eq(barbersTable.userId, shopId)))
+      .limit(1);
+    if (!barber) {
+      // Barber doesn't belong to this shop — fall back to shop-wide scan.
+      // (Silently ignore the filter rather than erroring, to keep the banner useful.)
+    } else {
+      barberWeekly = (barber.weeklySchedule ?? null) as WeeklySchedule | null;
+    }
+  }
+
+  // Use barber's own schedule when available, otherwise fall back to shop schedule.
+  const weekly = barberWeekly ?? shopWeekly;
 
   const now = new Date();
   const today = localYMD(now);
-
   const scanDays = Math.min(maxBookingDays, 14);
 
   for (let dayOffset = 0; dayOffset < scanDays; dayOffset++) {
@@ -139,19 +162,27 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     const lunchEnd = parseHHMM(day.lunchEnd);
     const hasLunch = lunchEnd > lunchStart;
 
+    // Load all shop appointments for the window — same as /availability.
     const dStart = new Date(`${date}T00:00:00Z`);
     const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
     const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
     const appts = await db
       .select()
       .from(appointmentsTable)
-      .where(and(eq(appointmentsTable.userId, shopId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
+      .where(and(
+        eq(appointmentsTable.userId, shopId),
+        gte(appointmentsTable.scheduledAt, before),
+        lt(appointmentsTable.scheduledAt, after),
+      ));
 
     const blocked: Array<[number, number]> = [];
     for (const a of appts) {
       if (a.status === "cancelled") continue;
-      const aLocalDate = localYMD(a.scheduledAt);
-      if (aLocalDate !== date) continue;
+      if (localYMD(a.scheduledAt) !== date) continue;
+      // Mirror /availability blocking logic:
+      // Appointments assigned to a *different* barber don't block this barber.
+      // Appointments with no barber (null) block every barber — same as /availability.
+      if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;
       const start = parseHHMM(localHHMM(a.scheduledAt));
       blocked.push([start, start + a.serviceDuration]);
     }
