@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
+import { isTvDevice } from "@/lib/device";
 
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
@@ -31,7 +32,7 @@ export default function LoginScreen() {
   // Auto-redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
-      if (Platform.isTV) {
+      if (isTvDevice()) {
         router.replace("/home");
       } else {
         router.replace("/dashboard");
@@ -44,7 +45,7 @@ export default function LoginScreen() {
     setError("");
     try {
       await login(email.trim(), password.trim());
-      if (Platform.isTV) {
+      if (isTvDevice()) {
         router.replace("/home");
       } else {
         router.replace("/dashboard");

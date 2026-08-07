@@ -7,6 +7,7 @@ import {
   ScrollView,
   Pressable,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
+import { isTvDevice } from "@/lib/device";
 
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
@@ -61,11 +63,12 @@ function useTVRemote(onEvent: (type: string) => void) {
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { user, loading, logout } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
-  const isTV = Platform.isTV || false;
+  const isTV = isTvDevice(width);
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
 

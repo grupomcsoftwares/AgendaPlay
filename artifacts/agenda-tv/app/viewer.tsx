@@ -8,12 +8,14 @@ import {
   Platform,
   BackHandler,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
+import { isTvDevice } from "@/lib/device";
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
 function useTVRemote(onEvent: (type: string) => void) {
@@ -38,6 +40,7 @@ function useTVRemote(onEvent: (type: string) => void) {
 export default function ViewerScreen() {
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { user, getSessionCookie } = useAuth();
   const webViewRef = useRef<any>(null);
@@ -46,7 +49,7 @@ export default function ViewerScreen() {
   const [showBack, setShowBack] = useState(false);
   const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
-  const isTV = Platform.isTV || false;
+  const isTV = isTvDevice(width);
   const subscriptionBlocked = !!user && !user.canAccess;
 
   const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
@@ -162,6 +165,7 @@ export default function ViewerScreen() {
               if (!url) return "";
               const u = new URL(url);
               u.searchParams.set("view", "mobile");
+               if (isTV) u.searchParams.set("tv", "1");
               return u.toString();
             })() }}
             style={styles.webview}

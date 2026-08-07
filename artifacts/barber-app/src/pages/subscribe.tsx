@@ -39,6 +39,10 @@ export default function Subscribe() {
 
   const params = new URLSearchParams(window.location.search);
   const justSubscribed = params.get("subscribed") === "1";
+  const isTVView =
+    Boolean((window as Window & { __AGENDAPLAY_TV__?: boolean }).__AGENDAPLAY_TV__) ||
+    params.get("tv") === "1" ||
+    (params.get("view") === "mobile" && window.innerWidth >= 900);
 
   useEffect(() => {
     if (justSubscribed) {
@@ -122,6 +126,23 @@ export default function Subscribe() {
           />
           <p style={{ color: "hsl(0 0% 60%)" }}>Confirmando assinatura...</p>
         </div>
+      </div>
+    );
+  }
+
+  // A TV is a display-only endpoint. Never render checkout there, even when
+  // the WebView session has not finished restoring its cookie yet.
+  if (isTVView) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
+        style={{ backgroundColor: "hsl(0 0% 4%)", color: "hsl(0 0% 95%)" }}
+      >
+        <div className="text-5xl" aria-hidden="true">🔒</div>
+        <h1 className="text-2xl font-bold">Assinatura expirada</h1>
+        <p className="max-w-lg text-base" style={{ color: "hsl(0 0% 60%)" }}>
+          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
+        </p>
       </div>
     );
   }

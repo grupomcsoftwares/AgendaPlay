@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
+import { isTvDevice } from "@/lib/device";
 
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
@@ -62,6 +63,7 @@ function useIsTablet() {
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const { user, getSessionCookie } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
@@ -69,7 +71,7 @@ export default function DashboardScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
   const isTablet = useIsTablet();
-  const isTV = Platform.isTV || false;
+  const isTV = isTvDevice(width);
   const isPhone = !isTablet && !isTV;
 
   const [selectedId, setSelectedId] = useState<string>("overview");
