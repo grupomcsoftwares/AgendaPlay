@@ -13,8 +13,17 @@ import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/useAuth";
+import * as Notifications from "expo-notifications";
 
 SplashScreen.preventAutoHideAsync();
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const queryClient = new QueryClient();
 

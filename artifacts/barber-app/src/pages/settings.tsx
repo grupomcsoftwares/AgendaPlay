@@ -27,6 +27,14 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+  }
+}
+
 type SubscriberMonthlyUsage = {
   id: number;
   clientName: string;
@@ -200,6 +208,7 @@ export default function Settings() {
 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [nativePush, setNativePush] = useState(false);
 
   const [formData, setFormData] = useState<{
     barbershopName: string;
@@ -447,6 +456,14 @@ export default function Settings() {
   };
 
   const handlePushToggle = async () => {
+    if (typeof window !== "undefined" && window.ReactNativeWebView) {
+      setPushLoading(true);
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: "AGENDAPLAY_NATIVE_PUSH",
+        action: pushEnabled ? "unsubscribe" : "subscribe",
+      }));
+      return;
+    }
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       toast({ title: "Notificações push não suportadas neste navegador", variant: "destructive" });
       return;
@@ -523,6 +540,28 @@ export default function Settings() {
   };
 
   useEffect(() => {
+    const handleNativePush = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      try {
+        const result = JSON.parse(detail) as { ok?: boolean; enabled?: boolean; error?: string };
+        setPushLoading(false);
+        if (!result.ok) {
+          toast({ title: result.error || "Não foi possível ativar as notificações", variant: "destructive" });
+          return;
+        }
+        setNativePush(!!result.enabled);
+        setPushEnabled(!!result.enabled);
+        toast({ title: result.enabled ? "Notificações ativadas!" : "Notificações desativadas" });
+      } catch {
+        setPushLoading(false);
+      }
+    };
+    window.addEventListener("agendaplay-native-push", handleNativePush);
+    return () => window.removeEventListener("agendaplay-native-push", handleNativePush);
+  }, [toast]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.ReactNativeWebView) return;
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();

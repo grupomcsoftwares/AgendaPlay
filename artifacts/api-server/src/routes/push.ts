@@ -9,8 +9,10 @@ import {
   usersTable,
   clientsTable,
   clientReengagementPushSubscriptionsTable,
+  nativePushSubscriptionsTable,
 } from "@workspace/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -24,6 +26,40 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 
 router.get("/push/vapid-public-key", (_req, res) => {
   res.json({ key: process.env.VAPID_PUBLIC_KEY ?? "" });
+});
+
+router.post("/push/native/subscribe", requireAuth, async (req, res) => {
+  const expoPushToken = typeof req.body?.expoPushToken === "string"
+    ? req.body.expoPushToken.trim()
+    : "";
+  if (!/^ExponentPushToken\[[^\]]+\]$/.test(expoPushToken)) {
+    res.status(400).json({ error: "Token nativo inválido." });
+    return;
+  }
+
+  await db
+    .insert(nativePushSubscriptionsTable)
+    .values({
+      userId: req.session.userId!,
+      expoPushToken,
+      platform: "android",
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [nativePushSubscriptionsTable.userId, nativePushSubscriptionsTable.expoPushToken],
+      set: { updatedAt: new Date(), platform: "android" },
+    });
+  res.json({ ok: true });
+});
+
+router.delete("/push/native/subscribe", requireAuth, async (req, res) => {
+  const expoPushToken = typeof req.body?.expoPushToken === "string"
+    ? req.body.expoPushToken.trim()
+    : "";
+  const conditions = [eq(nativePushSubscriptionsTable.userId, req.session.userId!)];
+  if (expoPushToken) conditions.push(eq(nativePushSubscriptionsTable.expoPushToken, expoPushToken));
+  await db.delete(nativePushSubscriptionsTable).where(and(...conditions));
+  res.json({ ok: true });
 });
 
 router.post("/push/subscribe", async (req, res) => {
@@ -275,19 +311,53 @@ export async function sendAdminPush(userId: string, payload: {
   url?: string;
   sound?: "new" | "rescheduled";
 }) {
-  if (!process.env.VAPID_PUBLIC_KEY) return;
-  const subs = await db
+  if (process.env.VAPID_PUBLIC_KEY) {
+    const subs = await db
+      .select()
+      .from(adminPushSubscriptionsTable)
+      .where(eq(adminPushSubscriptionsTable.userId, userId));
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(payload),
+        );
+      } catch {
+        await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.id, sub.id));
+      }
+    }
+  }
+
+  const nativeSubs = await db
     .select()
-    .from(adminPushSubscriptionsTable)
-    .where(eq(adminPushSubscriptionsTable.userId, userId));
-  for (const sub of subs) {
+    .from(nativePushSubscriptionsTable)
+    .where(eq(nativePushSubscriptionsTable.userId, userId));
+  for (const sub of nativeSubs) {
     try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload),
-      );
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: sub.expoPushToken,
+          title: payload.title,
+          body: payload.body,
+          data: { url: payload.url ?? "/" },
+          sound: "default",
+          channelId: "agendaplay",
+          priority: "high",
+        }),
+      });
+      const result = await response.json().catch(() => ({})) as {
+        data?: { status?: string; details?: { error?: string } };
+      };
+      if (!response.ok || result.data?.status === "error") {
+        const error = result.data?.details?.error;
+        if (error === "DeviceNotRegistered" || error === "InvalidCredentials") {
+          await db.delete(nativePushSubscriptionsTable).where(eq(nativePushSubscriptionsTable.id, sub.id));
+        }
+      }
     } catch {
-      await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.id, sub.id));
+      // Keep the token for transient Expo service/network failures.
     }
   }
 }

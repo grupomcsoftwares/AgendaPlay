@@ -31,3 +31,9 @@ Browsers keep JavaScript timers running while the tab is open. Multiple clients 
 The inactive-client reminder uses a separate browser push subscription tied to the shop, normalized client phone, and browser endpoint. The barber configures a 15- or 30-day threshold and a template with `{{nome}}`, `{{dias}}`, and `{{barbearia}}`; a new booking resets the cycle and the reminder is claimed before sending to prevent duplicates.
 
 **Important:** The customer must grant browser notification permission after booking. Without permission, the browser cannot display the automatic re-engagement message.
+
+## Native Android app
+
+The Android app embeds the web panel in React Native WebView, where browser `PushManager` is unavailable. Native admin alerts therefore use `expo-notifications`, a WebView message bridge, and Expo push tokens stored separately from browser subscriptions.
+
+**Why:** Web Push support inside the APK WebView cannot be enabled reliably with JavaScript alone; the native permission and token must come from the host app.

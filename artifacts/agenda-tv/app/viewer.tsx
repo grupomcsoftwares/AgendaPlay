@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
+import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -44,6 +45,24 @@ export default function ViewerScreen() {
   const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
   const isTV = Platform.isTV || false;
+
+  const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
+    let message: { type?: string; action?: "subscribe" | "unsubscribe" };
+    try {
+      message = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+    if (message.type !== "AGENDAPLAY_NATIVE_PUSH" || !message.action) return;
+    const cookie = await getSessionCookie();
+    const result = message.action === "subscribe"
+      ? await registerNativePush(cookie)
+      : await unregisterNativePush(cookie);
+    const payload = JSON.stringify({ type: "AGENDAPLAY_NATIVE_PUSH_RESULT", ...result });
+    webViewRef.current?.injectJavaScript(
+      `window.dispatchEvent(new CustomEvent("agendaplay-native-push", { detail: ${JSON.stringify(payload)} })); true;`,
+    );
+  };
 
   // Hardware back button (Android) + TV remote back key
   useEffect(() => {
@@ -121,6 +140,7 @@ export default function ViewerScreen() {
             style={styles.webview}
             injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
             injectedJavaScript={injectedCookie || ""}
+            onMessage={handleNativePushMessage}
             onLoadStart={() => {
               setLoading(true);
               setError(false);

@@ -18,6 +18,7 @@ import { WebView } from "react-native-webview";
 import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
+import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
@@ -77,6 +78,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [cookieReady, setCookieReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
+  const webViewRef = useRef<WebView>(null);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
@@ -101,6 +103,24 @@ export default function DashboardScreen() {
       // user cancelled or share not available
     }
   }, [bookingUrl, user?.barbershopName]);
+
+  const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string } }) => {
+    let message: { type?: string; action?: "subscribe" | "unsubscribe" };
+    try {
+      message = JSON.parse(event.nativeEvent.data);
+    } catch {
+      return;
+    }
+    if (message.type !== "AGENDAPLAY_NATIVE_PUSH" || !message.action) return;
+    const cookie = await getSessionCookie();
+    const result = message.action === "subscribe"
+      ? await registerNativePush(cookie)
+      : await unregisterNativePush(cookie);
+    const payload = JSON.stringify({ type: "AGENDAPLAY_NATIVE_PUSH_RESULT", ...result });
+    webViewRef.current?.injectJavaScript(
+      `window.dispatchEvent(new CustomEvent("agendaplay-native-push", { detail: ${JSON.stringify(payload)} })); true;`,
+    );
+  }, [getSessionCookie]);
 
   // Reset selection to first TV item when switching to TV mode
   useEffect(() => {
@@ -285,6 +305,7 @@ export default function DashboardScreen() {
         )}
         {cookieReady && (
           <WebView
+            ref={webViewRef}
             source={{ uri: (() => {
               const u = new URL(selectedItem.url);
               u.searchParams.set("view", "mobile");
@@ -293,6 +314,7 @@ export default function DashboardScreen() {
             style={styles.webview}
             injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = false;"}
             injectedJavaScript={injectedCookie || ""}
+            onMessage={handleNativePushMessage}
             javaScriptEnabled
             domStorageEnabled
             onLoadEnd={() => setLoading(false)}

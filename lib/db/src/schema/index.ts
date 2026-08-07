@@ -13,3 +13,4 @@ export * from "./client-subscriptions";
 export * from "./push-subscriptions";
 export * from "./admin-push-subscriptions";
 export * from "./client-reengagement-push-subscriptions";
+export * from "./native-push-subscriptions";
