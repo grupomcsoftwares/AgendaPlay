@@ -88,26 +88,42 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
     // autoscale processes from starting the same waiting client at once.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(742004, hashtext(${userId}))`);
 
-    // Keep the appointment and its live-queue row in the same state. Without
-    // this, an appointment could be completed while the TV still showed
-    // "Iniciar Agora" for its waiting queue entry.
-    const completed = await tx
-      .update(appointmentsTable)
-      .set({ status: "completed" })
-      .where(
-        and(
-          eq(appointmentsTable.userId, userId),
-          eq(appointmentsTable.status, "in_progress"),
-          sql`${appointmentsTable.scheduledAt} + (${appointmentsTable.serviceDuration} * interval '1 minute') <= ${now}`,
-        ),
-      )
-      .returning({ id: appointmentsTable.id });
+    // Keep appointment and live-queue timing aligned. The service duration
+    // starts when the barber actually starts the queue entry, not when the
+    // customer was originally scheduled.
+    const activeAppointmentRows = await tx
+      .select({
+        queueId: queueTable.id,
+        appointmentId: queueTable.appointmentId,
+        startedAt: queueTable.startedAt,
+        serviceDuration: queueTable.serviceDuration,
+      })
+      .from(queueTable)
+      .where(and(
+        eq(queueTable.userId, userId),
+        eq(queueTable.status, "in_progress"),
+        sql`${queueTable.appointmentId} IS NOT NULL`,
+      ));
 
-    if (completed.length > 0) {
+    const completedRows = activeAppointmentRows.filter((row) => (
+      row.appointmentId !== null &&
+      row.startedAt !== null &&
+      row.startedAt.getTime() + row.serviceDuration * 60_000 <= now.getTime()
+    ));
+    const completedAppointmentIds = completedRows
+      .map((row) => row.appointmentId)
+      .filter((id): id is number => id !== null);
+
+    if (completedRows.length > 0) {
       queueChanged = true;
       await tx
-        .delete(queueTable)
-        .where(inArray(queueTable.appointmentId, completed.map((appointment) => appointment.id)));
+        .update(queueTable)
+        .set({ status: "completed" })
+        .where(inArray(queueTable.id, completedRows.map((row) => row.queueId)));
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "completed" })
+        .where(inArray(appointmentsTable.id, completedAppointmentIds));
     }
 
     // Do not automatically start another appointment while a walk-in or

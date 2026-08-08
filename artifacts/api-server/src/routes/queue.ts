@@ -17,7 +17,15 @@ export function broadcastQueueUpdate(userId: string): void {
   if (!clients) return;
   const payload = `data: ${JSON.stringify({ type: "queue_updated" })}\n\n`;
   for (const res of clients) {
-    res.write(payload);
+    if (res.writableEnded || res.destroyed) {
+      removeSseClient(userId, res);
+      continue;
+    }
+    try {
+      res.write(payload);
+    } catch {
+      removeSseClient(userId, res);
+    }
   }
 }
 
@@ -212,11 +220,19 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
       .where(and(eq(queueTable.id, params.data.id), eq(queueTable.userId, userId)))
       .returning();
     if (!removed) return null;
-    if (removed.appointmentId) {
+    if (removed.appointmentId && removed.status === "in_progress") {
       await tx
         .update(appointmentsTable)
         .set({ status: "completed" })
         .where(eq(appointmentsTable.id, removed.appointmentId));
+    } else if (removed.appointmentId && removed.status === "waiting") {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "cancelled" })
+        .where(and(
+          eq(appointmentsTable.id, removed.appointmentId),
+          eq(appointmentsTable.status, "pending"),
+        ));
     }
     await autoAdvanceInTx(tx, userId);
     return removed;

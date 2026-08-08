@@ -106,13 +106,13 @@ export default function ViewerScreen() {
   useEffect(() => {
     getSessionCookie().then((raw) => {
       if (raw && url) {
-        const [nameValue] = raw.split(/;\s*/);
-        const [name, value] = nameValue.split("=");
-        if (name && value !== undefined) {
-          const parsed = new URL(url);
-          const domain = parsed.hostname;
-          const cookieDomain = domain.endsWith(".replit.app") ? ".replit.app" : domain;
-          setInjectedCookie(`document.cookie = "${name}=${value}; domain=${cookieDomain}; path=/;";`);
+        try {
+          const domain = new URL(url).hostname;
+          setInjectedCookie(
+            `document.cookie = ${JSON.stringify(`${raw}; domain=${domain}; path=/;`)};`,
+          );
+        } catch {
+          setError(true);
         }
       }
       setCookieReady(true);
@@ -122,7 +122,10 @@ export default function ViewerScreen() {
   // Timeout: if loading takes > 15s, show retry option
   useEffect(() => {
     if (!loading) return;
-    const timer = setTimeout(() => setLoading(false), 15000);
+    const timer = setTimeout(() => {
+      setLoading(false);
+      setError(true);
+    }, 15000);
     return () => clearTimeout(timer);
   }, [loading]);
 
@@ -198,8 +201,13 @@ export default function ViewerScreen() {
           <WebView
             ref={webViewRef}
             source={{ uri: (() => {
-              if (!url) return "";
-              const u = new URL(url);
+               if (!url) return PROD_BASE;
+               let u: URL;
+               try {
+                 u = new URL(url);
+               } catch {
+                 u = new URL(PROD_BASE);
+               }
               u.searchParams.set("view", "mobile");
                if (isTV) u.searchParams.set("tv", "1");
               return u.toString();

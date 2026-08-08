@@ -5,6 +5,15 @@ const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/
 const USER_KEY = "@agendaplay/user";
 const COOKIE_KEY = "@agendaplay/session_cookie";
 
+function normalizeSessionCookie(raw: string | null): string | null {
+  if (!raw) return null;
+  const first = raw.split(/;\s*/)[0]?.trim();
+  if (!first) return null;
+  const separator = first.indexOf("=");
+  if (separator <= 0) return null;
+  return first;
+}
+
 export type AuthUser = {
   id: string;
   email: string;
@@ -75,7 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-AgendaPlay-Native": "1",
+      },
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
@@ -83,11 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(err.error || "E-mail ou senha incorretos.");
     }
     // Capture Set-Cookie header for WebView session sync
-    const cookieHeader = res.headers.get("set-cookie");
+    const responseData = await res.json();
+    const cookieHeader =
+      normalizeSessionCookie(responseData.sessionCookie) ??
+      normalizeSessionCookie(res.headers.get("set-cookie"));
     if (cookieHeader) {
       await AsyncStorage.setItem(COOKIE_KEY, cookieHeader);
     }
-    const data = await res.json();
+    const { sessionCookie: _sessionCookie, ...data } = responseData;
     setUser(data);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
   }, []);
@@ -121,7 +136,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refresh, user]);
 
   const logout = useCallback(async () => {
-    await fetch(`${API_BASE}/auth/logout`, { method: "POST" }).catch(() => {});
+    const cookie = await AsyncStorage.getItem(COOKIE_KEY);
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: cookie ? { Cookie: cookie } : undefined,
+    }).catch(() => {});
     setUser(null);
     await AsyncStorage.removeItem(USER_KEY);
     await AsyncStorage.removeItem(COOKIE_KEY);

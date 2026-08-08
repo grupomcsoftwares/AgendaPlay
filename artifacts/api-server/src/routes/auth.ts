@@ -5,8 +5,21 @@ import { usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import type Stripe from "stripe";
+import { createHmac } from "node:crypto";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
+
+const SESSION_COOKIE_NAME = "connect.sid";
+
+function getNativeSessionCookie(sessionId: string): string | null {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) return null;
+  const signature = createHmac("sha256", secret)
+    .update(sessionId)
+    .digest("base64")
+    .replace(/=+$/, "");
+  return `${SESSION_COOKIE_NAME}=s:${sessionId}.${signature}`;
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -322,7 +335,14 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
       res.status(500).json({ error: "Erro ao salvar sessão." });
       return;
     }
-    res.json(payload);
+    const nativeSessionCookie =
+      req.get("x-agendaplay-native") === "1"
+        ? getNativeSessionCookie(req.sessionID)
+        : null;
+    res.json({
+      ...payload,
+      ...(nativeSessionCookie ? { sessionCookie: nativeSessionCookie } : {}),
+    });
   });
 });
 

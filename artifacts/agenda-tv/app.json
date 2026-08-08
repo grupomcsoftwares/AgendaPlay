@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.agendaplay.tv",
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0c0c0c"
