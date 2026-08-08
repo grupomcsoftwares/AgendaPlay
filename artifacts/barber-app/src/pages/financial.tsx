@@ -7,17 +7,17 @@ import { DollarSign, TrendingUp, Scissors, Calendar as CalendarIcon, UserCheck, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { format, startOfDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfDay, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 
 export default function Financial() {
   const today = new Date();
   const [dateStart, setDateStart] = useState<Date>(startOfMonth(today));
-  const [dateEnd, setDateEnd] = useState<Date>(endOfMonth(today));
+  const [dateEnd, setDateEnd] = useState<Date>(startOfDay(today));
   const [periodOpen, setPeriodOpen] = useState(false);
   const [pendingStart, setPendingStart] = useState<Date>(startOfMonth(today));
-  const [pendingEnd, setPendingEnd] = useState<Date>(endOfMonth(today));
+  const [pendingEnd, setPendingEnd] = useState<Date>(startOfDay(today));
 
   const dateStartStr = format(dateStart, "yyyy-MM-dd");
   const dateEndStr = format(dateEnd, "yyyy-MM-dd");
