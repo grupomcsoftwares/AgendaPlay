@@ -37,3 +37,11 @@ The inactive-client reminder uses a separate browser push subscription tied to t
 The Android app embeds the web panel in React Native WebView, where browser `PushManager` is unavailable. Native admin alerts therefore use `expo-notifications`, a WebView message bridge, and Expo push tokens stored separately from browser subscriptions.
 
 **Why:** Web Push support inside the APK WebView cannot be enabled reliably with JavaScript alone; the native permission and token must come from the host app.
+
+## Native settings state
+
+The Android notification toggle must be rehydrated through the native WebView bridge whenever the Settings route is opened or becomes visible again. The React state alone resets to disabled when the settings component remounts.
+
+**Why:** The Expo push token is stored in native AsyncStorage and the subscription is persisted server-side; neither source is represented by the initial browser state.
+
+**How to apply:** Keep a native status request that checks the stored token against the authenticated server subscription, and distinguish status responses from subscribe/unsubscribe responses so passive rehydration does not show a toast.

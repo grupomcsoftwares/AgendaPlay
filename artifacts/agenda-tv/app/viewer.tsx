@@ -14,7 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
-import { registerNativePush, unregisterNativePush } from "@/lib/nativePush";
+import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
 const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 
@@ -58,7 +58,7 @@ export default function ViewerScreen() {
   }, [logout, router]);
 
   const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
-    let message: { type?: string; action?: "subscribe" | "unsubscribe" };
+    let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status" };
     try {
       message = JSON.parse(event.nativeEvent.data);
     } catch {
@@ -68,8 +68,14 @@ export default function ViewerScreen() {
     const cookie = await getSessionCookie();
     const result = message.action === "subscribe"
       ? await registerNativePush(cookie)
-      : await unregisterNativePush(cookie);
-    const payload = JSON.stringify({ type: "AGENDAPLAY_NATIVE_PUSH_RESULT", ...result });
+      : message.action === "unsubscribe"
+        ? await unregisterNativePush(cookie)
+        : await getNativePushStatus(cookie);
+    const payload = JSON.stringify({
+      type: "AGENDAPLAY_NATIVE_PUSH_RESULT",
+      operation: message.action,
+      ...result,
+    });
     webViewRef.current?.injectJavaScript(
       `window.dispatchEvent(new CustomEvent("agendaplay-native-push", { detail: ${JSON.stringify(payload)} })); true;`,
     );

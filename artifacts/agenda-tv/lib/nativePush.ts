@@ -76,3 +76,39 @@ export async function unregisterNativePush(cookie: string | null): Promise<Nativ
   await AsyncStorage.removeItem(NATIVE_TOKEN_KEY);
   return { ok: true, enabled: false };
 }
+
+export async function getNativePushStatus(cookie: string | null): Promise<NativePushResult> {
+  if (Platform.OS !== "android" || !cookie) {
+    return { ok: false, enabled: false, error: "Sessão não encontrada." };
+  }
+
+  const token = await AsyncStorage.getItem(NATIVE_TOKEN_KEY);
+  if (!token) return { ok: true, enabled: false };
+
+  try {
+    const baseUrl = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+    const response = await fetch(`${baseUrl}/push/native/status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+      },
+      body: JSON.stringify({ expoPushToken: token }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      return { ok: false, enabled: false, error: data.error || "Não foi possível consultar as notificações." };
+    }
+
+    const result = await response.json() as { enabled?: boolean };
+    const enabled = result.enabled === true;
+    if (!enabled) await AsyncStorage.removeItem(NATIVE_TOKEN_KEY);
+    return { ok: true, enabled };
+  } catch (error) {
+    return {
+      ok: false,
+      enabled: false,
+      error: error instanceof Error ? error.message : "Não foi possível consultar as notificações.",
+    };
+  }
+}

@@ -606,15 +606,23 @@ export default function Settings() {
     const handleNativePush = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail;
       try {
-        const result = JSON.parse(detail) as { ok?: boolean; enabled?: boolean; error?: string };
+        const result = JSON.parse(detail) as {
+          ok?: boolean;
+          enabled?: boolean;
+          error?: string;
+          operation?: "subscribe" | "unsubscribe" | "status";
+        };
         setPushLoading(false);
         if (!result.ok) {
+          if (result.operation === "status") return;
           toast({ title: result.error || "Não foi possível ativar as notificações", variant: "destructive" });
           return;
         }
         setNativePush(!!result.enabled);
         setPushEnabled(!!result.enabled);
-        toast({ title: result.enabled ? "Notificações ativadas!" : "Notificações desativadas" });
+        if (result.operation !== "status") {
+          toast({ title: result.enabled ? "Notificações ativadas!" : "Notificações desativadas" });
+        }
       } catch {
         setPushLoading(false);
       }
@@ -622,6 +630,30 @@ export default function Settings() {
     window.addEventListener("agendaplay-native-push", handleNativePush);
     return () => window.removeEventListener("agendaplay-native-push", handleNativePush);
   }, [toast]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ReactNativeWebView) return;
+
+    const requestNativePushStatus = () => {
+      if (window.location.pathname !== "/settings") return;
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        type: "AGENDAPLAY_NATIVE_PUSH",
+        action: "status",
+      }));
+    };
+
+    // The WebView stays mounted while phone categories change. Reconcile the
+    // native token whenever Settings is opened again or the app becomes visible.
+    requestNativePushStatus();
+    window.addEventListener("popstate", requestNativePushStatus);
+    window.addEventListener("pageshow", requestNativePushStatus);
+    document.addEventListener("visibilitychange", requestNativePushStatus);
+    return () => {
+      window.removeEventListener("popstate", requestNativePushStatus);
+      window.removeEventListener("pageshow", requestNativePushStatus);
+      document.removeEventListener("visibilitychange", requestNativePushStatus);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.ReactNativeWebView) return;

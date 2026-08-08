@@ -52,6 +52,28 @@ router.post("/push/native/subscribe", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+router.post("/push/native/status", requireAuth, async (req, res) => {
+  const expoPushToken = typeof req.body?.expoPushToken === "string"
+    ? req.body.expoPushToken.trim()
+    : "";
+
+  if (!expoPushToken) {
+    res.json({ ok: true, enabled: false });
+    return;
+  }
+
+  const subscriptions = await db
+    .select({ id: nativePushSubscriptionsTable.id })
+    .from(nativePushSubscriptionsTable)
+    .where(and(
+      eq(nativePushSubscriptionsTable.userId, req.session.userId!),
+      eq(nativePushSubscriptionsTable.expoPushToken, expoPushToken),
+    ))
+    .limit(1);
+
+  res.json({ ok: true, enabled: subscriptions.length > 0 });
+});
+
 router.delete("/push/native/subscribe", requireAuth, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
