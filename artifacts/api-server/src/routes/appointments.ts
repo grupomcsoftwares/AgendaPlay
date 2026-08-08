@@ -84,32 +84,13 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
   let queueChanged = false;
 
   await db.transaction(async (tx) => {
+    // Serialize scheduler runs across API instances. This prevents two
+    // autoscale processes from starting the same waiting client at once.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(742004, hashtext(${userId}))`);
+
     // Keep the appointment and its live-queue row in the same state. Without
     // this, an appointment could be completed while the TV still showed
     // "Iniciar Agora" for its waiting queue entry.
-    const started = await tx
-      .update(appointmentsTable)
-      .set({ status: "in_progress" })
-      .where(
-        and(
-          eq(appointmentsTable.userId, userId),
-          eq(appointmentsTable.status, "pending"),
-          lt(appointmentsTable.scheduledAt, now),
-        ),
-      )
-      .returning({ id: appointmentsTable.id });
-
-    if (started.length > 0) {
-      queueChanged = true;
-      await tx
-        .update(queueTable)
-        .set({ status: "in_progress", startedAt: now })
-        .where(and(
-          inArray(queueTable.appointmentId, started.map((appointment) => appointment.id)),
-          sql`${queueTable.status} = 'waiting'`,
-        ));
-    }
-
     const completed = await tx
       .update(appointmentsTable)
       .set({ status: "completed" })
@@ -128,9 +109,100 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
         .delete(queueTable)
         .where(inArray(queueTable.appointmentId, completed.map((appointment) => appointment.id)));
     }
+
+    // Do not automatically start another appointment while a walk-in or
+    // another appointment is still being served.
+    const activeQueue = await tx
+      .select({ id: queueTable.id })
+      .from(queueTable)
+      .where(and(
+        eq(queueTable.userId, userId),
+        eq(queueTable.status, "in_progress"),
+      ))
+      .limit(1);
+    const activeAppointment = await tx
+      .select({ id: appointmentsTable.id })
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "in_progress"),
+      ))
+      .limit(1);
+
+    if (activeQueue.length > 0 || activeAppointment.length > 0) return;
+
+    // Start only the earliest appointment that is due. This avoids starting
+    // several delayed appointments at the same time after the server wakes up.
+    const [nextDue] = await tx
+      .select({ id: appointmentsTable.id })
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "pending"),
+        lt(appointmentsTable.scheduledAt, now),
+      ))
+      .orderBy(appointmentsTable.scheduledAt)
+      .limit(1);
+
+    if (!nextDue) return;
+
+    const started = await tx
+      .update(appointmentsTable)
+      .set({ status: "in_progress" })
+      .where(
+        and(
+          eq(appointmentsTable.id, nextDue.id),
+          eq(appointmentsTable.userId, userId),
+          eq(appointmentsTable.status, "pending"),
+        ),
+      )
+      .returning({ id: appointmentsTable.id });
+
+    if (started.length > 0) {
+      queueChanged = true;
+      await tx
+        .update(queueTable)
+        .set({ status: "in_progress", startedAt: now })
+        .where(and(
+          inArray(queueTable.appointmentId, started.map((appointment) => appointment.id)),
+          sql`${queueTable.status} = 'waiting'`,
+        ));
+    }
   });
 
   if (queueChanged) broadcastQueueUpdate(userId);
+}
+
+let appointmentSchedulerRunning = false;
+
+/**
+ * Advances every shop's due appointments without depending on the TV,
+ * barber panel, or public booking page being open.
+ */
+export async function runAppointmentScheduler(): Promise<void> {
+  if (appointmentSchedulerRunning) return;
+  appointmentSchedulerRunning = true;
+
+  try {
+    const rows = await db
+      .select({ userId: appointmentsTable.userId })
+      .from(appointmentsTable)
+      .where(sql`${appointmentsTable.status} IN ('pending', 'in_progress')`);
+
+    const userIds = [...new Set(rows.map((row) => row.userId))];
+    for (const userId of userIds) {
+      await autoAdvanceAppointmentsByTime(userId);
+    }
+  } finally {
+    appointmentSchedulerRunning = false;
+  }
+}
+
+export function startAppointmentScheduler(): void {
+  void runAppointmentScheduler().catch(() => {});
+  setInterval(() => {
+    void runAppointmentScheduler().catch(() => {});
+  }, 30_000);
 }
 
 router.get("/appointments", requireAuth, async (req, res): Promise<void> => {

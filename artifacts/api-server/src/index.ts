@@ -4,6 +4,7 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient.js";
 import { getUncachableStripeClient } from "./stripeClient.js";
 import { runPushScheduler } from "./routes/push.js";
+import { startAppointmentScheduler } from "./routes/appointments.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -98,6 +99,7 @@ async function initStripe() {
 
 await initStripe();
 runPushScheduler();
+startAppointmentScheduler();
 
 app.listen(port, (err) => {
   if (err) {
