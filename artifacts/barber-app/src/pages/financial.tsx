@@ -106,40 +106,43 @@ export default function Financial() {
 
       {/* Period picker dialog */}
       <Dialog open={periodOpen} onOpenChange={setPeriodOpen}>
-        <DialogContent className="sm:max-w-[430px] p-0 gap-0 overflow-hidden border-border/60">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
-            <DialogTitle className="text-xl font-semibold tracking-tight">
+        <DialogContent className="w-[calc(100%-1.5rem)] max-w-[460px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border-border/70 bg-background p-0 gap-0 shadow-2xl sm:max-h-[min(720px,calc(100dvh-3rem))]">
+          <DialogHeader className="sticky top-0 z-10 border-b border-border/60 bg-background/95 px-5 pb-4 pt-5 backdrop-blur sm:px-6 sm:pt-6">
+            <DialogTitle className="pr-8 text-left text-xl font-semibold tracking-tight sm:text-2xl">
               Escolha o período do relatório
             </DialogTitle>
+            <p className="pt-1 text-left text-sm text-muted-foreground">
+              Selecione uma data ou um intervalo para consultar.
+            </p>
           </DialogHeader>
-          <div className="px-6 py-5">
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-                <span className="block text-xs text-muted-foreground">Início</span>
-                <span className="font-medium">{format(pendingStart, "dd/MM/yyyy")}</span>
+          <div className="space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              <div className="rounded-xl border border-primary/35 bg-primary/5 px-3 py-2.5">
+                <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Início</span>
+                <span className="mt-0.5 block text-base font-semibold">{format(pendingStart, "dd/MM/yyyy")}</span>
               </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
-                <span className="block text-xs text-muted-foreground">Término</span>
-                <span className="font-medium">{format(pendingEnd, "dd/MM/yyyy")}</span>
+              <div className="rounded-xl border border-border/70 bg-muted/20 px-3 py-2.5">
+                <span className="block text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Término</span>
+                <span className="mt-0.5 block text-base font-semibold">{format(pendingEnd, "dd/MM/yyyy")}</span>
               </div>
             </div>
-            <div className="flex justify-center rounded-xl border border-border/70 bg-card/40">
+            <div className="flex justify-center overflow-hidden rounded-xl border border-border/70 bg-card/40 px-1 py-1 sm:px-2">
               <Calendar
                 mode="range"
                 locale={ptBR}
                 numberOfMonths={1}
                 selected={{ from: pendingStart, to: pendingEnd }}
                 onSelect={handleRangeSelect}
-                className="w-full justify-center"
+                className="w-full justify-center [--cell-size:2.25rem] sm:[--cell-size:2.5rem]"
               />
             </div>
           </div>
-          <div className="px-6 pb-6 pt-2 flex items-center justify-end gap-3">
-            <Button variant="ghost" onClick={() => setPeriodOpen(false)}>
+          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-border/60 bg-background/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+            <Button variant="ghost" className="h-10 px-4" onClick={() => setPeriodOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleConfirmPeriod}>
-              OK
+            <Button className="h-10 min-w-20 px-5" onClick={handleConfirmPeriod}>
+              Aplicar
             </Button>
           </div>
         </DialogContent>
