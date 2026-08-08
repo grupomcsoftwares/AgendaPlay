@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
   Linking,
   Share,
+  Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -46,8 +47,21 @@ function createMobileNavigationScript(route: string) {
   return `
     (function () {
       var nextRoute = ${JSON.stringify(route)};
-      window.history.pushState({}, "", nextRoute);
-      window.dispatchEvent(new PopStateEvent("popstate"));
+      try {
+        window.history.pushState({}, "", nextRoute);
+        var event;
+        if (typeof window.PopStateEvent === "function") {
+          event = new window.PopStateEvent("popstate");
+        } else {
+          event = document.createEvent("Event");
+          event.initEvent("popstate", true, true);
+        }
+        window.dispatchEvent(event);
+      } catch (error) {
+        // Older Android WebViews can reject history events. A full navigation
+        // is safer than leaving the user on a blank or stale screen.
+        window.location.assign(nextRoute);
+      }
     })();
     true;
   `;
@@ -98,6 +112,7 @@ export default function DashboardScreen() {
   const [cookieReady, setCookieReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
   const webViewRef = useRef<WebView>(null);
+  const webViewReadyRef = useRef(false);
   const pendingMobileRouteRef = useRef<string | null>(null);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : MENU_ITEMS;
@@ -108,7 +123,7 @@ export default function DashboardScreen() {
     if (isPhone) {
       const route = getMobileRoute(item.url);
       pendingMobileRouteRef.current = route;
-      if (webViewRef.current) {
+      if (webViewRef.current && webViewReadyRef.current) {
         webViewRef.current.injectJavaScript(createMobileNavigationScript(route));
         pendingMobileRouteRef.current = null;
       }
@@ -134,10 +149,18 @@ export default function DashboardScreen() {
   }, [bookingUrl, user?.barbershopName]);
 
   const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string } }) => {
-    let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status" };
+    let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status"; message?: string };
     try {
       message = JSON.parse(event.nativeEvent.data);
     } catch {
+      return;
+    }
+    if (message.type === "AGENDAPLAY_WEB_ERROR") {
+      setLoading(false);
+      Alert.alert(
+        "Não foi possível abrir esta tela",
+        message.message || "Feche e abra Configurações novamente.",
+      );
       return;
     }
     if (message.type !== "AGENDAPLAY_NATIVE_PUSH" || !message.action) return;
@@ -357,13 +380,23 @@ export default function DashboardScreen() {
             domStorageEnabled
             onLoadEnd={() => {
               setLoading(false);
+               webViewReadyRef.current = true;
               const pendingRoute = pendingMobileRouteRef.current;
               if (isPhone && pendingRoute) {
                 webViewRef.current?.injectJavaScript(createMobileNavigationScript(pendingRoute));
                 pendingMobileRouteRef.current = null;
               }
             }}
-            onError={() => setLoading(false)}
+             onError={() => setLoading(false)}
+             onHttpError={() => setLoading(false)}
+             onRenderProcessGone={() => {
+               setLoading(true);
+               webViewRef.current?.reload();
+             }}
+             onContentProcessDidTerminate={() => {
+               setLoading(true);
+               webViewRef.current?.reload();
+             }}
             startInLoadingState={false}
           />
         )}

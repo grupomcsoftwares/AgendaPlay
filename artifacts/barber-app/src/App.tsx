@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
+import { Component, type ErrorInfo, type ReactNode, useEffect } from "react";
 import { Sidebar } from "./components/layout";
 import { playAlert15, playNewAppointment, playRescheduled } from "@/lib/sounds";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -32,6 +32,46 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state: { error: Error | null } = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Keep errors visible inside the mobile WebView instead of rendering a
+    // completely black page. The native host can still reload the dashboard.
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
+      type: "AGENDAPLAY_WEB_ERROR",
+      message: error.message,
+      componentStack: info.componentStack,
+    }));
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6 text-center">
+        <div className="max-w-sm space-y-3">
+          <h1 className="text-lg font-semibold">Não foi possível abrir esta tela</h1>
+          <p className="text-sm text-muted-foreground">
+            Feche e abra Configurações novamente. Se o problema continuar, atualize o aplicativo.
+          </p>
+          <button
+            type="button"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            onClick={() => window.location.reload()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
 
 function ThemeWrapper({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -121,18 +161,20 @@ function Router() {
 
 function App() {
   return (
-    <ThemeWrapper>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthProvider>
-              <Router />
-            </AuthProvider>
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeWrapper>
+    <AppErrorBoundary>
+      <ThemeWrapper>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AuthProvider>
+                <Router />
+              </AuthProvider>
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeWrapper>
+    </AppErrorBoundary>
   );
 }
 
