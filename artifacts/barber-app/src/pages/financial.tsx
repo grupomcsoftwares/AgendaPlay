@@ -83,34 +83,24 @@ export default function Financial() {
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <div className="flex items-center rounded-lg border border-border/80 bg-card/60 p-1">
-            {[
-              { label: "Hoje", days: 0 },
-              { label: "7 dias", days: 6 },
-              { label: "30 dias", days: 29 },
-              { label: "90 dias", days: 89 },
-            ].map(({ label, days }) => {
-              const active = isQuickPeriodActive(days);
-              return (
-                <Button
-                  key={label}
-                  variant={active ? "default" : "ghost"}
-                  size="sm"
-                  className={active ? "shadow-sm" : "text-muted-foreground"}
-                  onClick={() => handleQuickPeriod(days)}
-                >
-                  {label}
-                </Button>
-              );
-            })}
+            <Button
+              variant={isQuickPeriodActive(0) ? "default" : "ghost"}
+              size="sm"
+              className={isQuickPeriodActive(0) ? "shadow-sm" : "text-muted-foreground"}
+              onClick={() => handleQuickPeriod(0)}
+            >
+              Hoje
+            </Button>
+            <Button
+              variant={isQuickPeriodActive(0) ? "ghost" : "default"}
+              size="sm"
+              className={isQuickPeriodActive(0) ? "text-muted-foreground" : "shadow-sm"}
+              onClick={handleOpenPeriod}
+            >
+              <CalendarIcon className="mr-1.5 h-4 w-4" />
+              Personalizado
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            className="justify-start gap-2 font-normal min-w-[220px]"
-            onClick={handleOpenPeriod}
-          >
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            {periodLabel}
-          </Button>
         </div>
       </div>
 
