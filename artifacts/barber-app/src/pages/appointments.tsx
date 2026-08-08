@@ -197,11 +197,13 @@ export default function Appointments() {
   const editCombinedPrice = Math.max(0, editCombinedPriceRaw - editComboDiscountAmount);
   const editCombinedDuration = Math.max(5, editCombinedDurationRaw - editComboTimeDiscount);
 
-  const editAvailabilityParams = editSelectedServices.length === 1
-    ? { date: editDateStr, serviceId: editSelectedServices[0]!.id }
-    : editSelectedServices.length > 1
-      ? { date: editDateStr, serviceDuration: editCombinedDuration }
-      : { date: editDateStr, serviceDuration: editTarget?.serviceDuration ?? 0 };
+  const editAvailabilityParams = {
+    ...(editSelectedServices.length === 1
+      ? { serviceId: editSelectedServices[0]!.id }
+      : { serviceDuration: editSelectedServices.length > 1 ? editCombinedDuration : editTarget?.serviceDuration ?? 0 }),
+    date: editDateStr,
+    ...(editTarget?.barberId != null ? { barberId: editTarget.barberId } : {}),
+  };
   const { data: editAvailability, isFetching: editLoadingSlots } = useGetAvailability(
     editAvailabilityParams,
     {
@@ -341,9 +343,13 @@ export default function Appointments() {
   const availabilityServiceId = selectedServices.length === 1 ? (selectedServices[0]?.id ?? 0) : 0;
   const availabilityEnabled = isCreateOpen && selectedServices.length > 0;
 
-  const availabilityParams = selectedServices.length === 1
-    ? { date: formDateStr, serviceId: availabilityServiceId }
-    : { date: formDateStr, serviceDuration: combinedDuration };
+  const availabilityParams = {
+    ...(selectedServices.length === 1
+      ? { serviceId: availabilityServiceId }
+      : { serviceDuration: combinedDuration }),
+    date: formDateStr,
+    ...(formData.barberId ? { barberId: Number(formData.barberId) } : {}),
+  };
 
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availabilityParams,
@@ -404,6 +410,7 @@ export default function Appointments() {
       { data: {
         clientId: formData.clientId !== "new" ? parseInt(formData.clientId) : undefined,
         clientName: cName,
+         serviceIds: selectedServices.map((service) => service.id),
         serviceId: selectedServices.length === 1 ? selectedServices[0]!.id : undefined,
         serviceName: combinedName,
         servicePrice: combinedPrice,
