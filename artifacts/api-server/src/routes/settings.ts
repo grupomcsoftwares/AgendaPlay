@@ -97,7 +97,7 @@ router.patch("/settings", requireActiveAuth, async (req, res): Promise<void> => 
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  req.log.info({ pixKey: parsed.data.pixKey, paymentEnableNow: parsed.data.paymentEnableNow }, "PATCH settings parsed");
+  req.log.info({ pixKey: parsed.data.pixKey, paymentEnableNow: parsed.data.paymentEnableNow, showServicePrices: parsed.data.showServicePrices }, "PATCH settings parsed");
   const userId = req.session.userId!;
   await getOrCreateSettings(userId);
   const { barbershopName: _barbershopName, ownerName: _ownerName, phone: _phone, ...mutableData } = parsed.data;

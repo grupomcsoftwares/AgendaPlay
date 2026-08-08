@@ -30,6 +30,8 @@ export interface SettingsUpdate {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  /** Se true, os preços dos serviços aparecem no agendamento público. */
+  showServicePrices?: boolean;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
   /** @nullable */

@@ -269,7 +269,7 @@ export const CreateAppointmentBody = zod.object({
   "clientId": zod.number().optional(),
   "clientName": zod.string(),
   "serviceId": zod.number().optional(),
-  "serviceIds": zod.array(zod.number()).optional().describe('Selected service IDs; required for public bookings'),
+  "serviceIds": zod.array(zod.number()).optional().describe('IDs dos serviços escolhidos quando o agendamento contém mais de um serviço.'),
   "serviceName": zod.string(),
   "barberId": zod.number().optional(),
   "barberName": zod.string().optional(),
@@ -1106,6 +1106,7 @@ export const GetSettingsQueryParams = zod.object({
 
 export const getSettingsResponseLogoUrlMax = 3000000;
 
+export const getSettingsResponseShowServicePricesDefault = true;
 export const getSettingsResponseClientReengagementConfigOneMessageMax = 500;
 
 export const getSettingsResponseServiceExclusionsItemServicesMin = 2;
@@ -1177,6 +1178,7 @@ export const GetSettingsResponse = zod.object({
 })
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
+  "showServicePrices": zod.boolean().default(getSettingsResponseShowServicePricesDefault).describe('Se true, os preços dos serviços aparecem no agendamento público.'),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
   "pixKey": zod.string().nullish(),
@@ -1280,6 +1282,7 @@ export const UpdateSettingsBody = zod.object({
 })
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
+  "showServicePrices": zod.boolean().optional().describe('Se true, os preços dos serviços aparecem no agendamento público.'),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
   "pixKey": zod.string().nullish(),
@@ -1312,6 +1315,7 @@ export const UpdateSettingsBody = zod.object({
 
 export const updateSettingsResponseLogoUrlMax = 3000000;
 
+export const updateSettingsResponseShowServicePricesDefault = true;
 export const updateSettingsResponseClientReengagementConfigOneMessageMax = 500;
 
 export const updateSettingsResponseServiceExclusionsItemServicesMin = 2;
@@ -1383,6 +1387,7 @@ export const UpdateSettingsResponse = zod.object({
 })
 }),zod.null()]).optional(),
   "bookingPageMessage": zod.string().nullish(),
+  "showServicePrices": zod.boolean().default(updateSettingsResponseShowServicePricesDefault).describe('Se true, os preços dos serviços aparecem no agendamento público.'),
   "paymentEnableNow": zod.boolean().optional(),
   "paymentEnableOnSite": zod.boolean().optional(),
   "pixKey": zod.string().nullish(),

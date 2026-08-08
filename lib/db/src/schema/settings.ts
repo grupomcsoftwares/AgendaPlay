@@ -47,6 +47,7 @@ export const settingsTable = pgTable("settings", {
   closeTime: text("close_time"),
   weeklySchedule: jsonb("weekly_schedule").$type<WeeklySchedule>(),
   bookingPageMessage: text("booking_page_message"),
+  showServicePrices: boolean("show_service_prices").notNull().default(true),
   paymentEnableNow: boolean("payment_enable_now").notNull().default(false),
   paymentEnableOnSite: boolean("payment_enable_on_site").notNull().default(true),
   pixKey: text("pix_key"),

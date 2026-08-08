@@ -280,6 +280,7 @@ export default function Settings() {
     phone: string;
     address: string;
     bookingPageMessage: string;
+    showServicePrices: boolean;
     weeklySchedule: WeeklySchedule;
     paymentEnableNow: boolean;
     paymentEnableOnSite: boolean;
@@ -309,6 +310,7 @@ export default function Settings() {
     phone: "",
     address: "",
     bookingPageMessage: "",
+    showServicePrices: true,
     weeklySchedule: defaultWeeklySchedule(),
     paymentEnableNow: false,
     paymentEnableOnSite: true,
@@ -353,6 +355,7 @@ export default function Settings() {
         phone: settings.phone || "",
         address: settings.address || "",
         bookingPageMessage: settings.bookingPageMessage || "",
+        showServicePrices: settings.showServicePrices ?? true,
         weeklySchedule: merged,
         paymentEnableNow: settings.paymentEnableNow ?? false,
         paymentEnableOnSite: settings.paymentEnableOnSite ?? true,
@@ -866,6 +869,19 @@ export default function Settings() {
             <div className="space-y-1">
               <Label className="text-xs">Mensagem de Boas-vindas</Label>
               <Textarea value={formData.bookingPageMessage} onChange={e => setFormData({...formData, bookingPageMessage: e.target.value})} placeholder="Olá! Seja bem-vindo…" rows={2} className="text-sm resize-none" />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Mostrar preços no agendamento público</p>
+                <p className="text-xs text-muted-foreground">
+                  Desative para ocultar os valores dos serviços durante a escolha do cliente.
+                </p>
+              </div>
+              <Switch
+                data-testid="switch-show-service-prices"
+                checked={formData.showServicePrices}
+                onCheckedChange={(v) => setFormData({ ...formData, showServicePrices: v })}
+              />
             </div>
 
             {/* Formas de Pagamento (dentro de Informações Gerais) */}

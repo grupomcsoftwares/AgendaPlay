@@ -213,6 +213,7 @@ export interface AppointmentInput {
   clientId?: number;
   clientName: string;
   serviceId?: number;
+  /** IDs dos serviços escolhidos quando o agendamento contém mais de um serviço. */
   serviceIds?: number[];
   serviceName: string;
   barberId?: number;
@@ -584,6 +585,8 @@ export interface Settings {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  /** Se true, os preços dos serviços aparecem no agendamento público. */
+  showServicePrices?: boolean;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
   /** @nullable */
@@ -671,6 +674,8 @@ export interface SettingsUpdate {
   weeklySchedule?: WeeklySchedule | null;
   /** @nullable */
   bookingPageMessage?: string | null;
+  /** Se true, os preços dos serviços aparecem no agendamento público. */
+  showServicePrices?: boolean;
   paymentEnableNow?: boolean;
   paymentEnableOnSite?: boolean;
   /** @nullable */

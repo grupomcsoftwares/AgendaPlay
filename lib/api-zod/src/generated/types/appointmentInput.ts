@@ -13,6 +13,7 @@ export interface AppointmentInput {
   clientId?: number;
   clientName: string;
   serviceId?: number;
+  /** IDs dos serviços escolhidos quando o agendamento contém mais de um serviço. */
   serviceIds?: number[];
   serviceName: string;
   barberId?: number;

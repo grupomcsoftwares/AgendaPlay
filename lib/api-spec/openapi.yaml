@@ -1400,6 +1400,11 @@ components:
           type: string
         serviceId:
           type: integer
+        serviceIds:
+          type: array
+          description: IDs dos serviços escolhidos quando o agendamento contém mais de um serviço.
+          items:
+            type: integer
         serviceName:
           type: string
         barberId:
@@ -1867,6 +1872,10 @@ components:
             - type: "null"
         bookingPageMessage:
           type: ["string", "null"]
+        showServicePrices:
+          type: boolean
+          default: true
+          description: "Se true, os preços dos serviços aparecem no agendamento público."
         paymentEnableNow:
           type: boolean
         paymentEnableOnSite:
@@ -1980,6 +1989,9 @@ components:
             - type: "null"
         bookingPageMessage:
           type: ["string", "null"]
+        showServicePrices:
+          type: boolean
+          description: "Se true, os preços dos serviços aparecem no agendamento público."
         paymentEnableNow:
           type: boolean
         paymentEnableOnSite:
