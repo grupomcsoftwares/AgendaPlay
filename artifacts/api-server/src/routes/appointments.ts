@@ -279,6 +279,10 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
+function isBlockingAppointment(status: string): boolean {
+  return status !== "cancelled" && status !== "completed";
+}
+
 /**
  * Auto-start / auto-complete appointments based on wall-clock time.
  * Runs independently of the live queue so appointments get the right status
@@ -592,7 +596,7 @@ router.get("/availability", async (req, res): Promise<void> => {
 
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {
-    if (a.status === "cancelled") continue;
+    if (!isBlockingAppointment(a.status)) continue;
     if (localYMD(a.scheduledAt) !== date) continue;
     if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;
     const start = parseHHMM(localHHMM(a.scheduledAt));
@@ -824,7 +828,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     const BUFFER = 0; // no gap between appointments — back-to-back booking allowed
     const incomingBarberId = parsed.data.barberId ?? null;
     for (const a of sameDay) {
-      if (a.status === "cancelled") continue;
+      if (!isBlockingAppointment(a.status)) continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
       if (incomingBarberId !== null && a.barberId !== null && a.barberId !== incomingBarberId) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
@@ -1187,7 +1191,7 @@ router.patch("/appointments/:id", requireActiveAuth, async (req, res): Promise<v
           lt(appointmentsTable.scheduledAt, new Date(dayStart.getTime() + 48 * 3600 * 1000)),
         ));
       for (const other of sameDay) {
-        if (other.id === existingAppointment.id || other.status === "cancelled") continue;
+        if (other.id === existingAppointment.id || !isBlockingAppointment(other.status)) continue;
         if (localYMD(other.scheduledAt) !== targetDateKey) continue;
         if (targetBarberId !== null && targetBarberId !== undefined &&
             other.barberId !== null && other.barberId !== targetBarberId) continue;
@@ -1489,7 +1493,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     const targetBarberId = typeof req.body?.barberId === "number" ? req.body.barberId : existing.barberId;
     for (const a of sameDay) {
       if (a.id === existing.id) continue;
-      if (a.status === "cancelled") continue;
+      if (!isBlockingAppointment(a.status)) continue;
       if (localYMD(a.scheduledAt) !== localDate) continue;
       if (targetBarberId !== null && a.barberId !== null && a.barberId !== targetBarberId) continue;
       const aStart = parseHHMM(localHHMM(a.scheduledAt));
