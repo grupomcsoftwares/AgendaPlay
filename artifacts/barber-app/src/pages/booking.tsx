@@ -16,6 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 const AMBER_DEEP = "hsl(38 80% 45%)";
+const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 const STEP_LABELS_BASE = ["Seus dados", "Serviço", "Data e hora", "Pagamento"] as const;
 const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Serviço", "Data e hora", "Pagamento"] as const;
 
@@ -550,6 +551,22 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   // Backend already filters to active barbers via activeOnly=true.
   const activeBarbers = barbers ?? [];
   const needsBarberStep = activeBarbers.length >= 2;
+  const bookingWeekly = (selectedBarber?.weeklySchedule ?? settings?.weeklySchedule) as
+    | Partial<Record<typeof WEEKDAY_KEYS[number], { closed?: boolean }>>
+    | null
+    | undefined;
+  const bookingDayOptions = React.useMemo(() => {
+    const maxDays = Math.max(1, Number((settings as any)?.maxBookingDays ?? 7));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Array.from({ length: maxDays }, (_, i) => {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
+      return day;
+    }).filter((day) => !bookingWeekly?.[WEEKDAY_KEYS[day.getDay()]]?.closed);
+  }, [settings, bookingWeekly]);
+  const isBookingDateClosed = (date: Date) =>
+    Boolean(bookingWeekly?.[WEEKDAY_KEYS[date.getDay()]]?.closed);
   const stepLabels = needsBarberStep ? STEP_LABELS_WITH_BARBER : STEP_LABELS_BASE;
   // Indicator mapping:
   //  - step 0 = "Seus dados" (new first step) → indicator 1
@@ -567,6 +584,16 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     const onlyId = barbers[0]?.id.toString() ?? "";
     setFormData(prev => (prev.barberId === onlyId ? prev : { ...prev, barberId: onlyId }));
   }, [barbers]);
+
+  useEffect(() => {
+    if (bookingDayOptions.length === 0) return;
+    const hasOpenSelectedDate = bookingDayOptions.some(
+      (day) => day.toDateString() === formData.date.toDateString(),
+    );
+    if (!hasOpenSelectedDate) {
+      setFormData((prev) => ({ ...prev, date: bookingDayOptions[0]!, time: "" }));
+    }
+  }, [bookingDayOptions, formData.date]);
 
   // Sync selected service IDs whenever the eligible services list changes (e.g. after
   // the barber loads and filters which services they can perform). This prevents
@@ -665,7 +692,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availabilityParams,
-    { query: { queryKey: getGetAvailabilityQueryKey(availabilityParams), enabled: step === 2 && totalDuration > 0 && !pickingBarber } }
+    { query: {
+      queryKey: getGetAvailabilityQueryKey(availabilityParams),
+      enabled: step === 2 && totalDuration > 0 && !pickingBarber && !isBookingDateClosed(formData.date),
+    } }
   );
 
   // Clear selected time if it's no longer available after a refresh.
@@ -1266,11 +1296,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   style={{ scrollbarWidth: "thin" }}
                   data-testid="date-scroller"
                 >
-                  {Array.from({ length: (settings as any)?.maxBookingDays ?? 7 }).map((_, i) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const d = new Date(today);
-                    d.setDate(today.getDate() + i);
+                  {bookingDayOptions.map((d, i) => {
                     const isSelected = formData.date.toDateString() === d.toDateString();
                     const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
                     const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
@@ -1338,6 +1364,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     );
                   })}
                 </div>
+                {bookingDayOptions.length === 0 && (
+                  <p className="text-center text-sm py-4" style={{ color: "hsl(0 0% 55%)" }}>
+                    Não há dias de atendimento disponíveis neste período.
+                  </p>
+                )}
                 <p
                   className="text-center text-xs"
                   style={{ color: "hsl(0 0% 45%)", letterSpacing: "0.05em" }}

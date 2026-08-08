@@ -51,6 +51,7 @@ type SubscriberMonthlyUsage = {
 
 const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", clientPhone: "", serviceIds: [] as string[], time: "", barberId: "" };
 const INITIAL_EDIT = { date: new Date(), time: "" };
+const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
 export default function Appointments() {
   const { user: _user } = useAuth();
@@ -269,15 +270,27 @@ export default function Appointments() {
   // The agenda day strip follows the same booking window configured in
   // Settings, starting today and showing exactly that many days.
   const agendaDayOptions = useMemo(() => {
+    const selectedBarber = barbers?.find((barber) => barber.id.toString() === formData.barberId);
+    const weeklySchedule = (selectedBarber?.weeklySchedule ?? settings?.weeklySchedule) as
+      | Partial<Record<typeof WEEKDAY_KEYS[number], { closed?: boolean }>>
+      | null
+      | undefined;
     return Array.from({ length: maxBookingDays }, (_, i) => {
       const d = new Date(bookingWindowStart);
       d.setDate(bookingWindowStart.getDate() + i);
       return d;
-    });
-  }, [bookingWindowStart, maxBookingDays]);
+    }).filter((day) => !weeklySchedule?.[WEEKDAY_KEYS[day.getDay()]]?.closed);
+  }, [barbers, bookingWindowStart, formData.barberId, maxBookingDays, settings?.weeklySchedule]);
   // The create-appointment picker uses the same configured window as the
   // agenda strip and updates when settings finish loading.
   const dayOptions = agendaDayOptions;
+  useEffect(() => {
+    if (agendaDayOptions.length === 0) return;
+    const selectedIsOpen = agendaDayOptions.some((day) => sameDay(day, dateStart));
+    if (!selectedIsOpen) {
+      selectAgendaDay(agendaDayOptions[0]!);
+    }
+  }, [agendaDayOptions, dateStart]);
   const selectAgendaDay = (day: Date) => {
     setDateStart(day);
     setDateEnd(day);
@@ -365,7 +378,9 @@ export default function Appointments() {
     if (!isCreateOpen) {
       setFormData(INITIAL_FORM);
     } else {
-      setFormDate(new Date());
+      const today = new Date();
+      const firstOpenDay = agendaDayOptions.find((day) => sameDay(day, today));
+      setFormDate(firstOpenDay ?? agendaDayOptions[0] ?? today);
       // Auto-select when there is exactly one barber
       if (barbers && barbers.length === 1) {
         setFormData((prev) => ({ ...prev, barberId: barbers[0]!.id.toString() }));

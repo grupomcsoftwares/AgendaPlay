@@ -22,6 +22,13 @@ import {
 
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
+const DEFAULT_DAY_SCHEDULE: DaySchedule = {
+  closed: false,
+  open: "09:00",
+  close: "18:00",
+  lunchStart: "12:00",
+  lunchEnd: "13:00",
+};
 
 function localHHMM(d: Date): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour12: false, hour: "2-digit", minute: "2-digit" }).format(d);
@@ -41,6 +48,32 @@ function localDayKey(d: Date): typeof DAY_KEYS[number] {
 function parseHHMM(s: string): number {
   const [h, m] = s.split(":").map(Number);
   return (h ?? 0) * 60 + (m ?? 0);
+}
+
+async function getEffectiveDaySchedule(
+  shopId: string,
+  date: Date,
+  barberId: number | null | undefined,
+): Promise<DaySchedule> {
+  const [settings] = await db
+    .select({ weeklySchedule: settingsTable.weeklySchedule })
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, shopId))
+    .limit(1);
+
+  let barberWeekly: WeeklySchedule | null = null;
+  if (typeof barberId === "number") {
+    const [barber] = await db
+      .select({ weeklySchedule: barbersTable.weeklySchedule })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.id, barberId), eq(barbersTable.userId, shopId)))
+      .limit(1);
+    barberWeekly = (barber?.weeklySchedule ?? null) as WeeklySchedule | null;
+  }
+
+  const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
+  const weekly = barberWeekly ?? shopWeekly;
+  return weekly?.[localDayKey(date)] ?? DEFAULT_DAY_SCHEDULE;
 }
 
 function resolveShop(req: Request): string | null {
@@ -431,6 +464,16 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const startMin = parseHHMM(localHHMM(scheduledAtDate));
   const endMin = startMin + parsed.data.serviceDuration;
 
+  const scheduledDay = await getEffectiveDaySchedule(
+    shopId,
+    scheduledAtDate,
+    typeof parsed.data.barberId === "number" ? parsed.data.barberId : null,
+  );
+  if (scheduledDay.closed) {
+    res.status(400).json({ error: "A barbearia não funciona neste dia." });
+    return;
+  }
+
   if (typeof parsed.data.barberId === "number") {
     const check = await isBarberAllowedForService(db, parsed.data.barberId, parsed.data.serviceId ?? null);
     if (!check.ok) {
@@ -790,7 +833,36 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
   }
   if (parsed.data.scheduledAt !== undefined) {
     updateData.scheduledAt = new Date(parsed.data.scheduledAt);
+    if (Number.isNaN((updateData.scheduledAt as Date).getTime())) {
+      res.status(400).json({ error: "Invalid scheduledAt" });
+      return;
+    }
   }
+
+  const [existingAppointment] = await db
+    .select()
+    .from(appointmentsTable)
+    .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+    .limit(1);
+  if (!existingAppointment) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+
+  if (parsed.data.scheduledAt !== undefined || parsed.data.barberId !== undefined) {
+    const targetDate = parsed.data.scheduledAt
+      ? updateData.scheduledAt as Date
+      : existingAppointment.scheduledAt;
+    const targetBarberId = parsed.data.barberId !== undefined
+      ? parsed.data.barberId
+      : existingAppointment.barberId;
+    const targetDay = await getEffectiveDaySchedule(userId, targetDate, targetBarberId);
+    if (targetDay.closed) {
+      res.status(400).json({ error: "A barbearia não funciona neste dia." });
+      return;
+    }
+  }
+
   const [appointment] = await db
     .update(appointmentsTable)
     .set(updateData)
