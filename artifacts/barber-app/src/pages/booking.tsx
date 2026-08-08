@@ -1217,7 +1217,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                           <span className="font-medium">{sv.name}</span>
                         </span>
                           <span className="text-muted-foreground flex items-center gap-1.5">
-                            {sv.durationMinutes} min{showServicePrices && <> · {isFree
+                            {sv.durationMinutes} min · {isFree
                             ? <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>Grátis</span>
                             : selectedDayPromotionalPrice !== null
                               ? <>
@@ -1226,12 +1226,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                     R$ {selectedDayPromotionalPrice.toFixed(2).replace(".", ",")}
                                   </span>
                                 </>
-                              : `R$ ${sv.price.toFixed(2).replace(".", ",")}`}</>}
+                              : `R$ ${sv.price.toFixed(2).replace(".", ",")}`}
                         </span>
                       </div>
                     );
                   })}
-                  {showServicePrices && appliedCombo && (
+                  {appliedCombo && (
                     <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
                       <span className="text-muted-foreground">🎉 Desconto combo</span>
                       <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>
@@ -1244,7 +1244,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
                     <span className="text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" /> Total</span>
                     <span style={{ color: AMBER, fontWeight: 700 }}>
-                      {totalDuration} min{showServicePrices && ` · R$ ${totalPrice.toFixed(2).replace(".", ",")}`}
+                      {totalDuration} min · R$ {totalPrice.toFixed(2).replace(".", ",")}
                     </span>
                   </div>
                 </div>
@@ -1495,7 +1495,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                           <div key={sv.id} className="flex items-center justify-between text-sm">
                             <span className="text-muted-foreground">{sv.name}</span>
                             <span className="font-semibold">
-                              {showServicePrices && discountHere > 0 && (
+                              {discountHere > 0 && (
                                 <>
                                   <span className="line-through text-muted-foreground mr-1" style={{ opacity: 0.6 }}>
                                     R$ {effectivePrice.toFixed(2).replace(".", ",")}
@@ -1505,7 +1505,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                   </span>
                                 </>
                               )}
-                              {showServicePrices && discountHere === 0 && promotionalPrice !== null && (
+                              {discountHere === 0 && promotionalPrice !== null && (
                                 <>
                                   <span className="line-through text-muted-foreground mr-1" style={{ opacity: 0.6 }}>
                                     R$ {sv.price.toFixed(2).replace(".", ",")}
@@ -1515,7 +1515,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                   </span>
                                 </>
                               )}
-                              {showServicePrices && discountHere === 0 && promotionalPrice === null && (
+                              {discountHere === 0 && promotionalPrice === null && (
                                 <>R$ {effectivePrice.toFixed(2).replace(".", ",")}</>
                               )}
                             </span>
@@ -1523,7 +1523,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                         );
                       });
                     })()}
-                    {showServicePrices && appliedCombo && (
+                    {appliedCombo && (
                       <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
                         <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
                         <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
@@ -1534,11 +1534,9 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                       style={{ borderColor: "hsl(0 0% 14%)" }}
                     >
                       <span className="font-semibold">Total</span>
-                      {showServicePrices && (
-                        <span className="font-bold" style={{ color: AMBER }}>
-                          R$ {totalPrice.toFixed(2).replace(".", ",")}
-                        </span>
-                      )}
+                      <span className="font-bold" style={{ color: AMBER }}>
+                        R$ {totalPrice.toFixed(2).replace(".", ",")}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1887,11 +1885,9 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               <p className="text-sm text-muted-foreground">
                 Deseja pagar <strong>{pointsModal.serviceName}</strong> usando seus pontos?
               </p>
-              {showServicePrices && (
-                <p className="text-xs" style={{ color: AMBER }}>
-                  Preço: R$ {pointsModal.servicePrice.toFixed(2).replace(".", ",")} ⭐
-                </p>
-              )}
+              <p className="text-xs" style={{ color: AMBER }}>
+                Preço: R$ {pointsModal.servicePrice.toFixed(2).replace(".", ",")} ⭐
+              </p>
             </div>
             <div className="flex gap-3">
               <button

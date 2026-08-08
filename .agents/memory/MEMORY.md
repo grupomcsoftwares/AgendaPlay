@@ -21,3 +21,4 @@
 - [Loyalty point expiry](loyalty-point-expiry.md) — expiry is inactivity-based on the aggregate balance timestamp; 0 disables expiry and legacy configs default to 0.
 - [Mobile WebView navigation](mobile-webview-navigation.md) — keep the phone dashboard WebView mounted and navigate categories with in-page history to avoid reload flashes.
 - [Native WebView session handoff](native-webview-session.md) — native login requests an explicit signed cookie response because React Native may hide Set-Cookie; web login must not receive it.
+- [Public booking price visibility](public-booking-price-visibility.md) — the setting hides prices only on the initial service-selection cards; later summaries and totals remain visible.
