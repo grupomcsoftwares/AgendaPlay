@@ -610,12 +610,23 @@ export default function Settings() {
           ok?: boolean;
           enabled?: boolean;
           error?: string;
+          errorCode?: "firebase_not_configured" | "permission_denied" | "registration_failed";
           operation?: "subscribe" | "unsubscribe" | "status";
         };
         setPushLoading(false);
         if (!result.ok) {
           if (result.operation === "status") return;
-          toast({ title: result.error || "Não foi possível ativar as notificações", variant: "destructive" });
+          toast({
+            title:
+              result.errorCode === "firebase_not_configured"
+                ? "Alertas Android indisponíveis"
+                : result.error || "Não foi possível ativar as notificações",
+            description:
+              result.errorCode === "firebase_not_configured"
+                ? "Esta versão do APK ainda precisa da configuração do Firebase."
+                : undefined,
+            variant: "destructive",
+          });
           return;
         }
         setNativePush(!!result.enabled);

@@ -10,7 +10,25 @@ export type NativePushResult = {
   ok: boolean;
   enabled?: boolean;
   error?: string;
+  errorCode?: "firebase_not_configured" | "permission_denied" | "registration_failed";
 };
+
+function getNativePushError(error: unknown): Pick<NativePushResult, "error" | "errorCode"> {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (
+    /Default FirebaseApp is not initialized|FirebaseApp\.initializeApp|FCM/i.test(message)
+  ) {
+    return {
+      errorCode: "firebase_not_configured",
+      error:
+        "Os alertas do Android ainda não estão configurados nesta versão do aplicativo. Instale uma versão atualizada depois que o Firebase for configurado.",
+    };
+  }
+  return {
+    errorCode: "registration_failed",
+    error: "Não foi possível ativar os alertas neste dispositivo. Tente novamente.",
+  };
+}
 
 export async function registerNativePush(cookie: string | null): Promise<NativePushResult> {
   if (Platform.OS !== "android" || !cookie) {
@@ -30,7 +48,11 @@ export async function registerNativePush(cookie: string | null): Promise<NativeP
       ? current
       : await Notifications.requestPermissionsAsync();
     if (!permission.granted) {
-      return { ok: false, error: "Permissão de notificações negada no Android." };
+      return {
+        ok: false,
+        errorCode: "permission_denied",
+        error: "Permissão de notificações negada no Android.",
+      };
     }
 
     const projectId =
@@ -56,10 +78,7 @@ export async function registerNativePush(cookie: string | null): Promise<NativeP
     await AsyncStorage.setItem(NATIVE_TOKEN_KEY, token);
     return { ok: true, enabled: true };
   } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "Não foi possível ativar as notificações.",
-    };
+    return { ok: false, ...getNativePushError(error) };
   }
 }
 
