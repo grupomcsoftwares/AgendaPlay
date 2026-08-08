@@ -518,7 +518,13 @@ router.get("/availability", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { date, serviceId, serviceDuration: serviceDurationParam, barberId } = parsed.data;
+  const {
+    date,
+    serviceId,
+    serviceDuration: serviceDurationParam,
+    barberId,
+    excludeAppointmentToken,
+  } = parsed.data;
   if (!isValidCalendarDateString(date)) {
     res.status(400).json({ error: "Invalid date (expected a real YYYY-MM-DD date)" });
     return;
@@ -594,8 +600,26 @@ router.get("/availability", async (req, res): Promise<void> => {
     .from(appointmentsTable)
     .where(and(eq(appointmentsTable.userId, shopId), gte(appointmentsTable.scheduledAt, before), lt(appointmentsTable.scheduledAt, after)));
 
+  let excludedAppointmentId: number | null = null;
+  if (excludeAppointmentToken) {
+    const [excludedAppointment] = await db
+      .select({ id: appointmentsTable.id })
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.cancelToken, excludeAppointmentToken),
+        eq(appointmentsTable.userId, shopId),
+      ))
+      .limit(1);
+    if (!excludedAppointment) {
+      res.status(400).json({ error: "Token de agendamento inválido." });
+      return;
+    }
+    excludedAppointmentId = excludedAppointment.id;
+  }
+
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {
+    if (a.id === excludedAppointmentId) continue;
     if (!isBlockingAppointment(a.status)) continue;
     if (localYMD(a.scheduledAt) !== date) continue;
     if (barberFilter !== null && a.barberId !== null && a.barberId !== barberFilter) continue;

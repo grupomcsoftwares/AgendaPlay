@@ -554,7 +554,8 @@ export const GetAvailabilityQueryParams = zod.object({
   "date": zod.coerce.string(),
   "serviceId": zod.coerce.number().optional(),
   "serviceDuration": zod.coerce.number().optional().describe('Total duration in minutes — required when serviceId is not provided (multi-service bookings)'),
-  "barberId": zod.coerce.number().optional().describe('Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.')
+  "barberId": zod.coerce.number().optional().describe('Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.'),
+  "excludeAppointmentToken": zod.coerce.string().optional().describe('Public cancel token of the appointment being rescheduled. Only that appointment is excluded from conflicts.')
 })
 
 export const GetAvailabilityResponse = zod.object({

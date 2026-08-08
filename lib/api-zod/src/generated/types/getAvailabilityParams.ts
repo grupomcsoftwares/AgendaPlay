@@ -24,4 +24,8 @@ serviceDuration?: number;
  * Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
  */
 barberId?: number;
+/**
+ * Public cancel token of the appointment being rescheduled. Only that appointment is excluded from conflicts.
+ */
+excludeAppointmentToken?: string;
 };

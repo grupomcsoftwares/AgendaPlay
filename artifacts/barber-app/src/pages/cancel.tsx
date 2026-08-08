@@ -157,6 +157,7 @@ export default function CancelBooking() {
     ...(shopId ? { shopId } : {}),
     date: reschedDate,
     serviceDuration,
+    excludeAppointmentToken: token,
   };
   const { data: availability, isFetching: loadingSlots } = useGetAvailability(
     availParams,
@@ -293,9 +294,23 @@ export default function CancelBooking() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
           // Invalidate new date and old date so the old slot frees up immediately
-          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceDuration }) });
+          queryClient.invalidateQueries({
+            queryKey: getGetAvailabilityQueryKey({
+              ...(shopId ? { shopId } : {}),
+              date: reschedDate,
+              serviceDuration,
+              excludeAppointmentToken: token,
+            }),
+          });
           if (oldDate && oldDate !== reschedDate) {
-            queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: oldDate, serviceDuration }) });
+            queryClient.invalidateQueries({
+              queryKey: getGetAvailabilityQueryKey({
+                ...(shopId ? { shopId } : {}),
+                date: oldDate,
+                serviceDuration,
+                excludeAppointmentToken: token,
+              }),
+            });
           }
           queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
           setReschedOpen(false);
@@ -306,7 +321,14 @@ export default function CancelBooking() {
           setErrorMsg(data?.error ?? "Não foi possível alterar o horário. Tente outro.");
           // If the slot was taken, clear it so the user picks again.
           setReschedTime("");
-          queryClient.invalidateQueries({ queryKey: getGetAvailabilityQueryKey({ date: reschedDate, serviceDuration }) });
+          queryClient.invalidateQueries({
+            queryKey: getGetAvailabilityQueryKey({
+              ...(shopId ? { shopId } : {}),
+              date: reschedDate,
+              serviceDuration,
+              excludeAppointmentToken: token,
+            }),
+          });
         },
       },
     );

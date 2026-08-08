@@ -514,6 +514,11 @@ paths:
           description: Filter availability to the agenda of one barber. If omitted, conflicts are checked across all appointments.
           schema:
             type: integer
+        - name: excludeAppointmentToken
+          in: query
+          description: Public cancel token of the appointment being rescheduled. Only that appointment is excluded from conflicts.
+          schema:
+            type: string
       responses:
         "200":
           description: Availability
