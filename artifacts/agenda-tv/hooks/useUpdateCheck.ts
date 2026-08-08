@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { PROD_BASE } from "@/lib/webviewSecurity";
 
-const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+const API_BASE = `${PROD_BASE}/api`;
 
 export type UpdateInfo = {
   hasUpdate: boolean;

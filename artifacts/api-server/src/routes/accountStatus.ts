@@ -12,9 +12,15 @@ export function getAccountStatus(user: AccountBillingFields) {
   const trialStarted = new Date(user.trialStartedAt);
   const now = new Date();
   const msPerDay = 1000 * 60 * 60 * 24;
-  const daysSinceTrial = Math.floor((now.getTime() - trialStarted.getTime()) / msPerDay);
-  const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
-  const trialExpired = trialDaysLeft === 0;
+  const trialStartedMs = trialStarted.getTime();
+  const validTrialStart = Number.isFinite(trialStartedMs);
+  const daysSinceTrial = validTrialStart
+    ? Math.floor((now.getTime() - trialStartedMs) / msPerDay)
+    : TRIAL_DAYS;
+  const trialDaysLeft = validTrialStart
+    ? Math.min(TRIAL_DAYS, Math.max(0, TRIAL_DAYS - daysSinceTrial))
+    : 0;
+  const trialExpired = !validTrialStart || trialDaysLeft === 0;
 
   // Stripe's period end is authoritative. An ID without a future validity
   // date must not keep an expired account open.
@@ -23,10 +29,12 @@ export function getAccountStatus(user: AccountBillingFields) {
     : user.subscriptionExpiresAt
       ? new Date(user.subscriptionExpiresAt)
       : null;
-  const hasActiveSubscription = !!periodEnd && periodEnd.getTime() > now.getTime();
+  const periodEndMs = periodEnd?.getTime() ?? Number.NaN;
+  const hasActiveSubscription = Number.isFinite(periodEndMs) && periodEndMs > now.getTime();
+  const subscriptionDueDate = Number.isFinite(periodEndMs) ? periodEnd!.toISOString() : null;
 
-  const daysUntilPeriodEnd = periodEnd
-    ? Math.max(0, Math.floor((periodEnd.getTime() - now.getTime()) / msPerDay))
+  const daysUntilPeriodEnd = Number.isFinite(periodEndMs)
+    ? Math.max(0, Math.floor((periodEndMs - now.getTime()) / msPerDay))
     : null;
 
   return {
@@ -35,7 +43,7 @@ export function getAccountStatus(user: AccountBillingFields) {
     hasActiveSubscription,
     canAccess: !trialExpired || hasActiveSubscription,
     maxBarbers: user.maxBarbers ?? null,
-    subscriptionDueDate: periodEnd?.toISOString() ?? null,
+    subscriptionDueDate,
     subscriptionDaysLeft: daysUntilPeriodEnd,
   };
 }

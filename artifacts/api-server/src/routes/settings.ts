@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import { eq } from "drizzle-orm";
 import { db, settingsTable, usersTable } from "@workspace/db";
 import { UpdateSettingsBody } from "@workspace/api-zod";
-import { requireAuth } from "../middleware/auth.js";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
 
@@ -90,7 +90,7 @@ router.get("/settings", async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/settings", requireAuth, async (req, res): Promise<void> => {
+router.patch("/settings", requireActiveAuth, async (req, res): Promise<void> => {
   const parsed = UpdateSettingsBody.safeParse(req.body);
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message, body: req.body }, "settings validation failed");

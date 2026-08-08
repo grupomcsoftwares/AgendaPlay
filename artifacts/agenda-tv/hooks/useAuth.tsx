@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PROD_BASE } from "@/lib/webviewSecurity";
 
-const API_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+const API_BASE = `${PROD_BASE}/api`;
 const USER_KEY = "@agendaplay/user";
 const COOKIE_KEY = "@agendaplay/session_cookie";
 

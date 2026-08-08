@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { PROD_BASE } from "./webviewSecurity";
 
 const NATIVE_TOKEN_KEY = "@agendaplay/native_push_token";
 
@@ -39,7 +40,7 @@ export async function registerNativePush(cookie: string | null): Promise<NativeP
       projectId ? { projectId } : undefined,
     );
     const token = tokenResponse.data;
-    const baseUrl = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+    const baseUrl = `${PROD_BASE}/api`;
     const response = await fetch(`${baseUrl}/push/native/subscribe`, {
       method: "POST",
       headers: {
@@ -66,7 +67,7 @@ export async function unregisterNativePush(cookie: string | null): Promise<Nativ
   if (!cookie) return { ok: false, error: "Sessão não encontrada." };
   const token = await AsyncStorage.getItem(NATIVE_TOKEN_KEY);
   if (token) {
-    const baseUrl = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+    const baseUrl = `${PROD_BASE}/api`;
     await fetch(`${baseUrl}/push/native/subscribe`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json", Cookie: cookie },
@@ -86,7 +87,7 @@ export async function getNativePushStatus(cookie: string | null): Promise<Native
   if (!token) return { ok: true, enabled: false };
 
   try {
-    const baseUrl = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}/api`;
+    const baseUrl = `${PROD_BASE}/api`;
     const response = await fetch(`${baseUrl}/push/native/status`, {
       method: "POST",
       headers: {

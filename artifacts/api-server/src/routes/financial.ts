@@ -2,28 +2,94 @@ import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { db, appointmentsTable, barbersTable } from "@workspace/db";
 import { GetFinancialSummaryQueryParams } from "@workspace/api-zod";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
+const TZ = "America/Sao_Paulo";
 
-router.get("/financial/summary", async (req, res): Promise<void> => {
+function localDateParts(date: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  return {
+    year: Number(parts.find((part) => part.type === "year")?.value),
+    month: Number(parts.find((part) => part.type === "month")?.value),
+    day: Number(parts.find((part) => part.type === "day")?.value),
+  };
+}
+
+function isValidCalendarDate(year: number, month: number, day: number): boolean {
+  if (!Number.isInteger(year) || year < 2000 || year > 2100 ||
+      !Number.isInteger(month) || month < 1 || month > 12 ||
+      !Number.isInteger(day) || day < 1) {
+    return false;
+  }
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().startsWith(
+    `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+  );
+}
+
+function saoPauloBoundary(year: number, month: number, day: number): Date {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(candidate);
+  const localWallTime = Date.UTC(
+    Number(parts.find((part) => part.type === "year")?.value),
+    Number(parts.find((part) => part.type === "month")?.value) - 1,
+    Number(parts.find((part) => part.type === "day")?.value),
+    Number(parts.find((part) => part.type === "hour")?.value),
+    Number(parts.find((part) => part.type === "minute")?.value),
+    Number(parts.find((part) => part.type === "second")?.value),
+  );
+  return new Date(candidate.getTime() - (localWallTime - candidate.getTime()));
+}
+
+router.get("/financial/summary", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const query = GetFinancialSummaryQueryParams.safeParse(req.query);
   const now = new Date();
+  const nowParts = localDateParts(now);
 
   let rangeStart: Date;
   let rangeEnd: Date;
 
   if (query.success && query.data.dateStart && query.data.dateEnd) {
-    rangeStart = new Date(query.data.dateStart);
-    rangeEnd = new Date(query.data.dateEnd);
-    // Advance end by one day so the full end date is included
-    rangeEnd = new Date(rangeEnd.getTime() + 24 * 60 * 60 * 1000);
+    const [startYear, startMonth, startDay] = query.data.dateStart.split("-").map(Number);
+    const [endYear, endMonth, endDay] = query.data.dateEnd.split("-").map(Number);
+    if (
+      !isValidCalendarDate(startYear!, startMonth!, startDay!) ||
+      !isValidCalendarDate(endYear!, endMonth!, endDay!)
+    ) {
+      res.status(400).json({ error: "Período inválido." });
+      return;
+    }
+    rangeStart = saoPauloBoundary(startYear!, startMonth!, startDay!);
+    rangeEnd = saoPauloBoundary(endYear!, endMonth!, endDay! + 1);
   } else {
-    const month = (query.success && query.data.month) ? Number(query.data.month) : now.getMonth() + 1;
-    const year  = (query.success && query.data.year)  ? Number(query.data.year)  : now.getFullYear();
+    const month = (query.success && query.data.month) ? Number(query.data.month) : nowParts.month;
+    const year  = (query.success && query.data.year)  ? Number(query.data.year)  : nowParts.year;
     const day   = (query.success && query.data.day)   ? Number(query.data.day)   : null;
-    rangeStart = day !== null ? new Date(year, month - 1, day)     : new Date(year, month - 1, 1);
-    rangeEnd   = day !== null ? new Date(year, month - 1, day + 1) : new Date(year, month, 1);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100 ||
+        !Number.isInteger(month) || month < 1 || month > 12 ||
+        (day !== null && !isValidCalendarDate(year, month, day))) {
+      res.status(400).json({ error: "Período inválido." });
+      return;
+    }
+    rangeStart = saoPauloBoundary(year, month, day ?? 1);
+    rangeEnd = day !== null
+      ? saoPauloBoundary(year, month, day + 1)
+      : saoPauloBoundary(year, month + 1, 1);
   }
 
   // Fetch completed appointments joined with barber commission rate
@@ -65,7 +131,8 @@ router.get("/financial/summary", async (req, res): Promise<void> => {
   // Revenue by day
   const dayMap = new Map<string, { revenue: number; count: number }>();
   for (const a of rows) {
-    const date = a.scheduledAt.toISOString().split("T")[0];
+    const parts = localDateParts(a.scheduledAt);
+    const date = `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
     const cur  = dayMap.get(date) ?? { revenue: 0, count: 0 };
     dayMap.set(date, {
       revenue: cur.revenue + parseFloat(a.servicePrice),

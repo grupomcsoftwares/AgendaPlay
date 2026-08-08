@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, comboDiscountsTable } from "@workspace/db";
-import { requireAuth } from "../middleware/auth.js";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 function resolveShop(req: Request): string | null {
   if (req.session?.userId) return req.session.userId;
@@ -56,7 +56,7 @@ router.get("/combo-discounts", async (req, res): Promise<void> => {
   res.json(rows.map(formatCombo));
 });
 
-router.post("/combo-discounts", requireAuth, async (req, res): Promise<void> => {
+router.post("/combo-discounts", requireActiveAuth, async (req, res): Promise<void> => {
   const input = parseComboInput(req.body);
   if (!input) {
     res.status(400).json({ error: "name, serviceIds (mínimo 2) e discountPercent são obrigatórios" });
@@ -75,7 +75,7 @@ router.post("/combo-discounts", requireAuth, async (req, res): Promise<void> => 
   res.status(201).json(formatCombo(created));
 });
 
-router.patch("/combo-discounts/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/combo-discounts/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });
@@ -106,7 +106,7 @@ router.patch("/combo-discounts/:id", requireAuth, async (req, res): Promise<void
   res.json(formatCombo(updated));
 });
 
-router.delete("/combo-discounts/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/combo-discounts/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });

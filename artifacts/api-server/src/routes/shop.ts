@@ -6,6 +6,10 @@ import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbers
 const TZ = "America/Sao_Paulo";
 const DAY_KEYS = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"] as const;
 
+function normalizePhone(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
 function localHHMM(d: Date): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour12: false, hour: "2-digit", minute: "2-digit" }).format(d);
 }
@@ -38,7 +42,7 @@ router.get("/b/client", async (req, res): Promise<void> => {
   const [client] = await db
     .select({ name: clientsTable.name })
     .from(clientsTable)
-    .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, phone)))
+    .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, normalizePhone(phone))))
     .limit(1);
   res.json(client ?? null);
 });

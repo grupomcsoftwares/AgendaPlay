@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, inArray, and } from "drizzle-orm";
-import { db, servicesTable, barberServicesTable, serviceDayPricingTable } from "@workspace/db";
-import { requireAuth } from "../middleware/auth.js";
+import { db, servicesTable, barberServicesTable, serviceDayPricingTable, barbersTable } from "@workspace/db";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 import {
   CreateServiceBody,
   GetServiceParams,
@@ -23,9 +23,13 @@ function resolveShop(req: Request): string | null {
 async function withBarberIds(rows: ServiceRow[]) {
   if (rows.length === 0) return [];
   const links = await db
-    .select()
+    .select({ serviceId: barberServicesTable.serviceId, barberId: barberServicesTable.barberId })
     .from(barberServicesTable)
-    .where(inArray(barberServicesTable.serviceId, rows.map((s) => s.id)));
+    .innerJoin(barbersTable, eq(barberServicesTable.barberId, barbersTable.id))
+    .where(and(
+      inArray(barberServicesTable.serviceId, rows.map((s) => s.id)),
+      eq(barbersTable.userId, rows[0]!.userId),
+    ));
   const byService = new Map<number, number[]>();
   for (const l of links) {
     const arr = byService.get(l.serviceId) ?? [];
@@ -37,6 +41,21 @@ async function withBarberIds(rows: ServiceRow[]) {
     price: parseFloat(s.price),
     barberIds: byService.get(s.id) ?? [],
   }));
+}
+
+async function hasOnlyOwnedBarbers(
+  tx: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  barberIds: number[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(barberIds)];
+  if (uniqueIds.length !== barberIds.length) return false;
+  if (uniqueIds.length === 0) return true;
+  const owned = await tx
+    .select({ id: barbersTable.id })
+    .from(barbersTable)
+    .where(and(eq(barbersTable.userId, userId), inArray(barbersTable.id, uniqueIds)));
+  return owned.length === uniqueIds.length;
 }
 
 async function withDayPricing(rows: ServiceRow[]) {
@@ -92,7 +111,7 @@ router.get("/services", async (req, res): Promise<void> => {
   res.json(await withDayPricing(withBarbers as unknown as ServiceRow[]));
 });
 
-router.post("/services", requireAuth, async (req, res): Promise<void> => {
+router.post("/services", requireActiveAuth, async (req, res): Promise<void> => {
   const parsed = CreateServiceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -100,6 +119,10 @@ router.post("/services", requireAuth, async (req, res): Promise<void> => {
   }
   const userId = req.session.userId!;
   const { barberIds, dayPricing, ...rest } = parsed.data;
+  if (barberIds && !(await hasOnlyOwnedBarbers(db, userId, barberIds))) {
+    res.status(400).json({ error: "Um ou mais profissionais não pertencem a esta barbearia." });
+    return;
+  }
   const service = await db.transaction(async (tx) => {
     const maxOrder = await tx.select({ max: servicesTable.sortOrder })
       .from(servicesTable)
@@ -155,7 +178,7 @@ router.get("/services/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.patch("/services/reorder", requireAuth, async (req, res): Promise<void> => {
+router.patch("/services/reorder", requireActiveAuth, async (req, res): Promise<void> => {
   const items = req.body as Array<{ id: number; sortOrder: number }>;
   if (!Array.isArray(items) || items.some((i) => typeof i.id !== "number" || typeof i.sortOrder !== "number")) {
     res.status(400).json({ error: "Invalid reorder payload" });
@@ -176,7 +199,7 @@ router.patch("/services/reorder", requireAuth, async (req, res): Promise<void> =
   res.json(await withBarberIds(services));
 });
 
-router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/services/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = UpdateServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -189,6 +212,10 @@ router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
   }
   const userId = req.session.userId!;
   const { barberIds, dayPricing, ...rest } = parsed.data;
+  if (barberIds && !(await hasOnlyOwnedBarbers(db, userId, barberIds))) {
+    res.status(400).json({ error: "Um ou mais profissionais não pertencem a esta barbearia." });
+    return;
+  }
   const updateData: Record<string, unknown> = { ...rest };
   if (rest.price !== undefined) {
     updateData.price = String(rest.price);
@@ -231,7 +258,7 @@ router.patch("/services/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.delete("/services/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/services/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = DeleteServiceParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

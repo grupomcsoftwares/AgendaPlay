@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, inArray, asc, and, sql } from "drizzle-orm";
-import { db, barbersTable, barberServicesTable, usersTable } from "@workspace/db";
-import { requireAuth } from "../middleware/auth.js";
+import { db, barbersTable, barberServicesTable, usersTable, servicesTable } from "@workspace/db";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 import {
   ListBarbersQueryParams,
   CreateBarberBody,
@@ -23,10 +23,22 @@ function resolveShop(req: Request): string | null {
 
 async function serviceIdsFor(barberIds: number[]) {
   if (barberIds.length === 0) return new Map<number, number[]>();
+  const [barber] = await db
+    .select({ userId: barbersTable.userId })
+    .from(barbersTable)
+    .where(eq(barbersTable.id, barberIds[0]!))
+    .limit(1);
   const links = await db
-    .select()
+    .select({
+      barberId: barberServicesTable.barberId,
+      serviceId: barberServicesTable.serviceId,
+    })
     .from(barberServicesTable)
-    .where(inArray(barberServicesTable.barberId, barberIds));
+    .innerJoin(servicesTable, eq(barberServicesTable.serviceId, servicesTable.id))
+    .where(and(
+      inArray(barberServicesTable.barberId, barberIds),
+      barber ? eq(servicesTable.userId, barber.userId) : sql`false`,
+    ));
   const map = new Map<number, number[]>();
   for (const l of links) {
     const arr = map.get(l.barberId) ?? [];
@@ -36,12 +48,31 @@ async function serviceIdsFor(barberIds: number[]) {
   return map;
 }
 
+async function hasOnlyOwnedServices(
+  tx: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
+  userId: string,
+  serviceIds: number[],
+): Promise<boolean> {
+  const uniqueIds = [...new Set(serviceIds)];
+  if (uniqueIds.length !== serviceIds.length) return false;
+  if (uniqueIds.length === 0) return true;
+  const owned = await tx
+    .select({ id: servicesTable.id })
+    .from(servicesTable)
+    .where(and(eq(servicesTable.userId, userId), inArray(servicesTable.id, uniqueIds)));
+  return owned.length === uniqueIds.length;
+}
+
 export async function isBarberAllowedForService(
   tx: typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0],
   barberId: number,
   serviceId: number | null,
+  shopId: string,
 ): Promise<{ ok: boolean; reason?: string; barberName?: string }> {
-  const [b] = await tx.select().from(barbersTable).where(eq(barbersTable.id, barberId));
+  const [b] = await tx
+    .select()
+    .from(barbersTable)
+    .where(and(eq(barbersTable.id, barberId), eq(barbersTable.userId, shopId)));
   if (!b) return { ok: false, reason: "não encontrado" };
   if (!b.active) return { ok: false, reason: "inativo" };
   if (serviceId === null) return { ok: true, barberName: b.name };
@@ -90,12 +121,29 @@ router.get("/barbers", async (req, res): Promise<void> => {
   let rows = await db.select().from(barbersTable).where(and(...conds)).orderBy(asc(barbersTable.sortOrder), asc(barbersTable.id));
 
   if (serviceFilter !== undefined) {
+    const [service] = await db
+      .select({ id: servicesTable.id })
+      .from(servicesTable)
+      .where(and(eq(servicesTable.id, serviceFilter), eq(servicesTable.userId, shopId)))
+      .limit(1);
+    if (!service) {
+      res.json([]);
+      return;
+    }
     const links = await db
-      .select()
+      .select({ barberId: barberServicesTable.barberId })
       .from(barberServicesTable)
-      .where(eq(barberServicesTable.serviceId, serviceFilter));
+      .innerJoin(barbersTable, eq(barberServicesTable.barberId, barbersTable.id))
+      .where(and(
+        eq(barberServicesTable.serviceId, serviceFilter),
+        eq(barbersTable.userId, shopId),
+      ));
     const linkedBarberIds = new Set(links.map((l) => l.barberId));
-    const allLinks = await db.select().from(barberServicesTable);
+    const allLinks = await db
+      .select({ barberId: barberServicesTable.barberId })
+      .from(barberServicesTable)
+      .innerJoin(barbersTable, eq(barberServicesTable.barberId, barbersTable.id))
+      .where(eq(barbersTable.userId, shopId));
     const barbersWithAnyLink = new Set(allLinks.map((l) => l.barberId));
     rows = rows.filter((b) => linkedBarberIds.has(b.id) || !barbersWithAnyLink.has(b.id));
   }
@@ -103,7 +151,7 @@ router.get("/barbers", async (req, res): Promise<void> => {
   res.json(await formatMany(rows));
 });
 
-router.post("/barbers", requireAuth, async (req, res): Promise<void> => {
+router.post("/barbers", requireActiveAuth, async (req, res): Promise<void> => {
   const parsed = CreateBarberBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -132,6 +180,10 @@ router.post("/barbers", requireAuth, async (req, res): Promise<void> => {
   }
 
   const { serviceIds, commissionRate, ...rest } = parsed.data;
+  if (serviceIds && !(await hasOnlyOwnedServices(db, userId, serviceIds))) {
+    res.status(400).json({ error: "Um ou mais serviços não pertencem a esta barbearia." });
+    return;
+  }
   const created = await db.transaction(async (tx) => {
     const [b] = await tx.insert(barbersTable).values({
       ...rest,
@@ -167,7 +219,7 @@ router.get("/barbers/:id", async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.patch("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/barbers/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = UpdateBarberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -180,6 +232,10 @@ router.patch("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
   }
   const userId = req.session.userId!;
   const { serviceIds, commissionRate, ...rest } = parsed.data;
+  if (serviceIds && !(await hasOnlyOwnedServices(db, userId, serviceIds))) {
+    res.status(400).json({ error: "Um ou mais serviços não pertencem a esta barbearia." });
+    return;
+  }
   const updateFields = {
     ...rest,
     ...(commissionRate !== undefined ? { commissionRate: commissionRate != null ? String(commissionRate) : null } : {}),
@@ -208,7 +264,7 @@ router.patch("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.delete("/barbers/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/barbers/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = DeleteBarberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

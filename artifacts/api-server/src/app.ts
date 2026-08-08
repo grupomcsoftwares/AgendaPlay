@@ -58,10 +58,30 @@ app.post(
 
 const replitDomains = (process.env.REPLIT_DOMAINS ?? "").split(",").map((d) => `https://${d.trim()}`).filter((d) => d.length > 8);
 const allowedOrigins = new Set([...replitDomains, "http://localhost:3000", "http://localhost:5173", "http://localhost:5174"]);
+const trustedPreviewHost = (hostname: string): boolean =>
+  hostname.endsWith(".riker.replit.dev") || hostname.endsWith(".expo.replit.dev");
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin) || replitDomains.some((d) => origin.startsWith(d)) || origin.endsWith(".riker.replit.dev") || origin.endsWith(".expo.replit.dev")) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      let parsed: URL | null = null;
+      try {
+        parsed = new URL(origin);
+      } catch {
+        parsed = null;
+      }
+      const exactAllowed = Boolean(parsed && allowedOrigins.has(parsed.origin));
+      const previewAllowed = Boolean(
+        parsed &&
+        parsed.protocol === "https:" &&
+        !parsed.username &&
+        !parsed.password &&
+        trustedPreviewHost(parsed.hostname),
+      );
+      if (exactAllowed || previewAllowed) {
         callback(null, true);
       } else {
         callback(null, false);

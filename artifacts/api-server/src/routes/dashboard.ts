@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { eq, sql, and, gte, lt } from "drizzle-orm";
 import { db, appointmentsTable, clientsTable, queueTable } from "@workspace/db";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
 
-router.get("/dashboard/summary", async (req, res): Promise<void> => {
+router.get("/dashboard/summary", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());

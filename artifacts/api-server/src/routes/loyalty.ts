@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, desc, gt, lt, sql } from "drizzle-orm";
 import { db, settingsTable, loyaltyPointsTable, clientsTable, type LoyaltyConfig } from "@workspace/db";
-import { requireAuth } from "../middleware/auth.js";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
 
@@ -15,7 +15,7 @@ function normalizePhone(raw: string): string {
   return raw.replace(/\D/g, "");
 }
 
-router.get("/loyalty/clients", requireAuth, async (req, res): Promise<void> => {
+router.get("/loyalty/clients", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const [settings] = await db
     .select({ loyaltyConfig: settingsTable.loyaltyConfig })

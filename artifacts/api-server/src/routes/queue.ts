@@ -6,6 +6,7 @@ import {
   RemoveFromQueueParams,
   StartQueueEntryParams,
 } from "@workspace/api-zod";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
 
@@ -46,12 +47,8 @@ function removeSseClient(userId: string, res: Response): void {
   }
 }
 
-router.get("/queue/subscribe", async (req, res): Promise<void> => {
-  const userId = req.session.userId;
-  if (!userId) {
-    res.status(401).json({ error: "Não autenticado." });
-    return;
-  }
+router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -161,7 +158,7 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
   }
 }
 
-router.get("/queue", async (req, res): Promise<void> => {
+router.get("/queue", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   // Reading the queue must never change its state. In particular, opening the
   // TV must not start the next client or reset a startedAt timestamp.
@@ -180,7 +177,7 @@ router.get("/queue", async (req, res): Promise<void> => {
   res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
 });
 
-router.post("/queue", async (req, res): Promise<void> => {
+router.post("/queue", requireActiveAuth, async (req, res): Promise<void> => {
   const parsed = AddToQueueBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -208,7 +205,7 @@ router.post("/queue", async (req, res): Promise<void> => {
   res.status(201).json(formatEntry(entry));
 });
 
-router.delete("/queue/:id", async (req, res): Promise<void> => {
+router.delete("/queue/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = RemoveFromQueueParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -244,7 +241,7 @@ router.delete("/queue/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.post("/queue/:id/start", async (req, res): Promise<void> => {
+router.post("/queue/:id/start", requireActiveAuth, async (req, res): Promise<void> => {
   const params = StartQueueEntryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

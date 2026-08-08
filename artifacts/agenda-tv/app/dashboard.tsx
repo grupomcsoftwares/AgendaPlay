@@ -373,6 +373,8 @@ export default function DashboardScreen() {
             injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = false;"}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
+             sharedCookiesEnabled
+             thirdPartyCookiesEnabled={false}
             javaScriptEnabled
             domStorageEnabled
             onLoadEnd={() => {

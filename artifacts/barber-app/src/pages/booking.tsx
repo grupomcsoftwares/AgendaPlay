@@ -315,6 +315,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       { data: {
         ...(shopId ? { shopId } : {}),
         clientName: `${formData.name.trim()} ${formData.lastName.trim()}`.trim(),
+         serviceIds: selectedServices.map((service) => service.id),
         serviceName: combinedName,
         servicePrice: comboTotalPrice,
         serviceDuration: totalDuration,

@@ -3,6 +3,14 @@ import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { accountCanAccess } from "../routes/accountStatus.js";
 
+export async function requireActiveAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (!req.session?.userId) {
+    res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+  await requireActiveAccount(req, res, next);
+}
+
 export async function requireActiveAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
   const userId = req.session?.userId;
   if (!userId) {
@@ -30,16 +38,4 @@ export async function requireActiveAccount(req: Request, res: Response, next: Ne
     return;
   }
   next();
-}
-
-export async function requireActiveAccountIfAuthenticated(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  if (!req.session?.userId) {
-    next();
-    return;
-  }
-  await requireActiveAccount(req, res, next);
 }

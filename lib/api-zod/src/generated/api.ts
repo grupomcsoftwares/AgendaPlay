@@ -269,6 +269,7 @@ export const CreateAppointmentBody = zod.object({
   "clientId": zod.number().optional(),
   "clientName": zod.string(),
   "serviceId": zod.number().optional(),
+  "serviceIds": zod.array(zod.number()).optional().describe('Selected service IDs; required for public bookings'),
   "serviceName": zod.string(),
   "barberId": zod.number().optional(),
   "barberName": zod.string().optional(),

@@ -5,6 +5,10 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
+import {
+  getAuthorizedStripePrice,
+  isAuthorizedStripeCatalogEntry,
+} from "../stripeCatalog.js";
 
 const router: IRouter = Router();
 
@@ -25,6 +29,8 @@ const userCols = {
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
+
+const PUBLIC_APP_BASE = "https://agendaplay.net";
 
 function requireAuth(req: Request, res: Response, next: () => void): void {
   if (!req.session?.userId) {
@@ -50,16 +56,14 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
     }
 
     const stripe = await getUncachableStripeClient();
-    const requestOrigin = req.get("origin");
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-    const baseUrl = requestOrigin?.startsWith("http")
-      ? requestOrigin
-      : domain
-        ? `https://${domain}`
-        : `${req.protocol}://${req.get("host")}`;
+    const authorizedPrice = await getAuthorizedStripePrice(stripe, priceId);
+    if (!authorizedPrice) {
+      res.status(400).json({ error: "Plano de assinatura inválido ou indisponível." });
+      return;
+    }
     const checkoutUrls = {
-      success_url: `${baseUrl}/subscribe?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/subscribe?canceled=1`,
+      success_url: `${PUBLIC_APP_BASE}/subscribe?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${PUBLIC_APP_BASE}/subscribe?canceled=1`,
     };
 
     const createCustomer = async (): Promise<string> => {
@@ -77,7 +81,7 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
         client_reference_id: userId,
         metadata: { userId },
         payment_method_types: ["card"],
-        line_items: [{ price: priceId, quantity: 1 }],
+         line_items: [{ price: authorizedPrice.id, quantity: 1 }],
         mode: "subscription",
         ...checkoutUrls,
       });
@@ -121,11 +125,12 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
     const products = await stripe.products.list({ active: true, limit: 100 });
     const prices = await stripe.prices.list({ active: true, limit: 100, type: "recurring" });
 
-    // Build price lookup by product
+    // Build price lookup by product, keeping only the official AgendaPlay plans.
     const priceMap = new Map<string, Stripe.Price>();
     for (const pr of prices.data) {
       const productId = typeof pr.product === "string" ? pr.product : (pr.product as any)?.id;
-      if (productId && !priceMap.has(productId)) {
+      const product = productId ? products.data.find((item) => item.id === productId) : null;
+      if (product && isAuthorizedStripeCatalogEntry(product, pr) && !priceMap.has(productId!)) {
         priceMap.set(productId, pr);
       }
     }
@@ -188,7 +193,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
   });
 });
 
-router.post("/stripe/sync-subscription", async (req: Request, res: Response): Promise<void> => {
+router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const stripe = await getUncachableStripeClient();
     const { sessionId } = (req.body ?? {}) as { sessionId?: string };
@@ -223,29 +228,16 @@ router.post("/stripe/sync-subscription", async (req: Request, res: Response): Pr
       }
     }
 
-    const authenticatedUserId = req.session.userId ?? null;
-    if (
-      authenticatedUserId &&
-      checkoutUserId &&
-      authenticatedUserId !== checkoutUserId
-    ) {
+    const authenticatedUserId = req.session.userId!;
+    if (checkoutUserId && authenticatedUserId !== checkoutUserId) {
       res.status(403).json({ error: "Sessão de pagamento inválida." });
       return;
     }
 
-    // If the redirect lost the browser cookie, recover the account from the
-    // Stripe customer attached to the completed checkout session.
-    const targetUserId = authenticatedUserId ?? checkoutUserId;
-    let user = targetUserId
-      ? (await db.select(userCols).from(usersTable).where(eq(usersTable.id, targetUserId)))[0]
-      : undefined;
-
-    if (!user && customerId) {
-      user = (await db.select(userCols).from(usersTable).where(eq(usersTable.stripeCustomerId, customerId)))[0];
-    }
+    const user = (await db.select(userCols).from(usersTable).where(eq(usersTable.id, authenticatedUserId)))[0];
 
     if (!user || !user.stripeCustomerId) {
-      res.status(401).json({ error: "Não foi possível restaurar a conta do pagamento." });
+      res.status(401).json({ error: "Não foi possível validar a conta do pagamento." });
       return;
     }
 
@@ -254,21 +246,12 @@ router.post("/stripe/sync-subscription", async (req: Request, res: Response): Pr
       return;
     }
 
-    // Restore the app session so the following /auth/me request sees the
-    // subscription immediately after returning from Stripe.
-    if (!req.session.userId) {
-      req.session.userId = user.id;
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((error) => (error ? reject(error) : resolve()));
-      });
-    }
-
     // The webhook and Stripe's customer index can lag the browser redirect.
     // Fall back to the newest active/trialing subscription when the session
     // is not available yet.
     if (!subscription) {
       const subscriptions = await stripe.subscriptions.list({
-        customer: customerId ?? user.stripeCustomerId,
+        customer: user.stripeCustomerId,
         status: "all",
         limit: 20,
       });
@@ -281,6 +264,13 @@ router.post("/stripe/sync-subscription", async (req: Request, res: Response): Pr
       const sub = subscription;
       const priceItem = sub.items?.data?.[0];
       const stripePriceId = priceItem?.price?.id ?? null;
+      const authorizedPrice = stripePriceId
+        ? await getAuthorizedStripePrice(stripe, stripePriceId)
+        : null;
+      if (!authorizedPrice) {
+        res.json({ hasSubscription: false });
+        return;
+      }
       const productId = typeof priceItem?.price?.product === "string" ? priceItem.price.product : null;
 
       let maxBarbers: number | null = null;
@@ -337,17 +327,9 @@ router.post("/stripe/customer-portal", requireAuth, async (req: Request, res: Re
     }
 
     const stripe = await getUncachableStripeClient();
-    const requestOrigin = req.get("origin");
-    const domain = process.env.REPLIT_DOMAINS?.split(",")[0];
-    const baseUrl = requestOrigin?.startsWith("http")
-      ? requestOrigin
-      : domain
-        ? `https://${domain}`
-        : `${req.protocol}://${req.get("host")}`;
-
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${baseUrl}/settings`,
+      return_url: `${PUBLIC_APP_BASE}/settings`,
     });
 
     res.json({ url: session.url });

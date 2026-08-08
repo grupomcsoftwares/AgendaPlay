@@ -3,6 +3,7 @@ import { db } from '@workspace/db';
 import { usersTable } from '@workspace/db';
 import { eq } from 'drizzle-orm';
 import { logger } from './lib/logger.js';
+import { getAuthorizedStripePrice } from './stripeCatalog.js';
 
 type StripeSubscriptionEvent = {
   type: string;
@@ -83,6 +84,13 @@ export class WebhookHandlers {
 
         const priceItem = sub.items?.data?.[0];
         const stripePriceId = priceItem?.price?.id ?? null;
+        const authorizedPrice = stripePriceId
+          ? await getAuthorizedStripePrice(stripe, stripePriceId)
+          : null;
+        if (!authorizedPrice) {
+          logger.warn({ customerId, subscriptionId, stripePriceId }, 'Ignored webhook for unauthorized Stripe price');
+          return;
+        }
         const productId = typeof priceItem?.price?.product === 'string'
           ? priceItem.price.product
           : (priceItem?.price?.product as { id?: string } | undefined)?.id ?? null;
@@ -113,6 +121,14 @@ export class WebhookHandlers {
         const priceItem = obj?.items?.data?.[0];
         const stripePriceId = priceItem?.price?.id ?? null;
         const productId = priceItem?.price?.product ?? null;
+        const stripe = await getUncachableStripeClient();
+        const authorizedPrice = stripePriceId
+          ? await getAuthorizedStripePrice(stripe, stripePriceId)
+          : null;
+        if (!authorizedPrice) {
+          logger.warn({ customerId, subscriptionId, stripePriceId }, 'Ignored webhook for unauthorized Stripe price');
+          return;
+        }
         const maxBarbers = productId ? await getMaxBarbersForProduct(productId) : null;
         const periodEnd = obj?.current_period_end
           ? new Date(obj.current_period_end * 1000)

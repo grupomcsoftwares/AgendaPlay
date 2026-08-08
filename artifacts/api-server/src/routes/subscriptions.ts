@@ -1,9 +1,11 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and, gte, sql } from "drizzle-orm";
-import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable, clientsTable } from "@workspace/db";
-import { requireAuth } from "../middleware/auth.js";
+import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable, clientsTable, usersTable } from "@workspace/db";
+import { requireActiveAuth } from "../middleware/accountActive.js";
+import { accountCanAccess } from "./accountStatus.js";
 
 const router: IRouter = Router();
+const TZ = "America/Sao_Paulo";
 
 function resolveShop(req: Request): string | null {
   if (req.session?.userId) return req.session.userId;
@@ -20,6 +22,29 @@ function parseId(params: unknown): number | null {
 
 function normalizePhone(raw: string): string {
   return raw.replace(/\D/g, "");
+}
+
+function saoPauloBoundary(year: number, month: number, day: number): Date {
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(candidate);
+  const localWallTime = Date.UTC(
+    Number(parts.find((part) => part.type === "year")?.value),
+    Number(parts.find((part) => part.type === "month")?.value) - 1,
+    Number(parts.find((part) => part.type === "day")?.value),
+    Number(parts.find((part) => part.type === "hour")?.value),
+    Number(parts.find((part) => part.type === "minute")?.value),
+    Number(parts.find((part) => part.type === "second")?.value),
+  );
+  return new Date(candidate.getTime() - (localWallTime - candidate.getTime()));
 }
 
 function formatPlan(p: typeof subscriptionPlansTable.$inferSelect) {
@@ -65,7 +90,7 @@ router.get("/subscription-plans", async (req, res): Promise<void> => {
   res.json(rows.map(formatPlan));
 });
 
-router.post("/subscription-plans", requireAuth, async (req, res): Promise<void> => {
+router.post("/subscription-plans", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const body = req.body as Record<string, unknown>;
   const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -91,7 +116,7 @@ router.post("/subscription-plans", requireAuth, async (req, res): Promise<void> 
   res.status(201).json(formatPlan(created));
 });
 
-router.patch("/subscription-plans/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/subscription-plans/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });
@@ -129,7 +154,7 @@ router.patch("/subscription-plans/:id", requireAuth, async (req, res): Promise<v
   res.json(formatPlan(updated));
 });
 
-router.delete("/subscription-plans/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/subscription-plans/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });
@@ -149,7 +174,7 @@ router.delete("/subscription-plans/:id", requireAuth, async (req, res): Promise<
 
 // ── Client Subscriptions ──────────────────────────────────────────────────
 
-router.get("/subscriptions", requireAuth, async (req, res): Promise<void> => {
+router.get("/subscriptions", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   await autoExpireSubscriptions(userId);
   const rows = await db
@@ -165,6 +190,28 @@ router.post("/subscriptions", async (req, res): Promise<void> => {
   const shopId = req.session?.userId ?? (typeof body.shopId === "string" ? body.shopId.trim() : "");
   if (!shopId) {
     res.status(400).json({ error: "shopId obrigatório" });
+    return;
+  }
+  const [account] = await db
+    .select({
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, shopId))
+    .limit(1);
+  if (!account) {
+    res.status(404).json({ error: "Barbearia não encontrada" });
+    return;
+  }
+  if (!accountCanAccess(account)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "As assinaturas desta barbearia estão temporariamente indisponíveis.",
+    });
     return;
   }
   const planId = typeof body.planId === "number" ? body.planId : parseInt(String(body.planId ?? ""), 10);
@@ -196,19 +243,35 @@ router.post("/subscriptions", async (req, res): Promise<void> => {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const [created] = await db.insert(clientSubscriptionsTable).values({
-    userId: shopId,
-    planId,
-    clientName,
-    clientPhone,
-    clientEmail,
-    startDate: today,
-    status: "pending",
-  }).returning();
+  const created = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${shopId}:${planId}:${clientPhone}`}))`);
+    const [pending] = await tx
+      .select()
+      .from(clientSubscriptionsTable)
+      .where(and(
+        eq(clientSubscriptionsTable.userId, shopId),
+        eq(clientSubscriptionsTable.planId, planId),
+        eq(clientSubscriptionsTable.clientPhone, clientPhone),
+        eq(clientSubscriptionsTable.status, "pending"),
+      ))
+      .orderBy(clientSubscriptionsTable.createdAt)
+      .limit(1);
+    if (pending) return pending;
+    const [inserted] = await tx.insert(clientSubscriptionsTable).values({
+      userId: shopId,
+      planId,
+      clientName,
+      clientPhone,
+      clientEmail,
+      startDate: today,
+      status: "pending",
+    }).returning();
+    return inserted;
+  });
   res.status(201).json(formatSubscription(created));
 });
 
-router.patch("/subscriptions/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/subscriptions/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });
@@ -253,7 +316,7 @@ router.patch("/subscriptions/:id", requireAuth, async (req, res): Promise<void> 
 });
 
 // Manual renewal of an expired subscription — resets credits and adds 30 days
-router.post("/subscriptions/:id/renew", requireAuth, async (req, res): Promise<void> => {
+router.post("/subscriptions/:id/renew", requireActiveAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params);
   if (!id) {
     res.status(400).json({ error: "id inválido" });
@@ -366,34 +429,57 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
     .limit(1);
   if (!sub) { res.json({ active: false, creditsRemaining: 0, creditsTotal: 0, expiresAt: null }); return; }
 
-  const totalUsed = await db
-    .select({ sum: sql<number>`COALESCE(SUM(${appointmentsTable.creditsUsed}), 0)` })
+  const usedAppointments = await db
+    .select({
+      creditsUsed: appointmentsTable.creditsUsed,
+      clientPhone: clientsTable.phone,
+      notes: appointmentsTable.notes,
+    })
     .from(appointmentsTable)
+    .leftJoin(
+      clientsTable,
+      and(
+        eq(clientsTable.id, appointmentsTable.clientId),
+        eq(clientsTable.userId, shopId),
+      ),
+    )
     .where(and(
       eq(appointmentsTable.userId, shopId),
-      eq(appointmentsTable.clientName, sub.clientName),
       eq(appointmentsTable.coveredByPlan, true),
       gte(appointmentsTable.createdAt, sub.createdAt),
     ));
+  const totalUsed = usedAppointments.reduce((sum, appointment) => {
+    const phoneFromNotes = appointment.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
+    const appointmentPhone = normalizePhone(appointment.clientPhone || phoneFromNotes);
+    return appointmentPhone === phone ? sum + (appointment.creditsUsed ?? 0) : sum;
+  }, 0);
   res.json({
     active: true,
     creditsRemaining: sub.creditsRemaining ?? 0,
     creditsTotal: sub.creditsTotal ?? 0,
     expiresAt: sub.expiresAt?.toISOString() ?? null,
-    creditsUsedThisPeriod: totalUsed[0]?.sum ?? 0,
+    creditsUsedThisPeriod: totalUsed,
   });
 });
 
 // Returns all subscribers (active + expired) with their monthly cut count
-router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promise<void> => {
+router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
 
   // Auto-expire any subscriptions whose period has ended
   await autoExpireSubscriptions(userId);
 
-  // First day of current calendar month (UTC)
+  // First day of the current calendar month in the application's timezone.
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const nowParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const currentYear = Number(nowParts.find((part) => part.type === "year")?.value);
+  const currentMonth = Number(nowParts.find((part) => part.type === "month")?.value);
+  const monthStart = saoPauloBoundary(currentYear, currentMonth, 1);
+  const monthEnd = saoPauloBoundary(currentYear, currentMonth + 1, 1);
 
   // All active + expired subscriptions joined with plan info
   const subs = await db
@@ -422,14 +508,15 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
     return;
   }
 
-  // Count this-month coveredByPlan appointments per client phone (via clients table)
+  // Count this-month coveredByPlan appointments by phone. Older appointments
+  // may not have clientId linked, so fall back to the phone stored in notes.
   const monthlyUsage = await db
     .select({
       clientPhone: clientsTable.phone,
-      count: sql<number>`COUNT(${appointmentsTable.id})`,
+      notes: appointmentsTable.notes,
     })
     .from(appointmentsTable)
-    .innerJoin(
+    .leftJoin(
       clientsTable,
       and(
         eq(clientsTable.id, appointmentsTable.clientId),
@@ -441,10 +528,16 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
       eq(appointmentsTable.coveredByPlan, true),
       sql`${appointmentsTable.status} != 'cancelled'`,
       gte(appointmentsTable.scheduledAt, monthStart),
+      lt(appointmentsTable.scheduledAt, monthEnd),
     ))
-    .groupBy(clientsTable.phone);
+    ;
 
-  const usageByPhone = new Map(monthlyUsage.map(r => [r.clientPhone, Number(r.count)]));
+  const usageByPhone = new Map<string, number>();
+  for (const row of monthlyUsage) {
+    const phoneFromNotes = row.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
+    const phone = normalizePhone(row.clientPhone || phoneFromNotes);
+    if (phone) usageByPhone.set(phone, (usageByPhone.get(phone) ?? 0) + 1);
+  }
 
   res.json(subs.map(s => ({
     id: s.id,
@@ -457,7 +550,7 @@ router.get("/subscriptions/monthly-usage", requireAuth, async (req, res): Promis
     planId: s.planId,
     planName: s.planName ?? null,
     maxAppointmentsPerMonth: s.maxAppointmentsPerMonth ?? null,
-    cutsUsedThisMonth: usageByPhone.get(s.clientPhone) ?? 0,
+    cutsUsedThisMonth: usageByPhone.get(normalizePhone(s.clientPhone)) ?? 0,
   })));
 });
 

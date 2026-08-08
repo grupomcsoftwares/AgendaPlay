@@ -2,7 +2,34 @@ const { app, BrowserWindow, shell } = require("electron");
 const path = require("path");
 
 const isDev = process.env.NODE_ENV === "development";
-const APP_URL = isDev ? "http://localhost:80" : "https://agendaplay.net";
+const APP_URL = isDev
+  ? `http://localhost:${process.env.PORT || "80"}`
+  : "https://agendaplay.net";
+const appOrigin = new URL(APP_URL);
+
+function isAllowedInternalUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== appOrigin.protocol) return false;
+    if (url.hostname !== appOrigin.hostname) return false;
+    const port = url.port || (url.protocol === "https:" ? "443" : "80");
+    const expectedPort = appOrigin.port || (appOrigin.protocol === "https:" ? "443" : "80");
+    return port === expectedPort && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}
+
+function openExternalIfSafe(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol === "https:") {
+      shell.openExternal(url.toString());
+    }
+  } catch {
+    // Ignore malformed or non-web navigation targets.
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -30,14 +57,14 @@ function createWindow() {
 
   // Abre links externos no navegador padrão
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (!isAllowedInternalUrl(url)) openExternalIfSafe(url);
     return { action: "deny" };
   });
 
   win.webContents.on("will-navigate", (e, url) => {
-    if (!url.startsWith(APP_URL)) {
+    if (!isAllowedInternalUrl(url)) {
       e.preventDefault();
-      shell.openExternal(url);
+      openExternalIfSafe(url);
     }
   });
 }

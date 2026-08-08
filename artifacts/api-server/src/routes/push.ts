@@ -12,8 +12,7 @@ import {
   nativePushSubscriptionsTable,
 } from "@workspace/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { requireAuth } from "../middleware/auth.js";
-import { requireActiveAccount } from "../middleware/accountActive.js";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router = Router();
 
@@ -29,7 +28,7 @@ router.get("/push/vapid-public-key", (_req, res) => {
   res.json({ key: process.env.VAPID_PUBLIC_KEY ?? "" });
 });
 
-router.post("/push/native/subscribe", requireAuth, requireActiveAccount, async (req, res) => {
+router.post("/push/native/subscribe", requireActiveAuth, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";
@@ -53,7 +52,7 @@ router.post("/push/native/subscribe", requireAuth, requireActiveAccount, async (
   res.json({ ok: true });
 });
 
-router.post("/push/native/status", requireAuth, requireActiveAccount, async (req, res) => {
+router.post("/push/native/status", requireActiveAuth, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";
@@ -75,7 +74,7 @@ router.post("/push/native/status", requireAuth, requireActiveAccount, async (req
   res.json({ ok: true, enabled: subscriptions.length > 0 });
 });
 
-router.delete("/push/native/subscribe", requireAuth, requireActiveAccount, async (req, res) => {
+router.delete("/push/native/subscribe", requireActiveAuth, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";
@@ -195,8 +194,10 @@ router.post("/push/trigger-reminders", async (req, res) => {
   const shopIdForAutoStart = typeof req.body?.shopId === "string" ? req.body.shopId.trim() : null;
   if (shopIdForAutoStart) {
     try {
-      const { autoAdvanceAppointmentsByTime } = await import("./appointments.js");
-      await autoAdvanceAppointmentsByTime(shopIdForAutoStart);
+      const { autoAdvanceAppointmentsByTime, canShopAutoAdvance } = await import("./appointments.js");
+      if (await canShopAutoAdvance(shopIdForAutoStart)) {
+        await autoAdvanceAppointmentsByTime(shopIdForAutoStart);
+      }
     } catch { /* non-critical */ }
   }
 
@@ -293,9 +294,8 @@ router.post("/push/trigger-reminders", async (req, res) => {
 
 // ── Admin push subscriptions ─────────────────────────────────────────
 
-router.post("/push/admin/subscribe", async (req, res) => {
-  const userId = req.session?.userId;
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.post("/push/admin/subscribe", requireActiveAuth, async (req, res) => {
+  const userId = req.session.userId!;
   const { endpoint, p256dh, auth } = req.body ?? {};
   if (
     typeof endpoint !== "string" || !endpoint.startsWith("https://") ||
@@ -315,12 +315,14 @@ router.post("/push/admin/subscribe", async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/push/admin/unsubscribe", async (req, res) => {
-  const userId = req.session?.userId;
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+router.delete("/push/admin/unsubscribe", requireActiveAuth, async (req, res) => {
+  const userId = req.session.userId!;
   const endpoint = typeof req.body?.endpoint === "string" ? req.body.endpoint : null;
   if (endpoint) {
-    await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.endpoint, endpoint));
+    await db.delete(adminPushSubscriptionsTable).where(and(
+      eq(adminPushSubscriptionsTable.endpoint, endpoint),
+      eq(adminPushSubscriptionsTable.userId, userId),
+    ));
   } else {
     await db.delete(adminPushSubscriptionsTable).where(eq(adminPushSubscriptionsTable.userId, userId));
   }

@@ -1,9 +1,8 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq, and, gte, gt, lt, sql, inArray } from "drizzle-orm";
-import { requireAuth } from "../middleware/auth.js";
-import { db, appointmentsTable, queueTable, servicesTable, settingsTable, barbersTable, usersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
+import { requireActiveAuth } from "../middleware/accountActive.js";
+import { db, appointmentsTable, queueTable, servicesTable, serviceDayPricingTable, comboDiscountsTable, settingsTable, barbersTable, usersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
-import { resolveServicePrice } from "./services.js";
 import { sendAdminPush } from "./push.js";
 import { broadcastQueueUpdate } from "./queue.js";
 import { accountCanAccess } from "./accountStatus.js";
@@ -50,6 +49,42 @@ function parseHHMM(s: string): number {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+function isValidCalendarDateString(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().startsWith(value);
+}
+
+function isValidScheduledAtString(value: string): boolean {
+  const match = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.exec(value);
+  return Boolean(match && isValidCalendarDateString(match[1]!));
+}
+
+function saoPauloBoundary(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  const candidate = new Date(Date.UTC(year!, month! - 1, day!));
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(candidate);
+  const localWallTime = Date.UTC(
+    Number(parts.find((part) => part.type === "year")?.value),
+    Number(parts.find((part) => part.type === "month")?.value) - 1,
+    Number(parts.find((part) => part.type === "day")?.value),
+    Number(parts.find((part) => part.type === "hour")?.value),
+    Number(parts.find((part) => part.type === "minute")?.value),
+    Number(parts.find((part) => part.type === "second")?.value),
+  );
+  return new Date(candidate.getTime() - (localWallTime - candidate.getTime()));
+}
+
 async function getEffectiveDaySchedule(
   shopId: string,
   date: Date,
@@ -74,6 +109,146 @@ async function getEffectiveDaySchedule(
   const shopWeekly = (settings?.weeklySchedule ?? null) as WeeklySchedule | null;
   const weekly = barberWeekly ?? shopWeekly;
   return weekly?.[localDayKey(date)] ?? DEFAULT_DAY_SCHEDULE;
+}
+
+async function getBookingWindowError(
+  shopId: string,
+  date: Date,
+  duration: number,
+  barberId: number | null | undefined,
+): Promise<string | null> {
+  if (date.getTime() <= Date.now()) return "O horário deve estar no futuro.";
+  const [settings] = await db
+    .select({ maxBookingDays: settingsTable.maxBookingDays })
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, shopId))
+    .limit(1);
+  const maxBookingDays = settings?.maxBookingDays ?? 30;
+  const todayDate = new Date(`${localYMD(new Date())}T12:00:00Z`);
+  const requestedDate = new Date(`${localYMD(date)}T12:00:00Z`);
+  const daysDiff = Math.round((requestedDate.getTime() - todayDate.getTime()) / (24 * 3600 * 1000));
+  if (daysDiff < 0 || daysDiff >= maxBookingDays) {
+    return "A data está fora da janela de agendamento.";
+  }
+
+  const day = await getEffectiveDaySchedule(shopId, date, barberId);
+  if (day.closed) return "A barbearia não funciona neste dia.";
+  const startMin = parseHHMM(localHHMM(date));
+  const endMin = startMin + duration;
+  const openMin = parseHHMM(day.open);
+  const closeMin = parseHHMM(day.close);
+  const lunchStart = parseHHMM(day.lunchStart);
+  const lunchEnd = parseHHMM(day.lunchEnd);
+  if (startMin < openMin || endMin > closeMin) {
+    return "O horário está fora do expediente da barbearia.";
+  }
+  if (lunchEnd > lunchStart && startMin < lunchEnd && endMin > lunchStart) {
+    return "O horário escolhido coincide com o intervalo da barbearia.";
+  }
+  return null;
+}
+
+async function resolveAuthoritativeBooking(
+  shopId: string,
+  data: {
+    serviceId?: number;
+    serviceIds?: number[];
+    serviceName: string;
+    servicePrice: number;
+    serviceDuration: number;
+  },
+  date: Date,
+  isPublicBooking: boolean,
+): Promise<{
+  serviceId: number | null;
+  serviceName: string;
+  serviceDuration: number;
+  servicePrice: number;
+  serviceIds: number[];
+} | { error: string }> {
+  const requestedIds = Array.from(new Set(
+    (data.serviceIds?.length ? data.serviceIds : data.serviceId ? [data.serviceId] : [])
+      .filter((id): id is number => Number.isInteger(id) && id > 0),
+  ));
+  if (requestedIds.length === 0) {
+    return { error: isPublicBooking ? "Selecione ao menos um serviço cadastrado." : "serviceId é obrigatório." };
+  }
+  if (isPublicBooking && !data.serviceIds?.length) {
+    return { error: "Os serviços selecionados são obrigatórios." };
+  }
+  if (data.serviceId != null && requestedIds.length === 1 && data.serviceId !== requestedIds[0]) {
+    return { error: "Serviço inválido." };
+  }
+
+  const services = await db
+    .select()
+    .from(servicesTable)
+    .where(and(eq(servicesTable.userId, shopId), inArray(servicesTable.id, requestedIds)));
+  const byId = new Map(services.map((service) => [service.id, service]));
+  if (services.length !== requestedIds.length) {
+    return { error: "Um dos serviços selecionados não está disponível." };
+  }
+  const ordered = requestedIds.map((id) => byId.get(id)!);
+  const dayOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+    .indexOf(localDayKey(date));
+  const dayPrices = await db
+    .select()
+    .from(serviceDayPricingTable)
+    .where(inArray(serviceDayPricingTable.serviceId, requestedIds));
+  const dayPriceByService = new Map(
+    dayPrices
+      .filter((price) => price.dayOfWeek === dayOfWeek)
+      .map((price) => [price.serviceId, parseFloat(price.price)]),
+  );
+  const basePrices = new Map(ordered.map((service) => [
+    service.id,
+    dayPriceByService.get(service.id) ?? parseFloat(service.price),
+  ]));
+  const totalBasePrice = ordered.reduce((sum, service) => sum + (basePrices.get(service.id) ?? 0), 0);
+  const totalBaseDuration = ordered.reduce((sum, service) => sum + service.durationMinutes, 0);
+  let price = totalBasePrice;
+  let duration = totalBaseDuration;
+  const [settings] = await db
+    .select({ combosEnabled: settingsTable.combosEnabled })
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, shopId))
+    .limit(1);
+  if (settings?.combosEnabled !== false && requestedIds.length > 1) {
+    const combos = await db
+      .select()
+      .from(comboDiscountsTable)
+      .where(eq(comboDiscountsTable.userId, shopId));
+    const applicable = combos
+      .filter((combo) =>
+        combo.enabled &&
+        combo.serviceIds.length >= 2 &&
+        combo.serviceIds.every((id) => requestedIds.includes(id)),
+      )
+      .sort((a, b) => {
+        const aValue = a.discountType === "value"
+          ? parseFloat(a.discountPercent)
+          : (a.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0) * parseFloat(a.discountPercent)) / 100;
+        const bValue = b.discountType === "value"
+          ? parseFloat(b.discountPercent)
+          : (b.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0) * parseFloat(b.discountPercent)) / 100;
+        return bValue - aValue;
+      })[0];
+    if (applicable) {
+      const comboPrice = applicable.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0);
+      const discount = applicable.discountType === "value"
+        ? parseFloat(applicable.discountPercent)
+        : (comboPrice * parseFloat(applicable.discountPercent)) / 100;
+      price = Math.max(0, totalBasePrice - discount);
+      duration = Math.max(5, totalBaseDuration - applicable.timeDiscountMinutes);
+    }
+  }
+  return {
+    serviceId: requestedIds.length === 1 ? requestedIds[0]! : null,
+    serviceIds: requestedIds,
+    serviceName: ordered.map((service) => service.name).join(" + "),
+    serviceDuration: duration,
+    servicePrice: price,
+  };
 }
 
 function resolveShop(req: Request): string | null {
@@ -222,6 +397,21 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
   if (queueChanged) broadcastQueueUpdate(userId);
 }
 
+export async function canShopAutoAdvance(userId: string): Promise<boolean> {
+  const [account] = await db
+    .select({
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  return Boolean(account && accountCanAccess(account));
+}
+
 let appointmentSchedulerRunning = false;
 
 /**
@@ -254,7 +444,7 @@ export function startAppointmentScheduler(): void {
   }, 30_000);
 }
 
-router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
+router.get("/appointments", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   // Auto-advance stale appointments before returning the list so the admin
   // panel always sees accurate statuses without needing the queue to be open.
@@ -262,9 +452,17 @@ router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
   const query = ListAppointmentsQueryParams.safeParse(req.query);
   let appointments;
   if (query.success && query.data.dateStart && query.data.dateEnd) {
-    const rangeStart = new Date(query.data.dateStart);
-    const rangeEnd = new Date(query.data.dateEnd);
-    rangeEnd.setDate(rangeEnd.getDate() + 1);
+    if (
+      !isValidCalendarDateString(query.data.dateStart) ||
+      !isValidCalendarDateString(query.data.dateEnd)
+    ) {
+      res.status(400).json({ error: "Período inválido." });
+      return;
+    }
+    const rangeStart = saoPauloBoundary(query.data.dateStart);
+    const endDate = new Date(`${query.data.dateEnd}T12:00:00Z`);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    const rangeEnd = saoPauloBoundary(endDate.toISOString().slice(0, 10));
     appointments = await db
       .select()
       .from(appointmentsTable)
@@ -275,9 +473,14 @@ router.get("/appointments", requireAuth, async (req, res): Promise<void> => {
       ))
       .orderBy(appointmentsTable.scheduledAt);
   } else if (query.success && query.data.date) {
-    const date = new Date(query.data.date);
-    const nextDay = new Date(date);
-    nextDay.setDate(nextDay.getDate() + 1);
+    if (!isValidCalendarDateString(query.data.date)) {
+      res.status(400).json({ error: "Data inválida." });
+      return;
+    }
+    const date = saoPauloBoundary(query.data.date);
+    const nextDayValue = new Date(`${query.data.date}T12:00:00Z`);
+    nextDayValue.setUTCDate(nextDayValue.getUTCDate() + 1);
+    const nextDay = saoPauloBoundary(nextDayValue.toISOString().slice(0, 10));
     appointments = await db
       .select()
       .from(appointmentsTable)
@@ -312,8 +515,8 @@ router.get("/availability", async (req, res): Promise<void> => {
     return;
   }
   const { date, serviceId, serviceDuration: serviceDurationParam, barberId } = parsed.data;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
-    res.status(400).json({ error: "Invalid date format (expected YYYY-MM-DD)" });
+  if (!isValidCalendarDateString(date)) {
+    res.status(400).json({ error: "Invalid date (expected a real YYYY-MM-DD date)" });
     return;
   }
 
@@ -460,27 +663,39 @@ router.post("/appointments", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Invalid scheduledAt" });
     return;
   }
-  const localDate = localYMD(scheduledAtDate);
-  const startMin = parseHHMM(localHHMM(scheduledAtDate));
-  const endMin = startMin + parsed.data.serviceDuration;
-
-  const scheduledDay = await getEffectiveDaySchedule(
+  const authoritative = await resolveAuthoritativeBooking(
     shopId,
+    parsed.data,
     scheduledAtDate,
-    typeof parsed.data.barberId === "number" ? parsed.data.barberId : null,
+    !isAdminBooking,
   );
-  if (scheduledDay.closed) {
-    res.status(400).json({ error: "A barbearia não funciona neste dia." });
+  if ("error" in authoritative) {
+    res.status(400).json({ error: authoritative.error });
     return;
   }
+  const localDate = localYMD(scheduledAtDate);
+  const startMin = parseHHMM(localHHMM(scheduledAtDate));
+  const bookingWindowError = await getBookingWindowError(
+    shopId,
+    scheduledAtDate,
+    authoritative.serviceDuration,
+    typeof parsed.data.barberId === "number" ? parsed.data.barberId : null,
+  );
+  if (bookingWindowError) {
+    res.status(400).json({ error: bookingWindowError });
+    return;
+  }
+  const endMin = startMin + authoritative.serviceDuration;
 
   if (typeof parsed.data.barberId === "number") {
-    const check = await isBarberAllowedForService(db, parsed.data.barberId, parsed.data.serviceId ?? null);
-    if (!check.ok) {
-      res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
-      return;
+    for (const serviceId of authoritative.serviceIds) {
+      const check = await isBarberAllowedForService(db, parsed.data.barberId, serviceId, shopId);
+      if (!check.ok) {
+        res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
+        return;
+      }
+      parsed.data.barberName = check.barberName;
     }
-    parsed.data.barberName = check.barberName;
   } else {
     parsed.data.barberName = undefined;
   }
@@ -540,17 +755,9 @@ router.post("/appointments", async (req, res): Promise<void> => {
     loyaltyDiscount = Math.floor(loyaltyPointsRedeemed / loyaltyConfig.pointsPerRedemptionUnit);
   }
 
-  // Resolve day-based pricing if applicable
-  let dayBasedPrice = parsed.data.servicePrice;
-  if (parsed.data.serviceId != null) {
-    const resolvedPrice = await resolveServicePrice(parsed.data.serviceId, shopId, scheduledAtDate);
-    if (resolvedPrice !== null) {
-      dayBasedPrice = resolvedPrice;
-    }
-  }
-
-  // Final price is server-authoritative. Client sends the pre-loyalty price.
-  const finalServicePrice = Math.max(0, dayBasedPrice - loyaltyDiscount);
+  // Final price is server-authoritative. Service and combo values come from
+  // the shop catalog; only the loyalty discount is applied afterward.
+  const finalServicePrice = Math.max(0, authoritative.servicePrice - loyaltyDiscount);
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Subscription credits validation ─────────────────────────────────────
@@ -650,10 +857,28 @@ router.post("/appointments", async (req, res): Promise<void> => {
       }
     }
 
+    const {
+      shopId: _shopId,
+      serviceIds: _serviceIds,
+      serviceId: _serviceId,
+      serviceName: _serviceName,
+      servicePrice: _servicePrice,
+      serviceDuration: _serviceDuration,
+      ...appointmentInput
+    } = parsed.data;
+    void _shopId;
+    void _serviceIds;
+    void _serviceId;
+    void _serviceName;
+    void _servicePrice;
+    void _serviceDuration;
     const [created] = await tx.insert(appointmentsTable).values({
-      ...parsed.data,
+      ...appointmentInput,
       userId: shopId,
+      serviceId: authoritative.serviceId,
+      serviceName: authoritative.serviceName,
       servicePrice: String(finalServicePrice),
+      serviceDuration: authoritative.serviceDuration,
       scheduledAt: scheduledAtDate,
       status: "pending",
       cancelToken: crypto.randomUUID(),
@@ -797,7 +1022,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
   res.status(201).json(formatAppointmentWithToken(appointment));
 });
 
-router.get("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
+router.get("/appointments/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = GetAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -815,7 +1040,7 @@ router.get("/appointments/:id", requireAuth, async (req, res): Promise<void> => 
   res.json(formatAppointment(appointment));
 });
 
-router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
+router.patch("/appointments/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = UpdateAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -827,11 +1052,15 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
     return;
   }
   const userId = req.session.userId!;
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.servicePrice !== undefined) {
-    updateData.servicePrice = String(parsed.data.servicePrice);
+  const updateData: Record<string, unknown> = {};
+  for (const field of ["clientName", "serviceId", "barberId", "barberName", "status", "notes"] as const) {
+    if (parsed.data[field] !== undefined) updateData[field] = parsed.data[field];
   }
   if (parsed.data.scheduledAt !== undefined) {
+    if (!isValidScheduledAtString(parsed.data.scheduledAt)) {
+      res.status(400).json({ error: "scheduledAt inválido. Use uma data ISO UTC válida." });
+      return;
+    }
     updateData.scheduledAt = new Date(parsed.data.scheduledAt);
     if (Number.isNaN((updateData.scheduledAt as Date).getTime())) {
       res.status(400).json({ error: "Invalid scheduledAt" });
@@ -849,18 +1078,143 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
     return;
   }
 
-  if (parsed.data.scheduledAt !== undefined || parsed.data.barberId !== undefined) {
+  const requestedServiceChanged =
+    parsed.data.serviceId !== undefined &&
+    parsed.data.serviceId !== existingAppointment.serviceId;
+  if (requestedServiceChanged) {
+    if (parsed.data.serviceId === null) {
+      res.status(400).json({ error: "Selecione um serviço cadastrado para alterar o serviço." });
+      return;
+    }
+    const authoritative = await resolveAuthoritativeBooking(
+      userId,
+      {
+        serviceId: parsed.data.serviceId,
+        serviceName: "",
+        servicePrice: 0,
+        serviceDuration: 0,
+      },
+      parsed.data.scheduledAt ? updateData.scheduledAt as Date : existingAppointment.scheduledAt,
+      false,
+    );
+    if ("error" in authoritative) {
+      res.status(400).json({ error: authoritative.error });
+      return;
+    }
+    updateData.serviceId = authoritative.serviceId;
+    updateData.serviceName = authoritative.serviceName;
+    updateData.servicePrice = String(authoritative.servicePrice);
+    updateData.serviceDuration = authoritative.serviceDuration;
+  } else if (existingAppointment.serviceId !== null &&
+             (parsed.data.scheduledAt !== undefined || parsed.data.barberId !== undefined)) {
+    const authoritative = await resolveAuthoritativeBooking(
+      userId,
+      {
+        serviceId: existingAppointment.serviceId,
+        serviceName: "",
+        servicePrice: 0,
+        serviceDuration: 0,
+      },
+      parsed.data.scheduledAt ? updateData.scheduledAt as Date : existingAppointment.scheduledAt,
+      false,
+    );
+    if ("error" in authoritative) {
+      res.status(400).json({ error: authoritative.error });
+      return;
+    }
+    updateData.serviceName = authoritative.serviceName;
+    updateData.servicePrice = String(authoritative.servicePrice);
+    updateData.serviceDuration = authoritative.serviceDuration;
+  }
+
+  if (
+    parsed.data.scheduledAt !== undefined ||
+    parsed.data.barberId !== undefined ||
+    requestedServiceChanged
+  ) {
     const targetDate = parsed.data.scheduledAt
       ? updateData.scheduledAt as Date
       : existingAppointment.scheduledAt;
     const targetBarberId = parsed.data.barberId !== undefined
       ? parsed.data.barberId
       : existingAppointment.barberId;
-    const targetDay = await getEffectiveDaySchedule(userId, targetDate, targetBarberId);
-    if (targetDay.closed) {
-      res.status(400).json({ error: "A barbearia não funciona neste dia." });
+    const windowError = await getBookingWindowError(
+      userId,
+      targetDate,
+      (typeof updateData.serviceDuration === "number"
+        ? updateData.serviceDuration
+        : existingAppointment.serviceDuration),
+      targetBarberId,
+    );
+    if (windowError) {
+      res.status(400).json({ error: windowError });
       return;
     }
+    if (typeof targetBarberId === "number") {
+      const barberCheck = await isBarberAllowedForService(
+        db,
+        targetBarberId,
+        typeof updateData.serviceId === "number"
+          ? updateData.serviceId
+          : existingAppointment.serviceId,
+        userId,
+      );
+      if (!barberCheck.ok) {
+        res.status(400).json({ error: `Profissional inválido: ${barberCheck.reason}` });
+        return;
+      }
+      updateData.barberName = barberCheck.barberName;
+    }
+
+    const targetDateKey = localYMD(targetDate);
+    const dayStart = new Date(`${targetDateKey}T00:00:00Z`);
+    const targetStart = parseHHMM(localHHMM(targetDate));
+    const targetEnd = targetStart + (typeof updateData.serviceDuration === "number"
+      ? updateData.serviceDuration
+      : existingAppointment.serviceDuration);
+    let hash = 0;
+    for (let i = 0; i < targetDateKey.length; i++) {
+      hash = ((hash << 5) - hash + targetDateKey.charCodeAt(i)) | 0;
+    }
+    const updateResult = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(742003, ${hash})`);
+      const sameDay = await tx
+        .select()
+        .from(appointmentsTable)
+        .where(and(
+          eq(appointmentsTable.userId, userId),
+          gte(appointmentsTable.scheduledAt, new Date(dayStart.getTime() - 24 * 3600 * 1000)),
+          lt(appointmentsTable.scheduledAt, new Date(dayStart.getTime() + 48 * 3600 * 1000)),
+        ));
+      for (const other of sameDay) {
+        if (other.id === existingAppointment.id || other.status === "cancelled") continue;
+        if (localYMD(other.scheduledAt) !== targetDateKey) continue;
+        if (targetBarberId !== null && targetBarberId !== undefined &&
+            other.barberId !== null && other.barberId !== targetBarberId) continue;
+        const otherStart = parseHHMM(localHHMM(other.scheduledAt));
+        const otherEnd = otherStart + other.serviceDuration;
+        if (targetStart < otherEnd && targetEnd > otherStart) {
+          return { error: "conflict" as const };
+        }
+      }
+
+      const [appointment] = await tx
+        .update(appointmentsTable)
+        .set(updateData)
+        .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+        .returning();
+      return appointment ? { appointment } : { error: "notfound" as const };
+    });
+    if (updateResult.error === "conflict") {
+      res.status(409).json({ error: "Esse horário já está ocupado." });
+      return;
+    }
+    if (updateResult.error === "notfound") {
+      res.status(404).json({ error: "Appointment not found" });
+      return;
+    }
+    res.json(formatAppointment(updateResult.appointment));
+    return;
   }
 
   const [appointment] = await db
@@ -875,7 +1229,7 @@ router.patch("/appointments/:id", requireAuth, async (req, res): Promise<void> =
   res.json(formatAppointment(appointment));
 });
 
-router.delete("/appointments/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/appointments/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = DeleteAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -897,7 +1251,7 @@ router.delete("/appointments/:id", requireAuth, async (req, res): Promise<void> 
   res.sendStatus(204);
 });
 
-router.post("/appointments/:id/start", requireAuth, async (req, res): Promise<void> => {
+router.post("/appointments/:id/start", requireActiveAuth, async (req, res): Promise<void> => {
   const params = StartAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -929,7 +1283,7 @@ router.post("/appointments/:id/start", requireAuth, async (req, res): Promise<vo
   res.json(formatAppointment(appointment));
 });
 
-router.post("/appointments/:id/complete", requireAuth, async (req, res): Promise<void> => {
+router.post("/appointments/:id/complete", requireActiveAuth, async (req, res): Promise<void> => {
   const params = CompleteAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -1050,8 +1404,43 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     res.status(400).json({ error: "Invalid scheduledAt" });
     return;
   }
-  if (newDate.getTime() <= Date.now()) {
-    res.status(400).json({ error: "O novo horário deve estar no futuro." });
+  const [appointmentForValidation] = await db
+    .select()
+    .from(appointmentsTable)
+    .where(eq(appointmentsTable.cancelToken, token))
+    .limit(1);
+  if (!appointmentForValidation) {
+    res.status(404).json({ error: "Agendamento não encontrado" });
+    return;
+  }
+  const [accountForValidation] = await db
+    .select({
+      trialStartedAt: usersTable.trialStartedAt,
+      stripeSubscriptionId: usersTable.stripeSubscriptionId,
+      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+      maxBarbers: usersTable.maxBarbers,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, appointmentForValidation.userId))
+    .limit(1);
+  if (!accountForValidation || !accountCanAccess(accountForValidation)) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "O agendamento não pode ser alterado porque a barbearia está inativa.",
+    });
+    return;
+  }
+  const validationBarberId =
+    typeof req.body?.barberId === "number" ? req.body.barberId : appointmentForValidation.barberId;
+  const bookingWindowError = await getBookingWindowError(
+    appointmentForValidation.userId,
+    newDate,
+    appointmentForValidation.serviceDuration,
+    validationBarberId,
+  );
+  if (bookingWindowError) {
+    res.status(400).json({ error: bookingWindowError });
     return;
   }
   const localDate = localYMD(newDate);
@@ -1059,15 +1448,17 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
 
   let overrideBarberName: string | undefined;
   if (typeof req.body?.barberId === "number") {
-    const [pre] = await db.select().from(appointmentsTable).where(eq(appointmentsTable.cancelToken, token));
-    if (pre) {
-      const check = await isBarberAllowedForService(db, req.body.barberId, pre.serviceId ?? null);
-      if (!check.ok) {
-        res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
-        return;
-      }
-      overrideBarberName = check.barberName;
+    const check = await isBarberAllowedForService(
+      db,
+      req.body.barberId,
+      appointmentForValidation.serviceId ?? null,
+      appointmentForValidation.userId,
+    );
+    if (!check.ok) {
+      res.status(400).json({ error: `Profissional inválido: ${check.reason}` });
+      return;
     }
+    overrideBarberName = check.barberName;
   }
 
   const result = await db.transaction(async (tx) => {
@@ -1162,7 +1553,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   res.json(formatAppointmentWithToken(result.appointment!));
 });
 
-router.post("/appointments/:id/cancel", requireAuth, async (req, res): Promise<void> => {
+router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Promise<void> => {
   const params = CancelAppointmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -1222,6 +1613,13 @@ router.post("/appointments/auto-start", async (req, res): Promise<void> => {
     : req.session?.userId ?? null;
   if (!shopId) {
     res.status(400).json({ error: "shopId required" });
+    return;
+  }
+  if (!(await canShopAutoAdvance(shopId))) {
+    res.status(403).json({
+      code: "SUBSCRIPTION_EXPIRED",
+      error: "A barbearia não está ativa.",
+    });
     return;
   }
   await autoAdvanceAppointmentsByTime(shopId);

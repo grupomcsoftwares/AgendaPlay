@@ -13,6 +13,7 @@ export interface AppointmentInput {
   clientId?: number;
   clientName: string;
   serviceId?: number;
+  serviceIds?: number[];
   serviceName: string;
   barberId?: number;
   barberName?: string;

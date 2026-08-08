@@ -249,7 +249,7 @@ export default function ViewerScreen() {
             onShouldStartLoadWithRequest={(request: { url: string }) => isAllowedAppUrl(request.url)}
             allowsBackForwardNavigationGestures
             sharedCookiesEnabled
-            thirdPartyCookiesEnabled
+            thirdPartyCookiesEnabled={false}
             javaScriptEnabled
             domStorageEnabled
             allowsInlineMediaPlayback

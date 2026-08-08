@@ -10,10 +10,11 @@ import {
   DeleteClientParams,
 } from "@workspace/api-zod";
 import { broadcastQueueUpdate } from "./queue.js";
+import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router: IRouter = Router();
 
-router.get("/clients", async (req, res): Promise<void> => {
+router.get("/clients", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
   const query = ListClientsQueryParams.safeParse(req.query);
   let clients;
@@ -34,7 +35,7 @@ router.get("/clients", async (req, res): Promise<void> => {
   })));
 });
 
-router.post("/clients", async (req, res): Promise<void> => {
+router.post("/clients", requireActiveAuth, async (req, res): Promise<void> => {
   const parsed = CreateClientBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -45,7 +46,7 @@ router.post("/clients", async (req, res): Promise<void> => {
   res.status(201).json({ ...client, createdAt: client.createdAt.toISOString() });
 });
 
-router.get("/clients/:id", async (req, res): Promise<void> => {
+router.get("/clients/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = GetClientParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -61,7 +62,7 @@ router.get("/clients/:id", async (req, res): Promise<void> => {
   res.json({ ...client, createdAt: client.createdAt.toISOString() });
 });
 
-router.patch("/clients/:id", async (req, res): Promise<void> => {
+router.patch("/clients/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = UpdateClientParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -118,7 +119,7 @@ router.patch("/clients/:id", async (req, res): Promise<void> => {
   res.json({ ...client, createdAt: client.createdAt.toISOString() });
 });
 
-router.delete("/clients/:id", async (req, res): Promise<void> => {
+router.delete("/clients/:id", requireActiveAuth, async (req, res): Promise<void> => {
   const params = DeleteClientParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
