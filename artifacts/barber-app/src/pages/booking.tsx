@@ -1041,7 +1041,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                         opacity: isBlocked ? 0.6 : 1,
                       }}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className={`flex items-start gap-3 ${!showServicePrices ? "items-center" : ""}`}>
                         <div
                           className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                           style={{
@@ -1059,7 +1059,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                             <Scissors className="w-6 h-6" style={{ color: AMBER }} />
                           )}
                         </div>
-                        <div className="flex-1 min-w-0 space-y-2">
+                        <div className={`flex-1 min-w-0 space-y-2 ${!showServicePrices ? "text-center" : ""}`}>
                           <div>
                             <p className="font-semibold text-base">{service.name}</p>
                             {service.description && (
@@ -1068,14 +1068,18 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               </p>
                             )}
                           </div>
-                          <div className="flex items-center gap-4 text-sm">
+                          <div className={`flex items-center gap-4 text-sm ${!showServicePrices ? "justify-center gap-3" : ""}`}>
                             <span className="flex items-center gap-1 text-muted-foreground">
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
                             </span>
                             {hasPromotion && (
                               <span
-                                className="promotion-badge rounded-full px-3 py-1 text-xs font-extrabold tracking-wide"
+                                className={`promotion-badge rounded-full font-extrabold tracking-wide ${
+                                  !showServicePrices
+                                    ? "min-w-[7.5rem] px-4 py-1.5 text-sm text-center"
+                                    : "px-3 py-1 text-xs"
+                                }`}
                                 style={{
                                   backgroundColor: "hsl(142 71% 45%)",
                                   color: "hsl(0 0% 7%)",
