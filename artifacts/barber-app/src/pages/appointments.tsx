@@ -261,6 +261,26 @@ export default function Appointments() {
 
   const sameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const parseDateInput = (value: string) => {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, (month ?? 1) - 1, day ?? 1);
+  };
+  const handleDateStartChange = (value: string) => {
+    if (!value) return;
+    const nextStart = parseDateInput(value);
+    setDateStart(nextStart);
+    if (nextStart > dateEnd) {
+      setDateEnd(nextStart);
+    }
+  };
+  const handleDateEndChange = (value: string) => {
+    if (!value) return;
+    const nextEnd = parseDateInput(value);
+    setDateEnd(nextEnd);
+    if (nextEnd < dateStart) {
+      setDateStart(nextEnd);
+    }
+  };
   const maxBookingDays = Math.max(1, Number((settings as any)?.maxBookingDays ?? 30));
   const bookingWindowStart = useMemo(() => {
     const start = new Date();
@@ -284,13 +304,6 @@ export default function Appointments() {
   // The create-appointment picker uses the same configured window as the
   // agenda strip and updates when settings finish loading.
   const dayOptions = agendaDayOptions;
-  useEffect(() => {
-    if (agendaDayOptions.length === 0) return;
-    const selectedIsOpen = agendaDayOptions.some((day) => sameDay(day, dateStart));
-    if (!selectedIsOpen) {
-      selectAgendaDay(agendaDayOptions[0]!);
-    }
-  }, [agendaDayOptions, dateStart]);
   const selectAgendaDay = (day: Date) => {
     setDateStart(day);
     setDateEnd(day);
@@ -530,11 +543,41 @@ export default function Appointments() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Agendamentos</h1>
           <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Gerencie a agenda de {format(dateStart, "dd 'de' MMMM", { locale: ptBR })}.
+            Gerencie a agenda do período selecionado.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="appointments-date-start" className="text-xs text-muted-foreground">
+              Início
+            </Label>
+            <Input
+              id="appointments-date-start"
+              type="date"
+              value={dateStartStr}
+              max={dateEndStr}
+              onChange={(event) => handleDateStartChange(event.target.value)}
+              className="h-9 w-[145px]"
+              aria-label="Data inicial dos agendamentos"
+              data-testid="input-appointments-date-start"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="appointments-date-end" className="text-xs text-muted-foreground">
+              Final
+            </Label>
+            <Input
+              id="appointments-date-end"
+              type="date"
+              value={dateEndStr}
+              min={dateStartStr}
+              onChange={(event) => handleDateEndChange(event.target.value)}
+              className="h-9 w-[145px]"
+              aria-label="Data final dos agendamentos"
+              data-testid="input-appointments-date-end"
+            />
+          </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2" data-testid="button-new-appointment">
