@@ -4,6 +4,7 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
+import { getAccountStatus } from "./accountStatus.js";
 
 const router: IRouter = Router();
 
@@ -173,24 +174,17 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     res.status(404).json({ error: "Usuário não encontrado." });
     return;
   }
-  const TRIAL_DAYS = 7;
-  const trialStarted = new Date(user.trialStartedAt);
-  const daysSinceTrial = Math.floor((Date.now() - trialStarted.getTime()) / (1000 * 60 * 60 * 24));
-  const trialDaysLeft = Math.max(0, TRIAL_DAYS - daysSinceTrial);
-  const periodEnd = user.stripeCurrentPeriodEnd ? new Date(user.stripeCurrentPeriodEnd) : null;
-  const subscriptionDaysLeft = periodEnd
-    ? Math.max(0, Math.floor((periodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : null;
+  const status = getAccountStatus(user);
   res.json({
-    hasActiveSubscription: !!user.stripeSubscriptionId,
+    hasActiveSubscription: status.hasActiveSubscription,
     subscriptionId: user.stripeSubscriptionId,
     stripePriceId: user.stripePriceId,
     maxBarbers: user.maxBarbers,
-    trialDaysLeft,
-    trialExpired: trialDaysLeft === 0,
-    canAccess: trialDaysLeft > 0 || !!user.stripeSubscriptionId,
-    subscriptionDueDate: periodEnd?.toISOString() ?? null,
-    subscriptionDaysLeft,
+    trialDaysLeft: status.trialDaysLeft,
+    trialExpired: status.trialExpired,
+    canAccess: status.canAccess,
+    subscriptionDueDate: status.subscriptionDueDate,
+    subscriptionDaysLeft: status.subscriptionDaysLeft,
   });
 });
 

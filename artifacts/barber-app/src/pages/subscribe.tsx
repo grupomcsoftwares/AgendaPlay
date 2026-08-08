@@ -165,12 +165,33 @@ export default function Subscribe() {
     );
   }
 
+  const trialExpiredAndNoSub = user && user.trialExpired && !user.hasActiveSubscription;
+
   return (
     <div
       className="min-h-screen w-full flex items-center justify-center px-4 py-12"
       style={{ backgroundColor: "hsl(0 0% 4%)" }}
     >
       <div className="max-w-2xl w-full space-y-8">
+        {/* Expired trial banner */}
+        {trialExpiredAndNoSub && (
+          <div
+            className="rounded-2xl px-5 py-4 flex items-start gap-3"
+            style={{ backgroundColor: "hsl(0 60% 15%)", border: "1px solid hsl(0 60% 30%)" }}
+          >
+            <div className="text-2xl flex-shrink-0" aria-hidden="true">🔒</div>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: "hsl(0 80% 70%)" }}>
+                Período de teste encerrado
+              </p>
+              <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
+                Seu acesso ao sistema foi bloqueado porque os 7 dias de teste gratuito expiraram.
+                Assine um plano abaixo para continuar gerenciando sua barbearia.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center gap-3">
