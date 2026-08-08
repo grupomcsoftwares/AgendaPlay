@@ -6,6 +6,7 @@ artifacts/mockup-sandbox/
 node_modules/
 .expo/
 dist/
+static-build/
 android/
 ios/
 *.log

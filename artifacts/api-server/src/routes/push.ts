@@ -13,6 +13,7 @@ import {
 } from "@workspace/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth.js";
+import { requireActiveAccount } from "../middleware/accountActive.js";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.get("/push/vapid-public-key", (_req, res) => {
   res.json({ key: process.env.VAPID_PUBLIC_KEY ?? "" });
 });
 
-router.post("/push/native/subscribe", requireAuth, async (req, res) => {
+router.post("/push/native/subscribe", requireAuth, requireActiveAccount, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";
@@ -52,7 +53,7 @@ router.post("/push/native/subscribe", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/push/native/status", requireAuth, async (req, res) => {
+router.post("/push/native/status", requireAuth, requireActiveAccount, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";
@@ -74,7 +75,7 @@ router.post("/push/native/status", requireAuth, async (req, res) => {
   res.json({ ok: true, enabled: subscriptions.length > 0 });
 });
 
-router.delete("/push/native/subscribe", requireAuth, async (req, res) => {
+router.delete("/push/native/subscribe", requireAuth, requireActiveAccount, async (req, res) => {
   const expoPushToken = typeof req.body?.expoPushToken === "string"
     ? req.body.expoPushToken.trim()
     : "";

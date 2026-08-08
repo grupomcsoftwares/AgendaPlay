@@ -21,8 +21,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
-
-const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
+import { isAllowedAppUrl, PROD_BASE, PROD_HOSTNAME } from "@/lib/webviewSecurity";
 
 const MENU_ITEMS = [
   { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
@@ -148,7 +147,8 @@ export default function DashboardScreen() {
     }
   }, [bookingUrl, user?.barbershopName]);
 
-  const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string } }) => {
+  const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string; url?: string } }) => {
+    if (event.nativeEvent.url && !isAllowedAppUrl(event.nativeEvent.url)) return;
     let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status"; message?: string };
     try {
       message = JSON.parse(event.nativeEvent.data);
@@ -394,6 +394,9 @@ export default function DashboardScreen() {
                setLoading(true);
                webViewRef.current?.reload();
              }}
+             onShouldStartLoadWithRequest={(request: { url: string }) => isAllowedAppUrl(request.url)}
+             originWhitelist={[`https://${PROD_HOSTNAME}`]}
+             mixedContentMode="never"
             startInLoadingState={false}
           />
         )}

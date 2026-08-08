@@ -19,13 +19,14 @@ import {
   slugRedirectsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middleware/auth.js";
+import { requireActiveAccount } from "../middleware/accountActive.js";
 import bcrypt from "bcryptjs";
 
 const router: IRouter = Router();
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
 
-router.patch("/users/slug", requireAuth, async (req, res): Promise<void> => {
+router.patch("/users/slug", requireAuth, requireActiveAccount, async (req, res): Promise<void> => {
   const { slug } = req.body as { slug?: string };
 
   if (!slug || typeof slug !== "string") {

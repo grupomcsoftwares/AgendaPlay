@@ -7,4 +7,4 @@ The native login request identifies itself with `X-AgendaPlay-Native: 1`; only t
 
 **Why:** React Native fetch does not reliably expose `Set-Cookie`, while exposing a session cookie to every browser login response unnecessarily broadens the session-token surface.
 
-**How to apply:** When changing native authentication or WebView loading, preserve the explicit native header, store only the cookie name/value pair, and inject it for the exact application hostname.
+**How to apply:** When changing native authentication or WebView loading, preserve the explicit native header, store only the cookie name/value pair, inject it only for the exact application hostname, and allow only HTTPS navigation on the official host.

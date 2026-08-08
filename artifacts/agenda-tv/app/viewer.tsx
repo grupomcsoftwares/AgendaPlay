@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
-const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
+import { isAllowedAppUrl, normalizeAppUrl, PROD_BASE, PROD_HOSTNAME } from "@/lib/webviewSecurity";
 
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -51,13 +51,15 @@ export default function ViewerScreen() {
   const [backFocused, setBackFocused] = useState(false);
   const isTV = isTvDevice(width);
   const subscriptionBlocked = !!user && !user.canAccess;
+  const targetUrl = normalizeAppUrl(url);
 
   const handleExit = useCallback(async () => {
     await logout();
     router.replace("/");
   }, [logout, router]);
 
-  const handleNativePushMessage = async (event: { nativeEvent: { data: string } }) => {
+  const handleNativePushMessage = async (event: { nativeEvent: { data: string; url?: string } }) => {
+    if (event.nativeEvent.url && !isAllowedAppUrl(event.nativeEvent.url)) return;
     let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status" };
     try {
       message = JSON.parse(event.nativeEvent.data);
@@ -105,19 +107,17 @@ export default function ViewerScreen() {
   const [injectedCookie, setInjectedCookie] = useState<string | null>(null);
   useEffect(() => {
     getSessionCookie().then((raw) => {
-      if (raw && url) {
-        try {
-          const domain = new URL(url).hostname;
-          setInjectedCookie(
-            `document.cookie = ${JSON.stringify(`${raw}; domain=${domain}; path=/;`)};`,
-          );
-        } catch {
-          setError(true);
-        }
+      if (raw && targetUrl) {
+        setInjectedCookie(
+          `document.cookie = ${JSON.stringify(`${raw}; domain=${PROD_HOSTNAME}; path=/;`)};`,
+        );
+      } else if (url && !targetUrl) {
+        setInjectedCookie(null);
+        setError(true);
       }
       setCookieReady(true);
     });
-  }, [getSessionCookie, url]);
+  }, [getSessionCookie, targetUrl, url]);
 
   // Timeout: if loading takes > 15s, show retry option
   useEffect(() => {
@@ -136,6 +136,21 @@ export default function ViewerScreen() {
         <Text style={styles.msgText}>Disponível no app nativo Android/iOS</Text>
         <Pressable style={styles.retryBtn} onPress={() => router.back()}>
           <Text style={styles.retryText}>← Voltar</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (url && !targetUrl) {
+    return (
+      <View style={styles.center}>
+        <Feather name="shield" size={48} color="#c9a84c" />
+        <Text style={styles.msgText}>Link bloqueado por segurança</Text>
+        <Text style={styles.loadingText}>
+          Este aplicativo só abre páginas oficiais do AgendaPlay.
+        </Text>
+        <Pressable style={styles.retryBtn} onPress={() => router.back()}>
+          <Text style={styles.retryText}>Voltar</Text>
         </Pressable>
       </View>
     );
@@ -201,15 +216,9 @@ export default function ViewerScreen() {
           <WebView
             ref={webViewRef}
             source={{ uri: (() => {
-               if (!url) return PROD_BASE;
-               let u: URL;
-               try {
-                 u = new URL(url);
-               } catch {
-                 u = new URL(PROD_BASE);
-               }
+              const u = new URL(targetUrl || PROD_BASE);
               u.searchParams.set("view", "mobile");
-               if (isTV) u.searchParams.set("tv", "1");
+              if (isTV) u.searchParams.set("tv", "1");
               return u.toString();
             })() }}
             style={styles.webview}
@@ -237,6 +246,7 @@ export default function ViewerScreen() {
                 setError(true);
               }
             }}
+            onShouldStartLoadWithRequest={(request: { url: string }) => isAllowedAppUrl(request.url)}
             allowsBackForwardNavigationGestures
             sharedCookiesEnabled
             thirdPartyCookiesEnabled
@@ -244,8 +254,8 @@ export default function ViewerScreen() {
             domStorageEnabled
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
-            originWhitelist={["*"]}
-            mixedContentMode="always"
+            originWhitelist={[`https://${PROD_HOSTNAME}`]}
+            mixedContentMode="never"
             cacheEnabled
             cacheMode="LOAD_DEFAULT"
           />
