@@ -39,6 +39,7 @@ export default function CancelBooking() {
   const [childLastName, setChildLastName] = useState("");
   const [pushState, setPushState] = useState<"unknown" | "denied" | "subscribed" | "idle">("unknown");
   const [reminderBanner, setReminderBanner] = useState(false);
+  const [cancelRedirectSeconds, setCancelRedirectSeconds] = useState<number | null>(null);
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
   // Gate: client must interact with the notification prompt before seeing details
   const [notifGatePassed, setNotifGatePassed] = useState<boolean>(() => {
@@ -94,6 +95,25 @@ export default function CancelBooking() {
       });
     }).catch(() => setPushState("denied"));
   }, []);
+
+  useEffect(() => {
+    if (cancelRedirectSeconds === null) return;
+
+    const redirectToNewBooking = () => {
+      const bookingUrl = shopId ? `/booking?shopId=${shopId}&novo=1` : "/booking?novo=1";
+      window.location.href = bookingUrl;
+    };
+
+    const timeout = window.setTimeout(() => {
+      if (cancelRedirectSeconds <= 1) {
+        redirectToNewBooking();
+      } else {
+        setCancelRedirectSeconds((seconds) => seconds === null ? null : seconds - 1);
+      }
+    }, 1000);
+
+    return () => window.clearTimeout(timeout);
+  }, [cancelRedirectSeconds, shopId]);
 
   const passGate = () => {
     try { localStorage.setItem(`notif_gate_${token}`, "1"); } catch { /* ignore */ }
@@ -343,6 +363,7 @@ export default function CancelBooking() {
           queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
           localStorage.removeItem(`barber_pending_token_${shopId ?? "admin"}`);
           setConfirming(false);
+          setCancelRedirectSeconds(5);
         },
         onError: (err: unknown) => {
           const data = (err as { data?: { error?: string } } | null)?.data;
@@ -461,9 +482,16 @@ export default function CancelBooking() {
         )}
 
         {cancelled ? (
-          <div className="rounded-xl p-4 flex items-center gap-3" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 20%)" }}>
+          <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 20%)" }}>
             <CheckCircle2 className="w-5 h-5" style={{ color: "hsl(0 70% 65%)" }} />
-            <p className="text-sm text-muted-foreground">Este agendamento foi cancelado.</p>
+            <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Este agendamento foi cancelado.</p>
+              {cancelRedirectSeconds !== null && (
+                <p className="text-sm font-semibold" style={{ color: AMBER }} data-testid="text-cancel-redirect-countdown">
+                  Voltando ao início do agendamento em {cancelRedirectSeconds} segundo{cancelRedirectSeconds === 1 ? "" : "s"}…
+                </p>
+              )}
+            </div>
           </div>
         ) : locked ? (
           <div className="space-y-3">
