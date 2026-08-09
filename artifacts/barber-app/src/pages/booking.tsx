@@ -149,6 +149,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
   const [pushState, setPushState] = useState<"unknown" | "idle" | "subscribed" | "denied">("unknown");
   const [pendingPushSub, setPendingPushSub] = useState<PushSubscriptionJSON | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
 
   // Keep the autoscale-safe push trigger alive while a public booking page is open.
   // The server scheduler remains the fallback when the page is closed.
@@ -1779,6 +1780,34 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(38 88% 55% / 0.3)" }}
                 >
                   <p className="text-sm font-semibold text-center" style={{ color: AMBER }}>O QR Code Pix será exibido após confirmar</p>
+                  <div
+                    className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2"
+                    style={{ backgroundColor: "hsl(0 0% 10%)", border: "1px solid hsl(0 0% 18%)" }}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground" title={pixKey}>
+                      {pixKey}
+                    </span>
+                    <button
+                      type="button"
+                      data-testid="button-copy-pix-key-before-confirm"
+                      onClick={async (event) => {
+                        event.stopPropagation();
+                        try {
+                          await navigator.clipboard.writeText(pixKey);
+                          setPixCopied(true);
+                          window.setTimeout(() => setPixCopied(false), 2000);
+                        } catch {
+                          setPixCopied(false);
+                        }
+                      }}
+                      className="flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-75"
+                      style={{ color: AMBER, background: "none", border: "none", cursor: "pointer" }}
+                      title="Copiar chave Pix"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {pixCopied ? "Copiado!" : "Copiar"}
+                    </button>
+                  </div>
                 </div>
               )}
 
