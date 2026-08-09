@@ -292,6 +292,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   // Pre-filled child name from "Agendar outro corte" flow — skips step 0
   const urlChildName = searchParams.get("cn") ?? "";
   const urlChildLastName = searchParams.get("cls") ?? "";
+  const isBookingForAnotherPerson = Boolean(urlChildName || urlChildLastName);
 
   // ── Existing-appointment redirect ──────────────────────────────────────────
   // Keep every active appointment token so a client can choose which booking
@@ -523,6 +524,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   // Sync client name from DB on mount — in case the barber edited the name in the panel.
   // Only runs when the phone is already known from localStorage (returning client).
   useEffect(() => {
+    // In the "Agendar outro corte" flow, the phone belongs to the responsible
+    // client but the appointment name belongs to the person who will cut.
+    // Never replace the explicitly supplied name with the responsible client's name.
+    if (isBookingForAnotherPerson) return;
     const phone = formData.phone;
     const sid = shopId;
     if (!phone || !sid) return;
@@ -549,7 +554,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isBookingForAnotherPerson]);
 
   const handleBook = () => {
     if (selectedServices.length === 0) return;
@@ -591,7 +596,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             setConfirmedToken(created.cancelToken);
           }
           // Persist name+phone so the client doesn't have to retype next visit
-          if (formData.name && formData.phone) {
+          if (formData.name && formData.phone && !isBookingForAnotherPerson) {
             try {
               localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, lastName: formData.lastName, phone: formData.phone }));
             } catch { /* ignore */ }
