@@ -23,8 +23,8 @@ import {
   getListBarbersQueryKey,
   getListServicesQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, User, Upload, X, ImageIcon, Power } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2, User, Upload, X, ImageIcon, Power, CreditCard, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -110,6 +110,8 @@ export default function Barbers() {
   const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [changingPlanId, setChangingPlanId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<{
     name: string;
@@ -120,6 +122,46 @@ export default function Barbers() {
     weeklySchedule: WeeklySchedule | null;
     commissionRate: number | null;
   }>({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null, commissionRate: null });
+
+  const { data: subscriptionStatus } = useQuery<{
+    hasActiveSubscription: boolean;
+    stripePriceId: string | null;
+    maxBarbers: number | null;
+  }>({
+    queryKey: ["stripe-subscription-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/subscription-status", { credentials: "include" });
+      if (!res.ok) throw new Error("Não foi possível consultar a assinatura.");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  type UpgradePlan = {
+    price_id: string;
+    product_name: string;
+    unit_amount: number;
+    currency: string;
+    maxBarbers: number | null;
+  };
+
+  const { data: upgradePlans, isLoading: plansLoading } = useQuery<{ data: UpgradePlan[] }>({
+    queryKey: ["stripe-plans"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/plans");
+      if (!res.ok) throw new Error("Não foi possível carregar os planos.");
+      return res.json();
+    },
+    staleTime: 5 * 60_000,
+    enabled: planDialogOpen,
+  });
+
+  const activeBarberCount = barbers?.filter((barber) => barber.active).length ?? 0;
+  const hasReachedBarberLimit =
+    editingId === null &&
+    subscriptionStatus?.maxBarbers != null &&
+    subscriptionStatus.maxBarbers > 0 &&
+    activeBarberCount >= subscriptionStatus.maxBarbers;
 
   const resetForm = () => {
     setFormData({ name: "", photoUrl: "", bio: "", active: true, serviceIds: [], weeklySchedule: null, commissionRate: null });
@@ -150,6 +192,15 @@ export default function Barbers() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListBarbersQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListServicesQueryKey() });
+  };
+
+  const openNewBarber = () => {
+    if (hasReachedBarberLimit) {
+      setPlanDialogOpen(true);
+      return;
+    }
+    resetForm();
+    setIsOpen(true);
   };
 
   const handleSave = () => {
@@ -185,8 +236,51 @@ export default function Barbers() {
             resetForm();
             toast({ title: "Barbeiro cadastrado" });
           },
+          onError: (error) => {
+            const details = (error as { data?: unknown }).data as
+              | { code?: string; error?: string }
+              | undefined;
+            if (details?.code === "BARBER_LIMIT_REACHED") {
+              setIsOpen(false);
+              resetForm();
+              setPlanDialogOpen(true);
+              return;
+            }
+            toast({
+              title: "Não foi possível cadastrar o barbeiro",
+              description: details?.error ?? (error instanceof Error ? error.message : "Tente novamente."),
+              variant: "destructive",
+            });
+          },
         },
       );
+    }
+  };
+
+  const handleChangePlan = async (priceId: string) => {
+    setChangingPlanId(priceId);
+    try {
+      const res = await fetch("/api/stripe/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ priceId }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? "Não foi possível trocar de plano.");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["stripe-subscription-status"] });
+      setPlanDialogOpen(false);
+      toast({ title: "Plano atualizado", description: "Agora você já pode cadastrar o novo barbeiro." });
+    } catch (error) {
+      toast({
+        title: "Não foi possível trocar de plano",
+        description: error instanceof Error ? error.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setChangingPlanId(null);
     }
   };
 
@@ -230,11 +324,9 @@ export default function Barbers() {
           </p>
         </div>
         <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" data-testid="button-new-barber">
-              <Plus className="h-4 w-4" /> Novo Barbeiro
-            </Button>
-          </DialogTrigger>
+          <Button className="gap-2" onClick={openNewBarber} data-testid="button-new-barber">
+            <Plus className="h-4 w-4" /> Novo Barbeiro
+          </Button>
           <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden border-border/60">
             <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/60">
               <DialogTitle className="text-xl font-semibold tracking-tight">
@@ -468,6 +560,78 @@ export default function Barbers() {
                     : "Cadastrar"}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+                Limite de barbeiros atingido
+              </DialogTitle>
+              <DialogDescription>
+                Seu plano atual permite até {subscriptionStatus?.maxBarbers ?? activeBarberCount}{" "}
+                {subscriptionStatus?.maxBarbers === 1 ? "profissional" : "profissionais"}.
+                Escolha um plano maior para cadastrar outro barbeiro.
+              </DialogDescription>
+            </DialogHeader>
+
+            {plansLoading ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Carregando planos...
+              </div>
+            ) : upgradePlans?.data?.length ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {upgradePlans.data.map((plan) => {
+                  const isCurrent = plan.price_id === subscriptionStatus?.stripePriceId;
+                  const barberLabel = plan.maxBarbers == null || plan.maxBarbers === 0
+                    ? "Profissionais ilimitados"
+                    : `Até ${plan.maxBarbers} ${plan.maxBarbers === 1 ? "profissional" : "profissionais"}`;
+                  return (
+                    <div
+                      key={plan.price_id}
+                      className={`rounded-xl border p-4 ${isCurrent ? "border-primary/70 bg-primary/5" : "border-border bg-muted/20"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{plan.product_name}</p>
+                          <p className="text-xs text-muted-foreground">{barberLabel}</p>
+                        </div>
+                        {isCurrent && (
+                          <Badge variant="secondary" className="shrink-0">Plano atual</Badge>
+                        )}
+                      </div>
+                      <p className="mt-3 text-xl font-bold">
+                        {(plan.unit_amount / 100).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: plan.currency.toUpperCase(),
+                        })}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">/mês</span>
+                      </p>
+                      <Button
+                        className="mt-4 w-full gap-2"
+                        variant={isCurrent ? "outline" : "default"}
+                        disabled={isCurrent || changingPlanId !== null}
+                        onClick={() => handleChangePlan(plan.price_id)}
+                      >
+                        {changingPlanId === plan.price_id ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CreditCard className="h-4 w-4" />
+                        )}
+                        {isCurrent ? "Plano atual" : changingPlanId === plan.price_id ? "Atualizando..." : "Trocar para este plano"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Não foi possível carregar os planos agora. Tente novamente em instantes.
+              </p>
+            )}
           </DialogContent>
         </Dialog>
       </div>

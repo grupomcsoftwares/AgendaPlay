@@ -343,4 +343,100 @@ router.post("/stripe/customer-portal", requireAuth, async (req: Request, res: Re
   }
 });
 
+router.post("/stripe/change-plan", requireAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = req.session.userId!;
+    const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
+    if (!user) {
+      res.status(404).json({ error: "Usuário não encontrado." });
+      return;
+    }
+
+    const { priceId } = (req.body ?? {}) as { priceId?: string };
+    if (!priceId) {
+      res.status(400).json({ error: "priceId é obrigatório." });
+      return;
+    }
+
+    if (!user.stripeCustomerId || !user.stripeSubscriptionId) {
+      res.status(400).json({ error: "Nenhuma assinatura ativa encontrada para trocar de plano." });
+      return;
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const authorizedPrice = await getAuthorizedStripePrice(stripe, priceId);
+    if (!authorizedPrice) {
+      res.status(400).json({ error: "Plano de assinatura inválido ou indisponível." });
+      return;
+    }
+
+    const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+    const subscriptionCustomerId =
+      typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+    if (subscriptionCustomerId !== user.stripeCustomerId) {
+      res.status(403).json({ error: "A assinatura não pertence a esta conta." });
+      return;
+    }
+
+    const subscriptionItem = subscription.items.data[0];
+    if (!subscriptionItem) {
+      res.status(400).json({ error: "A assinatura não possui um plano para atualizar." });
+      return;
+    }
+
+    if (subscriptionItem.price.id === authorizedPrice.id) {
+      res.json({
+        changed: false,
+        stripePriceId: authorizedPrice.id,
+        maxBarbers: user.maxBarbers,
+      });
+      return;
+    }
+
+    const updatedSubscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
+      items: [{ id: subscriptionItem.id, price: authorizedPrice.id }],
+      proration_behavior: "create_prorations",
+    });
+
+    const productId =
+      typeof authorizedPrice.product === "string"
+        ? authorizedPrice.product
+        : authorizedPrice.product?.id;
+    let maxBarbers: number | null = null;
+    if (productId) {
+      const product = await stripe.products.retrieve(productId);
+      const parsed = parseInt(product.metadata?.maxBarbers ?? "", 10);
+      maxBarbers = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    const periodEndValue =
+      (updatedSubscription as any).current_period_end ??
+      updatedSubscription.items?.data?.[0]?.current_period_end;
+    const periodEnd = periodEndValue ? new Date(periodEndValue * 1000) : null;
+
+    await db.update(usersTable)
+      .set({
+        stripeSubscriptionId: updatedSubscription.id,
+        stripePriceId: authorizedPrice.id,
+        maxBarbers,
+        stripeCurrentPeriodEnd: periodEnd,
+      })
+      .where(eq(usersTable.id, userId));
+
+    res.json({
+      changed: true,
+      stripePriceId: authorizedPrice.id,
+      maxBarbers,
+      subscriptionDueDate: periodEnd?.toISOString() ?? null,
+    });
+  } catch (err: unknown) {
+    const stripeError = err as { message?: string; code?: string };
+    console.error("Stripe plan change failed", {
+      code: stripeError.code,
+      message: stripeError.message,
+    });
+    res.status(400).json({ error: "Não foi possível trocar de plano. Tente novamente." });
+  }
+});
+
 export default router;
