@@ -1,4 +1,4 @@
-const TRIAL_DAYS = 7;
+const TRIAL_DAYS = 30;
 
 export type AccountBillingFields = {
   trialStartedAt: Date;
@@ -42,7 +42,9 @@ export function getAccountStatus(user: AccountBillingFields) {
     trialExpired,
     hasActiveSubscription,
     canAccess: !trialExpired || hasActiveSubscription,
-    maxBarbers: user.maxBarbers ?? null,
+    // The free trial is intentionally unrestricted so the shop can test the
+    // full product before choosing a paid barber-count plan.
+    maxBarbers: hasActiveSubscription ? user.maxBarbers ?? null : null,
     subscriptionDueDate,
     subscriptionDaysLeft: daysUntilPeriodEnd,
   };

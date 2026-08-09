@@ -185,7 +185,7 @@ export default function Subscribe() {
                 Período de teste encerrado
               </p>
               <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
-                Seu acesso ao sistema foi bloqueado porque os 7 dias de teste gratuito expiraram.
+                Seu acesso ao sistema foi bloqueado porque os 30 dias de teste gratuito expiraram.
                 Assine um plano abaixo para continuar gerenciando sua barbearia.
               </p>
             </div>

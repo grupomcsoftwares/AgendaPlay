@@ -39,7 +39,7 @@ export default function Landing() {
           style={{ color: "hsl(0 0% 65%)" }}
         >
           Agendamentos, controle de receita e um link de reserva moderno para seus
-          clientes. 7 dias grátis, sem cartão de crédito.
+          clientes. 30 dias grátis, sem cartão de crédito.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">

@@ -79,7 +79,7 @@ export default function Register() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Crie sua barbearia</h1>
           <p className="text-sm" style={{ color: "hsl(0 0% 60%)" }}>
-            7 dias grátis, sem cartão de crédito
+            30 dias grátis, sem cartão de crédito
           </p>
         </div>
 
@@ -243,7 +243,7 @@ export default function Register() {
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Criando conta..." : "Começar 7 dias grátis"}
+            {loading ? "Criando conta..." : "Começar 30 dias grátis"}
           </button>
 
           <p className="text-center text-sm pt-2" style={{ color: "hsl(0 0% 55%)" }}>

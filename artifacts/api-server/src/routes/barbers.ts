@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import { eq, inArray, asc, and, sql } from "drizzle-orm";
 import { db, barbersTable, barberServicesTable, usersTable, servicesTable } from "@workspace/db";
 import { requireActiveAuth } from "../middleware/accountActive.js";
+import { getAccountStatus } from "./accountStatus.js";
 import {
   ListBarbersQueryParams,
   CreateBarberBody,
@@ -159,21 +160,27 @@ router.post("/barbers", requireActiveAuth, async (req, res): Promise<void> => {
   }
 
   const userId = req.session.userId!;
-  const [currentUser] = await db.select({ maxBarbers: usersTable.maxBarbers })
+  const [currentUser] = await db.select({
+    maxBarbers: usersTable.maxBarbers,
+    trialStartedAt: usersTable.trialStartedAt,
+    stripeSubscriptionId: usersTable.stripeSubscriptionId,
+    stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+  })
     .from(usersTable)
     .where(eq(usersTable.id, userId));
 
-  if (currentUser?.maxBarbers != null) {
+  const accountStatus = currentUser ? getAccountStatus(currentUser) : null;
+  if (accountStatus?.maxBarbers != null) {
     const [countResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(barbersTable)
       .where(and(eq(barbersTable.userId, userId), eq(barbersTable.active, true)));
     const activeCount = countResult?.count ?? 0;
-    if (activeCount >= currentUser.maxBarbers) {
+    if (activeCount >= accountStatus.maxBarbers) {
       res.status(403).json({
-        error: `Seu plano permite até ${currentUser.maxBarbers} profissional(is). Faça upgrade para adicionar mais.`,
+        error: `Seu plano permite até ${accountStatus.maxBarbers} profissional(is). Faça upgrade para adicionar mais.`,
         code: "BARBER_LIMIT_REACHED",
-        maxBarbers: currentUser.maxBarbers,
+        maxBarbers: accountStatus.maxBarbers,
       });
       return;
     }

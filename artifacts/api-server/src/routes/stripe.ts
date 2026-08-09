@@ -184,7 +184,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     hasActiveSubscription: status.hasActiveSubscription,
     subscriptionId: user.stripeSubscriptionId,
     stripePriceId: user.stripePriceId,
-    maxBarbers: user.maxBarbers,
+    maxBarbers: status.maxBarbers,
     trialDaysLeft: status.trialDaysLeft,
     trialExpired: status.trialExpired,
     canAccess: status.canAccess,
