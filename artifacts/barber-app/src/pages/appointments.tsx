@@ -290,6 +290,24 @@ export default function Appointments() {
   // The create-appointment picker uses the same configured window as the
   // agenda strip and updates when settings finish loading.
   const dayOptions = agendaDayOptions;
+
+  // Settings load asynchronously. If today is closed, the initial date state
+  // still starts at today and would leave every visible day unselected. Once
+  // the schedule is known, move the agenda to the first open day instead.
+  useEffect(() => {
+    if (!settings || agendaDayOptions.length === 0) return;
+
+    const selectedDayIsOpen = agendaDayOptions.some(
+      (day) => sameDay(day, dateStart) && sameDay(day, dateEnd),
+    );
+    if (selectedDayIsOpen) return;
+
+    const nextOpenDay = agendaDayOptions[0];
+    if (!nextOpenDay) return;
+    setDateStart(nextOpenDay);
+    setDateEnd(nextOpenDay);
+  }, [agendaDayOptions, dateEnd, dateStart, settings]);
+
   const selectAgendaDay = (day: Date) => {
     setDateStart(day);
     setDateEnd(day);

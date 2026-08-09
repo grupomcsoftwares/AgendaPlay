@@ -7,4 +7,4 @@ During the current business hours, the public booking page must keep today selec
 
 **Why:** Clients opening the link during operating hours need to understand that today's capacity is full, while clients opening it after hours should be taken directly to the next bookable day.
 
-**How to apply:** Base the initial date decision on the selected barber's schedule when one exists, otherwise the shop schedule, including `closed`, `open`, and `close`; do not auto-advance merely because today's slots are empty.
+**How to apply:** Base the initial date decision on the selected barber's schedule when one exists, otherwise the shop schedule, including `closed`, `open`, and `close`; do not auto-advance merely because today's slots are empty. The internal appointments agenda must also select the first open day when its date strip filters out today's closed day, so the strip never opens with no highlighted date.
