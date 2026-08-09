@@ -18,6 +18,22 @@ const AMBER_DEEP = "hsl(38 80% 45%)";
 const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 const STEP_LABELS_BASE = ["Seus dados", "Serviço", "Data e hora", "Pagamento"] as const;
 const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Serviço", "Data e hora", "Pagamento"] as const;
+const DEFAULT_OPEN_MINUTES = 9 * 60;
+const DEFAULT_CLOSE_MINUTES = 18 * 60;
+
+type BookingDaySchedule = {
+  closed?: boolean;
+  open?: string;
+  close?: string;
+};
+
+function parseBookingTime(value: string | undefined, fallback: number): number {
+  if (!value || !/^\d{1,2}:\d{2}$/.test(value)) return fallback;
+  const [hours, minutes] = value.split(":").map(Number);
+  return Number.isFinite(hours) && Number.isFinite(minutes)
+    ? hours * 60 + minutes
+    : fallback;
+}
 
 function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
   const cols = labels.length === 5 ? "grid-cols-5" : "grid-cols-4";
@@ -559,7 +575,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const activeBarbers = barbers ?? [];
   const needsBarberStep = activeBarbers.length >= 2;
   const bookingWeekly = (selectedBarber?.weeklySchedule ?? settings?.weeklySchedule) as
-    | Partial<Record<typeof WEEKDAY_KEYS[number], { closed?: boolean }>>
+    | Partial<Record<typeof WEEKDAY_KEYS[number], BookingDaySchedule>>
     | null
     | undefined;
   const bookingDayOptions = React.useMemo(() => {
@@ -601,6 +617,49 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       setFormData((prev) => ({ ...prev, date: bookingDayOptions[0]!, time: "" }));
     }
   }, [bookingDayOptions, formData.date]);
+
+  // When the public link is opened outside today's business hours, start on
+  // the next open day. During business hours, keep today selected so the
+  // "Nenhum horário disponível" notice can explain that today's slots are full.
+  const autoAdvancedOutsideHours = React.useRef(false);
+  useEffect(() => {
+    if (autoAdvancedOutsideHours.current || !settings || !barbers || bookingDayOptions.length === 0) return;
+    // Wait for the selected barber's schedule when the shop has barber-specific
+    // schedules; otherwise the initial fallback could make the wrong decision.
+    if (barbers.length > 0 && !selectedBarber) return;
+
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    if (formData.date.toDateString() !== today.toDateString()) {
+      autoAdvancedOutsideHours.current = true;
+      return;
+    }
+
+    const todaySchedule = bookingWeekly?.[WEEKDAY_KEYS[today.getDay()]];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const openMinutes = parseBookingTime(todaySchedule?.open, DEFAULT_OPEN_MINUTES);
+    const closeMinutes = parseBookingTime(todaySchedule?.close, DEFAULT_CLOSE_MINUTES);
+    const outsideBusinessHours = todaySchedule?.closed === true ||
+      currentMinutes < openMinutes ||
+      currentMinutes >= closeMinutes;
+
+    autoAdvancedOutsideHours.current = true;
+    if (!outsideBusinessHours) return;
+
+    const nextOpenDay = bookingDayOptions.find((day) => day.getTime() > today.getTime());
+    if (nextOpenDay) {
+      setFormData((prev) => ({ ...prev, date: nextOpenDay, time: "" }));
+    }
+  }, [
+    bookingDayOptions,
+    bookingWeekly,
+    barbers,
+    formData.date,
+    needsBarberStep,
+    selectedBarber,
+    settings,
+  ]);
 
   // Sync selected service IDs whenever the eligible services list changes (e.g. after
   // the barber loads and filters which services they can perform). This prevents

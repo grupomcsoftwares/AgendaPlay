@@ -24,5 +24,6 @@
 - [Native WebView session handoff](native-webview-session.md) — native login requests an explicit signed cookie response because React Native may hide Set-Cookie; web login must not receive it.
 - [Public booking price visibility](public-booking-price-visibility.md) — the setting hides prices only on the initial service-selection cards; later summaries and totals remain visible.
 - [Completed appointment availability](completed-appointment-availability.md) — completed queue appointments must not block future booking slots; pending and in-progress appointments still do.
+- [Booking availability by business hours](booking-availability-hours.md) — keep today selected with a highlighted no-slots message during open hours; advance only when the link opens outside hours.
 - [Pix payment appointment states](pix-payment-appointment-states.md) — pending Pix bookings reserve time but only approval may consume credits/points and insert them into the live queue.
 - [Barber notification sounds](barber-notification-sounds.md) — notification categories need distinct web audio and Android channels; pending Pix repeats on the server while status remains pending.
