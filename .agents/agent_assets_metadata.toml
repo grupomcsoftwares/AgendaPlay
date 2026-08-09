@@ -41,3 +41,24 @@ id = "Z-hw3lmNx9vJuEDy-Hwnp"
 uri = "file://artifacts/barber-app/dist-electron/AgendaPlay-1.0.0-Windows.zip"
 type = "unspecified"
 title = "AgendaPlay 1.0.0 - Windows .exe (zipped)"
+
+[[outputs]]
+id = "UVuLnaQX30fvTfmUNUux2"
+uri = "file://attached_assets/generated_audio/sound_effect_new_appointment.mp3"
+type = "audio"
+title = "new_appointment"
+description = "Generated sound effect: Short bright two-note notification chime for a new barber appointment, clean digital bell, attention-grabbing but pleasant"
+
+[[outputs]]
+id = "XZLgddLPqbaK0KJ_tot50"
+uri = "file://attached_assets/generated_audio/sound_effect_appointment_changed.mp3"
+type = "audio"
+title = "appointment_changed"
+description = "Generated sound effect: Short descending notification sound for a cancelled or rescheduled appointment, clearly different from a new booking, clean digital tone"
+
+[[outputs]]
+id = "5pERJ7nPboqiBZj13GvP5"
+uri = "file://attached_assets/generated_audio/sound_effect_pix_pending.mp3"
+type = "audio"
+title = "pix_pending"
+description = "Generated sound effect: Urgent repeating-ready payment alert chime for a pending Pix payment approval, warm electronic two-tone alert, distinct and attention-grabbing"

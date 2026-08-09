@@ -5,6 +5,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PROD_BASE } from "./webviewSecurity";
 
 const NATIVE_TOKEN_KEY = "@agendaplay/native_push_token";
+const NEW_APPOINTMENT_CHANNEL = "agendaplay-new-appointment";
+const APPOINTMENT_CHANGED_CHANNEL = "agendaplay-appointment-changed";
+const PIX_PENDING_CHANNEL = "agendaplay-pix-pending";
 
 export type NativePushResult = {
   ok: boolean;
@@ -36,12 +39,26 @@ export async function registerNativePush(cookie: string | null): Promise<NativeP
   }
 
   try {
-    await Notifications.setNotificationChannelAsync("agendaplay", {
-      name: "AgendaPlay",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      sound: "default",
-    });
+    await Promise.all([
+      Notifications.setNotificationChannelAsync(NEW_APPOINTMENT_CHANNEL, {
+        name: "Novos agendamentos",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        sound: "new-appointment.mp3",
+      }),
+      Notifications.setNotificationChannelAsync(APPOINTMENT_CHANGED_CHANNEL, {
+        name: "Cancelamentos e alterações",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 150, 100, 150],
+        sound: "appointment-changed.mp3",
+      }),
+      Notifications.setNotificationChannelAsync(PIX_PENDING_CHANNEL, {
+        name: "Pix aguardando aprovação",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 300, 150, 300, 150, 300],
+        sound: "pix-pending.mp3",
+      }),
+    ]);
 
     const current = await Notifications.getPermissionsAsync();
     const permission = current.granted

@@ -1055,9 +1055,9 @@ router.post("/appointments", async (req, res): Promise<void> => {
   sendAdminPush(appointment.userId, {
     title: awaitingPayment ? "💳 Pagamento Pix pendente" : "📅 Novo agendamento",
     body: `${appointment.clientName} · ${appointment.serviceName} · ${apptDD} às ${apptHH}`,
-    tag: `new-${appointment.id}`,
+    tag: awaitingPayment ? `pix-pending-${appointment.id}` : `new-${appointment.id}`,
     url: `/agendamento/${appointment.cancelToken}`,
-    sound: "new",
+    sound: awaitingPayment ? "pix_pending" : "new",
   }).catch(() => {});
 
   res.status(201).json(formatAppointmentWithToken(appointment));
@@ -1614,6 +1614,26 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
     res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído e não pode ser cancelado." });
     return;
   }
+  if (result.appointment) {
+    const a = result.appointment;
+    const apptHH = new Date(a.scheduledAt).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const apptDD = new Date(a.scheduledAt).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    sendAdminPush(a.userId, {
+      title: "❌ Agendamento cancelado",
+      body: `${a.clientName} · ${a.serviceName} · horário cancelado: ${apptDD} às ${apptHH}`,
+      tag: `cancelled-${a.id}`,
+      url: `/agendamento/${a.cancelToken}`,
+      sound: "changed",
+    }).catch(() => {});
+  }
   res.json(formatAppointmentWithToken(result.appointment!));
 });
 
@@ -1775,7 +1795,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
       body: `${a.clientName} · ${a.serviceName} · novo horário: ${apptDD} às ${apptHH}`,
       tag: `resched-${a.id}`,
       url: `/agendamento/${a.cancelToken}`,
-      sound: "rescheduled",
+      sound: "changed",
     }).catch(() => {});
   }
 
@@ -1830,6 +1850,23 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  const apptHH = new Date(appointment.scheduledAt).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+  const apptDD = new Date(appointment.scheduledAt).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+  sendAdminPush(appointment.userId, {
+    title: "❌ Agendamento cancelado",
+    body: `${appointment.clientName} · ${appointment.serviceName} · horário cancelado: ${apptDD} às ${apptHH}`,
+    tag: `cancelled-${appointment.id}`,
+    url: `/agendamento/${appointment.cancelToken}`,
+    sound: "changed",
+  }).catch(() => {});
   res.json(formatAppointment(appointment));
 });
 

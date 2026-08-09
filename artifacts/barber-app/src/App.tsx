@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Component, type ErrorInfo, type ReactNode, useEffect } from "react";
 import { Sidebar } from "./components/layout";
-import { playAlert15, playNewAppointment, playRescheduled } from "@/lib/sounds";
+import { playAlert15, playNewAppointment, playPixPending, playRescheduled } from "@/lib/sounds";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 import Dashboard from "./pages/dashboard";
@@ -84,7 +84,8 @@ function ThemeWrapper({ children }: { children: React.ReactNode }) {
     const handler = (event: MessageEvent) => {
       if (event.data?.type === "PLAY_SOUND") {
         const s = event.data?.sound;
-        if (s === "rescheduled") playRescheduled();
+        if (s === "pix_pending") playPixPending();
+        else if (s === "changed" || s === "rescheduled") playRescheduled();
         else if (s === "new") playNewAppointment();
         else playAlert15();
       }

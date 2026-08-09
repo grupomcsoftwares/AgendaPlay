@@ -1,5 +1,15 @@
 let ctx: AudioContext | null = null;
 
+function playAsset(path: string, fallback: () => void) {
+  try {
+    const audio = new Audio(`${import.meta.env.BASE_URL}sounds/${path}`);
+    audio.volume = 0.85;
+    void audio.play().catch(fallback);
+  } catch {
+    fallback();
+  }
+}
+
 function getCtx(): AudioContext {
   if (!ctx) ctx = new AudioContext();
   if (ctx.state === "suspended") ctx.resume();
@@ -28,13 +38,15 @@ function tone(
 }
 
 export function playNewAppointment() {
-  try {
-    const ac = getCtx();
-    const t = ac.currentTime;
-    tone(ac, 523.25, t, 0.25, 0.25);       // C5
-    tone(ac, 659.25, t + 0.15, 0.25, 0.25); // E5
-    tone(ac, 783.99, t + 0.30, 0.40, 0.30); // G5
-  } catch { /* ignore */ }
+  playAsset("new-appointment.mp3", () => {
+    try {
+      const ac = getCtx();
+      const t = ac.currentTime;
+      tone(ac, 523.25, t, 0.25, 0.25);
+      tone(ac, 659.25, t + 0.15, 0.25, 0.25);
+      tone(ac, 783.99, t + 0.30, 0.40, 0.30);
+    } catch { /* ignore */ }
+  });
 }
 
 export function playServiceStart() {
@@ -69,12 +81,25 @@ export function playAlert15() {
 }
 
 export function playRescheduled() {
-  try {
-    const ac = getCtx();
-    const t = ac.currentTime;
-    // Arpeggio maior (descendente) — diferente do novo agendamento
-    tone(ac, 880, t, 0.2, 0.25, "triangle");     // A5
-    tone(ac, 783.99, t + 0.12, 0.2, 0.25, "triangle"); // G5
-    tone(ac, 659.25, t + 0.24, 0.35, 0.3, "triangle"); // E5
-  } catch { /* ignore */ }
+  playAsset("appointment-changed.mp3", () => {
+    try {
+      const ac = getCtx();
+      const t = ac.currentTime;
+      tone(ac, 880, t, 0.2, 0.25, "triangle");
+      tone(ac, 783.99, t + 0.12, 0.2, 0.25, "triangle");
+      tone(ac, 659.25, t + 0.24, 0.35, 0.3, "triangle");
+    } catch { /* ignore */ }
+  });
+}
+
+export function playPixPending() {
+  playAsset("pix-pending.mp3", () => {
+    try {
+      const ac = getCtx();
+      const t = ac.currentTime;
+      tone(ac, 392, t, 0.25, 0.28, "square");
+      tone(ac, 523.25, t + 0.22, 0.4, 0.32, "square");
+      tone(ac, 392, t + 0.72, 0.25, 0.28, "square");
+    } catch { /* ignore */ }
+  });
 }

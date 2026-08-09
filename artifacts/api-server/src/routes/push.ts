@@ -337,7 +337,7 @@ export async function sendAdminPush(userId: string, payload: {
   body: string;
   tag?: string;
   url?: string;
-  sound?: "new" | "rescheduled";
+  sound?: "new" | "changed" | "pix_pending";
 }) {
   if (process.env.VAPID_PUBLIC_KEY) {
     const subs = await db
@@ -369,9 +369,21 @@ export async function sendAdminPush(userId: string, payload: {
           to: sub.expoPushToken,
           title: payload.title,
           body: payload.body,
-          data: { url: payload.url ?? "/" },
-          sound: "default",
-          channelId: "agendaplay",
+          data: {
+            url: payload.url ?? "/",
+            sound: payload.sound ?? "new",
+            tag: payload.tag ?? "agendaplay",
+          },
+          sound: payload.sound === "pix_pending"
+            ? "pix-pending.mp3"
+            : payload.sound === "changed"
+              ? "appointment-changed.mp3"
+              : "new-appointment.mp3",
+          channelId: payload.sound === "pix_pending"
+            ? "agendaplay-pix-pending"
+            : payload.sound === "changed"
+              ? "agendaplay-appointment-changed"
+              : "agendaplay-new-appointment",
           priority: "high",
         }),
       });
@@ -388,6 +400,43 @@ export async function sendAdminPush(userId: string, payload: {
       // Keep the token for transient Expo service/network failures.
     }
   }
+}
+
+async function sendPendingPaymentAlerts() {
+  const pending = await db
+    .select({
+      id: appointmentsTable.id,
+      userId: appointmentsTable.userId,
+      clientName: appointmentsTable.clientName,
+      serviceName: appointmentsTable.serviceName,
+      scheduledAt: appointmentsTable.scheduledAt,
+      cancelToken: appointmentsTable.cancelToken,
+      shopName: settingsTable.barbershopName,
+    })
+    .from(appointmentsTable)
+    .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
+    .where(eq(appointmentsTable.status, "pending_payment"));
+
+  await Promise.all(pending.map(async (appointment) => {
+    const scheduledAt = new Date(appointment.scheduledAt);
+    const date = scheduledAt.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    const time = scheduledAt.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    await sendAdminPush(appointment.userId, {
+      title: "💳 Pix aguardando aprovação",
+      body: `${appointment.clientName} · ${appointment.serviceName} · ${date} às ${time}`,
+      tag: `pix-pending-${appointment.id}`,
+      url: `/agendamento/${appointment.cancelToken}`,
+      sound: "pix_pending",
+    }).catch(() => {});
+  }));
 }
 
 export async function sendClientAppointmentPush(cancelToken: string, payload: {
@@ -414,9 +463,13 @@ export async function sendClientAppointmentPush(cancelToken: string, payload: {
 }
 
 export async function runPushScheduler() {
-  if (!process.env.VAPID_PUBLIC_KEY) return;
-  setInterval(async () => {
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
     try {
+      await sendPendingPaymentAlerts();
+      if (!process.env.VAPID_PUBLIC_KEY) return;
       const now = new Date();
       const windowStart = new Date(now.getTime() + 14 * 60 * 1000);
       const windowEnd   = new Date(now.getTime() + 16 * 60 * 1000);
@@ -482,7 +535,13 @@ export async function runPushScheduler() {
       }
       await sendClientReengagementPushes();
     } catch { /* ignore scheduler errors */ }
-  }, 60_000);
+    finally {
+      running = false;
+    }
+  };
+
+  void run();
+  setInterval(() => { void run(); }, 60_000);
 }
 
 function renderReengagementMessage(template: string, values: {

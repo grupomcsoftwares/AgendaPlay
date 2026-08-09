@@ -37,7 +37,16 @@
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-notifications"
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/new-appointment.mp3",
+            "./assets/sounds/appointment-changed.mp3",
+            "./assets/sounds/pix-pending.mp3"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

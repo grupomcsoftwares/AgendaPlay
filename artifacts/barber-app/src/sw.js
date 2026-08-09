@@ -29,6 +29,7 @@ self.addEventListener("push", (event) => {
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || "agendaplay",
     renotify: true,
+    requireInteraction: data.sound === "pix_pending",
     data: { url: data.url || "/" },
     actions: [{ action: "view", title: "Ver agendamento" }],
   });
