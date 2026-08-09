@@ -1732,7 +1732,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                       key={value}
                       type="button"
                       data-testid={`button-payment-${value}`}
-                      onClick={() => { setFormData({ ...formData, paymentMethod: value }); }}
+                           onClick={() => {
+                             setFormData({ ...formData, paymentMethod: value });
+                             if (value === "now") setPixCopied(false);
+                           }}
                       className="w-full text-left rounded-2xl p-4 transition-all flex items-center gap-4"
                       style={{
                         backgroundColor: isSelected ? AMBER_SOFT : "hsl(0 0% 7%)",
@@ -1794,9 +1797,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                       onClick={async (event) => {
                         event.stopPropagation();
                         try {
-                          await navigator.clipboard.writeText(pixKey);
-                          setPixCopied(true);
-                          window.setTimeout(() => setPixCopied(false), 2000);
+                           await navigator.clipboard.writeText(pixKey);
+                           setPixCopied(true);
                         } catch {
                           setPixCopied(false);
                         }
@@ -1815,7 +1817,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               <button
                 type="button"
                 data-testid="button-confirm-booking"
-                disabled={createAppointment.isPending}
+                disabled={createAppointment.isPending || (formData.paymentMethod === "now" && !pixCopied)}
                 onClick={handleBook}
                 className="w-full rounded-xl text-center font-semibold transition-opacity"
                 style={{
@@ -1823,14 +1825,16 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   backgroundColor: AMBER_DEEP,
                   color: "hsl(0 0% 100%)",
                   border: "none",
-                  cursor: createAppointment.isPending ? "not-allowed" : "pointer",
-                  opacity: createAppointment.isPending ? 0.55 : 1,
+                   cursor: createAppointment.isPending || (formData.paymentMethod === "now" && !pixCopied) ? "not-allowed" : "pointer",
+                   opacity: createAppointment.isPending || (formData.paymentMethod === "now" && !pixCopied) ? 0.55 : 1,
                 }}
               >
                 {createAppointment.isPending
                   ? "Confirmando..."
                   : formData.paymentMethod === "now"
-                    ? "Pagar e confirmar agendamento"
+                    ? pixCopied
+                      ? "Pagar e confirmar agendamento"
+                      : "Copie a chave Pix para continuar"
                     : "Confirmar agendamento"}
               </button>
             </CardContent>
