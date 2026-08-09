@@ -330,6 +330,16 @@ export default function Barbers() {
           <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Cadastre os profissionais que atendem. Quando houver mais de um, o cliente escolhe na hora de agendar.
           </p>
+          <div
+            className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-100 sm:max-w-xl sm:text-sm"
+            data-testid="barber-plan-reminder"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <p>
+              <span className="font-semibold">Lembrete:</span> para cadastrar mais barbeiros além do limite do seu plano,
+              é obrigatório mudar de plano.
+            </p>
+          </div>
         </div>
         <Dialog open={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) resetForm(); }}>
           <Button className="gap-2" onClick={openNewBarber} data-testid="button-new-barber">
