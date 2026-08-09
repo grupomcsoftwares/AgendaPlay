@@ -241,6 +241,7 @@ export const ListAppointmentsQueryParams = zod.object({
 
 export const ListAppointmentsResponseItem = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -292,6 +293,7 @@ export const GetAppointmentParams = zod.object({
 
 export const GetAppointmentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -333,6 +335,7 @@ export const UpdateAppointmentBody = zod.object({
 
 export const UpdateAppointmentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -369,6 +372,7 @@ export const StartAppointmentParams = zod.object({
 
 export const StartAppointmentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -397,6 +401,7 @@ export const ApproveAppointmentPaymentParams = zod.object({
 
 export const ApproveAppointmentPaymentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -425,6 +430,7 @@ export const RejectAppointmentPaymentParams = zod.object({
 
 export const RejectAppointmentPaymentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -453,6 +459,7 @@ export const CompleteAppointmentParams = zod.object({
 
 export const CompleteAppointmentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -481,6 +488,7 @@ export const CancelAppointmentParams = zod.object({
 
 export const CancelAppointmentResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -509,6 +517,7 @@ export const GetAppointmentByTokenParams = zod.object({
 
 export const GetAppointmentByTokenResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -537,6 +546,7 @@ export const CancelAppointmentByTokenParams = zod.object({
 
 export const CancelAppointmentByTokenResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -570,6 +580,7 @@ export const RescheduleAppointmentByTokenBody = zod.object({
 
 export const RescheduleAppointmentByTokenResponse = zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -699,6 +710,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "queueCount": zod.number(),
   "currentAppointment": zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),
@@ -718,6 +730,7 @@ export const GetDashboardSummaryResponse = zod.object({
 }).nullable(),
   "nextAppointment": zod.object({
   "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
   "clientId": zod.number().nullish(),
   "clientName": zod.string(),
   "serviceId": zod.number().nullish(),

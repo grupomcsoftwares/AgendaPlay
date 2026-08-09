@@ -174,6 +174,8 @@ export const AppointmentPaymentMethod = {
 
 export interface Appointment {
   id: number;
+  /** Shop owner user ID associated with the appointment. */
+  userId: string;
   /** @nullable */
   clientId?: number | null;
   clientName: string;

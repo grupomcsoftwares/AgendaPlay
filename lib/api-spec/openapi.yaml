@@ -1396,10 +1396,13 @@ components:
 
     Appointment:
       type: object
-      required: [id, clientName, serviceName, scheduledAt, status, servicePrice, serviceDuration]
+      required: [id, userId, clientName, serviceName, scheduledAt, status, servicePrice, serviceDuration]
       properties:
         id:
           type: integer
+        userId:
+          type: string
+          description: Shop owner user ID associated with the appointment.
         clientId:
           type: ["integer", "null"]
         clientName:

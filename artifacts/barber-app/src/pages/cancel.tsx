@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useRoute, useSearch } from "wouter";
+import { useLocation, useRoute, useSearch } from "wouter";
 import {
   useGetAppointmentByToken,
   useCancelAppointmentByToken,
@@ -29,6 +29,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function CancelBooking() {
   const [, params] = useRoute("/agendamento/:token");
+  const [, setLocation] = useLocation();
   const search = useSearch();
   const isNew = new URLSearchParams(search).get("novo") === "1";
   const token = params?.token ?? "";
@@ -50,7 +51,7 @@ export default function CancelBooking() {
   const [reschedDate, setReschedDate] = useState<string>(""); // YYYY-MM-DD
   const [reschedTime, setReschedTime] = useState<string>(""); // HH:MM
 
-  const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
+  const urlShopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
 
   const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
     query: {
@@ -59,6 +60,9 @@ export default function CancelBooking() {
       refetchInterval: 5_000,
     },
   });
+  // Older appointment links may not include shopId. The token response still
+  // carries the appointment owner's userId, which is the shop identifier.
+  const shopId = urlShopId ?? appointment?.userId ?? undefined;
 
   // Check appointment time and show reminder banner when 15 min left
   useEffect(() => {
@@ -632,9 +636,8 @@ export default function CancelBooking() {
                     disabled={!childName.trim() || !childLastName.trim()}
                     onClick={() => {
                       if (!shopId) return;
-                      const url = `${window.location.origin}/booking?shopId=${shopId}&novo=1&cn=${encodeURIComponent(childName.trim())}&cls=${encodeURIComponent(childLastName.trim())}`;
-                      window.open(url, "_blank");
                       setChildModal(false);
+                      setLocation(`/booking?shopId=${encodeURIComponent(shopId)}&novo=1&cn=${encodeURIComponent(childName.trim())}&cls=${encodeURIComponent(childLastName.trim())}`);
                     }}
                     className="rounded-xl py-2.5 text-sm font-semibold"
                     style={{
