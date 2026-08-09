@@ -931,24 +931,25 @@ export default function Settings() {
                     <span className={`text-sm font-medium ${day.closed ? "text-muted-foreground" : ""}`}>{short}</span>
                     {day.closed && <span className="text-xs text-muted-foreground italic ml-auto">Fechado</span>}
                   </div>
-                  {/* Row 2: 4 columns always side-by-side */}
+                  {/* On narrow screens, use two columns so the native time inputs
+                      have enough room to display the complete value. */}
                   {!day.closed && (
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Início</p>
-                        <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Início</p>
+                        <Input type="time" data-testid={`input-open-${key}`} value={day.open} onChange={(e) => updateDay(key, { open: e.target.value })} className="h-9 text-sm w-full px-2 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Almoço</p>
-                        <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Almoço</p>
+                        <Input type="time" data-testid={`input-lunch-start-${key}`} value={day.lunchStart} onChange={(e) => updateDay(key, { lunchStart: e.target.value })} className="h-9 text-sm w-full px-2 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Volta</p>
-                        <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Volta</p>
+                        <Input type="time" data-testid={`input-lunch-end-${key}`} value={day.lunchEnd} onChange={(e) => updateDay(key, { lunchEnd: e.target.value })} className="h-9 text-sm w-full px-2 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                       <div>
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">Fechamento</p>
-                        <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-7 text-xs w-full px-1.5 [&::-webkit-calendar-picker-indicator]:hidden" />
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Fechamento</p>
+                        <Input type="time" data-testid={`input-close-${key}`} value={day.close} onChange={(e) => updateDay(key, { close: e.target.value })} className="h-9 text-sm w-full px-2 [&::-webkit-calendar-picker-indicator]:hidden" />
                       </div>
                     </div>
                   )}
