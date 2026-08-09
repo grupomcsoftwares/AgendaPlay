@@ -508,6 +508,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     .reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0);
   // Remaining discount budget available for additional redemptions
   const loyaltyRemainingDiscount = Math.max(0, loyaltyAvailableDiscount - loyaltyAlreadyCommitted);
+  // Expiration guidance is useful only when the current balance can redeem
+  // at least one paid service the client can actually choose.
+  const hasRedeemableService = loyaltyBalance?.enabled === true &&
+    loyaltyAvailableDiscount > 0 &&
+    eligibleServicesAll.some(service => service.price > 0 && service.price <= loyaltyAvailableDiscount);
   // Auto-clear plan selection when loyalty is active (can't combine)
   useEffect(() => {
     if (useLoyaltyPoints && formData.usePlan) {
@@ -967,8 +972,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 </span>
               </div>
             )}
-            {loyaltyBalance?.enabled &&
-              loyaltyBalance.points > 0 &&
+            {hasRedeemableService &&
               loyaltyBalance.daysUntilExpiration !== null &&
               loyaltyBalance.daysUntilExpiration <= loyaltyBalance.expirationWarningDays && (
                 <div
