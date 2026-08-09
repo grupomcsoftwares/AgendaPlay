@@ -1073,13 +1073,19 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
                             </span>
-                            {!hasPromotion && showServicePrices && (
+                            {showServicePrices && (
                               <span
                                 className="flex items-center gap-1 font-semibold"
-                                style={{ color: AMBER }}
+                                style={{ color: hasPromotion ? "hsl(142 71% 45%)" : AMBER, whiteSpace: "nowrap" }}
                               >
-                                <DollarSign className="w-3.5 h-3.5" />
-                                R$ {service.price.toFixed(2).replace(".", ",")}
+                                {hasPromotion ? (
+                                  <span className="text-xs font-bold tracking-wide">PROMOÇÃO</span>
+                                ) : (
+                                  <>
+                                    <DollarSign className="w-3.5 h-3.5" />
+                                    R$ {service.price.toFixed(2).replace(".", ",")}
+                                  </>
+                                )}
                               </span>
                             )}
                             {isBlocked && (
@@ -1115,20 +1121,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               </span>
                             )}
                           </div>
-                          {hasPromotion && (
-                            <div className="flex justify-end pt-1">
-                              <span
-                                className="promotion-badge min-w-[7.5rem] rounded-full px-4 py-1.5 text-center text-sm font-extrabold tracking-wide"
-                                style={{
-                                  backgroundColor: "hsl(142 71% 45%)",
-                                  color: "hsl(0 0% 7%)",
-                                }}
-                                data-testid={`badge-promotion-${service.id}`}
-                              >
-                                PROMOÇÃO
-                              </span>
-                            </div>
-                          )}
                         </div>
                         {!isSelected && (
                           <div
