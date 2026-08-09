@@ -389,6 +389,62 @@ export const StartAppointmentResponse = zod.object({
 
 
 /**
+ * @summary Approve a Pix payment and release the appointment
+ */
+export const ApproveAppointmentPaymentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ApproveAppointmentPaymentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Reject a Pix payment and release the appointment slot
+ */
+export const RejectAppointmentPaymentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RejectAppointmentPaymentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
  * @summary Complete an appointment
  */
 export const CompleteAppointmentParams = zod.object({

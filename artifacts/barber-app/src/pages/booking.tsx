@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -1884,10 +1883,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             </svg>
           </div>
 
-          <h2 className="bk-fade text-2xl font-bold mt-6">Agendamento confirmado!</h2>
+          <h2 className="bk-fade text-2xl font-bold mt-6">
+            {formData.paymentMethod === "now" ? "Pedido de agendamento enviado!" : "Agendamento confirmado!"}
+          </h2>
           <p className="bk-fade-2 text-sm text-muted-foreground mt-2">
             {formData.paymentMethod === "now"
-              ? "Efetue o pagamento via Pix para garantir seu horário."
+              ? "Seu horário está reservado e aguarda o barbeiro confirmar o pagamento Pix."
               : "Tudo certo! Te esperamos no horário marcado."}
           </p>
           {settings?.bookingPageMessage && (
@@ -1896,36 +1897,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             </p>
           )}
 
-          {formData.paymentMethod === "now" && pixKey && (
-            <div
-              className="bk-fade-2 mt-6 rounded-2xl p-5 w-full max-w-xs space-y-4 text-left"
-              style={{ backgroundColor: "hsl(0 0% 9%)", border: `1px solid ${AMBER}4D` }}
-            >
-              <p className="text-xs font-semibold text-center" style={{ color: AMBER }}>
-                Pague via Pix
-              </p>
-              <div className="flex justify-center">
-                <div className="p-2 bg-white rounded-xl">
-                  <QRCodeSVG value={pixKey} size={160} />
-                </div>
-              </div>
-              <div
-                className="flex items-center gap-2 rounded-lg px-3 py-2"
-                style={{ backgroundColor: "hsl(0 0% 13%)", border: "1px solid hsl(0 0% 20%)" }}
-              >
-                <span className="flex-1 text-sm font-mono truncate">{pixKey}</span>
-                <button
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(pixKey)}
-                  className="shrink-0 p-1 rounded hover:opacity-70 transition-opacity"
-                  style={{ color: AMBER, background: "none", border: "none", cursor: "pointer" }}
-                  title="Copiar chave Pix"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

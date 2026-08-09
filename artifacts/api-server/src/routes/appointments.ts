@@ -3,7 +3,7 @@ import { eq, and, gte, gt, lt, sql, inArray } from "drizzle-orm";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 import { db, appointmentsTable, queueTable, servicesTable, serviceDayPricingTable, comboDiscountsTable, settingsTable, barbersTable, usersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
-import { sendAdminPush } from "./push.js";
+import { sendAdminPush, sendClientAppointmentPush } from "./push.js";
 import { broadcastQueueUpdate } from "./queue.js";
 import { accountCanAccess } from "./accountStatus.js";
 import {
@@ -280,7 +280,7 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
 }
 
 function isBlockingAppointment(status: string): boolean {
-  return status !== "cancelled" && status !== "completed";
+  return status !== "cancelled" && status !== "payment_rejected" && status !== "completed";
 }
 
 /**
@@ -824,6 +824,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
 
   let conflict = false;
   let redeemConflict = false;
+  const awaitingPayment = parsed.data.paymentMethod === "now" && !isAdminBooking;
   const appointment = await db.transaction(async (tx) => {
     let hash = 0;
     for (let i = 0; i < localDate.length; i++) hash = ((hash << 5) - hash + localDate.charCodeAt(i)) | 0;
@@ -866,7 +867,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     // Atomic conditional deduction — the single definitive check, concurrency-safe.
     // Uses a conditional UPDATE (points >= redeemed) instead of GREATEST(), so a
     // concurrent booking that already spent the same points returns 0 rows and we fail.
-    if (loyaltyPointsRedeemed > 0 && loyaltyPhone) {
+    if (loyaltyPointsRedeemed > 0 && loyaltyPhone && !awaitingPayment) {
       const deducted = await tx
         .update(loyaltyPointsTable)
         .set({
@@ -908,13 +909,16 @@ router.post("/appointments", async (req, res): Promise<void> => {
       servicePrice: String(finalServicePrice),
       serviceDuration: authoritative.serviceDuration,
       scheduledAt: scheduledAtDate,
-      status: "pending",
+      status: awaitingPayment ? "pending_payment" : "pending",
       cancelToken: crypto.randomUUID(),
-      creditsUsed: coveredByPlan ? subscriptionCreditCost : null,
+      creditsUsed: awaitingPayment ? null : (coveredByPlan ? subscriptionCreditCost : null),
+      pendingCreditsUsed: awaitingPayment ? (coveredByPlan ? subscriptionCreditCost : null) : null,
+      pendingLoyaltyPointsRedeemed: awaitingPayment ? loyaltyPointsRedeemed : 0,
+      pendingLoyaltyPointsEarned: 0,
     }).returning();
 
     // Atomic subscription credit deduction inside transaction
-    if (coveredByPlan && subscriptionCreditCost > 0 && loyaltyPhone) {
+    if (coveredByPlan && subscriptionCreditCost > 0 && loyaltyPhone && !awaitingPayment) {
       const deducted = await tx
         .update(clientSubscriptionsTable)
         .set({
@@ -935,24 +939,26 @@ router.post("/appointments", async (req, res): Promise<void> => {
       }
     }
 
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
-    const [maxResult] = await tx
-      .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
-      .from(queueTable)
-      .where(and(eq(queueTable.userId, shopId), sql`${queueTable.status} != 'completed'`));
-    const nextPosition = (maxResult?.maxPos ?? 0) + 1;
+    if (!awaitingPayment) {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
+      const [maxResult] = await tx
+        .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
+        .from(queueTable)
+        .where(and(eq(queueTable.userId, shopId), sql`${queueTable.status} != 'completed'`));
+      const nextPosition = (maxResult?.maxPos ?? 0) + 1;
 
-    await tx.insert(queueTable).values({
-      userId: shopId,
-      appointmentId: created.id,
-      clientName: created.clientName,
-      serviceName: created.serviceName,
-      servicePrice: created.servicePrice,
-      serviceDuration: created.serviceDuration,
-      notes: created.notes,
-      position: nextPosition,
-      status: "waiting",
-    });
+      await tx.insert(queueTable).values({
+        userId: shopId,
+        appointmentId: created.id,
+        clientName: created.clientName,
+        serviceName: created.serviceName,
+        servicePrice: created.servicePrice,
+        serviceDuration: created.serviceDuration,
+        notes: created.notes,
+        position: nextPosition,
+        status: "waiting",
+      });
+    }
 
     // Auto-upsert client record for history, and link clientId to the appointment.
     if (loyaltyPhone && parsed.data.clientName) {
@@ -984,7 +990,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     let pointsEarned = 0;
     if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
       pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
-      if (pointsEarned > 0) {
+      if (pointsEarned > 0 && !awaitingPayment) {
         await tx
           .insert(loyaltyPointsTable)
           .values({ userId: shopId, clientPhone: loyaltyPhone, points: pointsEarned })
@@ -996,7 +1002,14 @@ router.post("/appointments", async (req, res): Promise<void> => {
     }
 
     // Store loyalty point totals on the appointment so cancellation can reverse them.
-    if (loyaltyPointsRedeemed > 0 || pointsEarned > 0) {
+    if (awaitingPayment) {
+      if (pointsEarned > 0) {
+        await tx
+          .update(appointmentsTable)
+          .set({ pendingLoyaltyPointsEarned: pointsEarned })
+          .where(eq(appointmentsTable.id, created.id));
+      }
+    } else if (loyaltyPointsRedeemed > 0 || pointsEarned > 0) {
       await tx
         .update(appointmentsTable)
         .set({ loyaltyPointsRedeemed, loyaltyPointsEarned: pointsEarned })
@@ -1040,7 +1053,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo",
   });
   sendAdminPush(appointment.userId, {
-    title: "📅 Novo agendamento",
+    title: awaitingPayment ? "💳 Pagamento Pix pendente" : "📅 Novo agendamento",
     body: `${appointment.clientName} · ${appointment.serviceName} · ${apptDD} às ${apptHH}`,
     tag: `new-${appointment.id}`,
     url: `/agendamento/${appointment.cancelToken}`,
@@ -1290,7 +1303,11 @@ router.post("/appointments/:id/start", requireActiveAuth, async (req, res): Prom
     const [started] = await tx
       .update(appointmentsTable)
       .set({ status: "in_progress" })
-      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+      .where(and(
+        eq(appointmentsTable.id, params.data.id),
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "pending"),
+      ))
       .returning();
     if (!started) return null;
 
@@ -1309,6 +1326,190 @@ router.post("/appointments/:id/start", requireActiveAuth, async (req, res): Prom
   }
   broadcastQueueUpdate(userId);
   res.json(formatAppointment(appointment));
+});
+
+router.post("/appointments/:id/approve-payment", requireActiveAuth, async (req, res): Promise<void> => {
+  const params = GetAppointmentParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const userId = req.session.userId!;
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.id, params.data.id),
+        eq(appointmentsTable.userId, userId),
+      ))
+      .for("update")
+      .limit(1);
+    if (!existing) return { error: "notfound" as const };
+    if (existing.status !== "pending_payment") return { error: "state" as const };
+
+    const phoneMatch = existing.notes?.match(/Tel:\s*([\d\s()\-+.]+)/);
+    const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
+    const pointsToRedeem = existing.pendingLoyaltyPointsRedeemed ?? 0;
+    const pointsToEarn = existing.pendingLoyaltyPointsEarned ?? 0;
+    const creditsToUse = existing.pendingCreditsUsed ?? 0;
+
+    if (pointsToRedeem > 0) {
+      if (!loyaltyPhone) return { error: "points" as const };
+      const deducted = await tx
+        .update(loyaltyPointsTable)
+        .set({
+          points: sql`${loyaltyPointsTable.points} - ${pointsToRedeem}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(loyaltyPointsTable.userId, userId),
+          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
+          gte(loyaltyPointsTable.points, pointsToRedeem),
+        ))
+        .returning({ points: loyaltyPointsTable.points });
+      if (deducted.length === 0) return { error: "points" as const };
+    }
+
+    if (creditsToUse > 0) {
+      if (!loyaltyPhone) return { error: "credits" as const };
+      const deducted = await tx
+        .update(clientSubscriptionsTable)
+        .set({
+          creditsRemaining: sql`${clientSubscriptionsTable.creditsRemaining} - ${creditsToUse}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(clientSubscriptionsTable.userId, userId),
+          eq(clientSubscriptionsTable.clientPhone, loyaltyPhone),
+          eq(clientSubscriptionsTable.status, "active"),
+          sql`${clientSubscriptionsTable.creditsRemaining} >= ${creditsToUse}`,
+          sql`${clientSubscriptionsTable.expiresAt} > NOW()`,
+        ))
+        .returning({ id: clientSubscriptionsTable.id });
+      if (deducted.length === 0) return { error: "credits" as const };
+    }
+
+    if (pointsToEarn > 0 && loyaltyPhone) {
+      await tx
+        .insert(loyaltyPointsTable)
+        .values({ userId, clientPhone: loyaltyPhone, points: pointsToEarn })
+        .onConflictDoUpdate({
+          target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+          set: { points: sql`${loyaltyPointsTable.points} + ${pointsToEarn}`, updatedAt: new Date() },
+        });
+    }
+
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
+    const [maxResult] = await tx
+      .select({ maxPos: sql<number>`COALESCE(MAX(${queueTable.position}), 0)` })
+      .from(queueTable)
+      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} != 'completed'`));
+    const nextPosition = (maxResult?.maxPos ?? 0) + 1;
+    await tx.insert(queueTable).values({
+      userId,
+      appointmentId: existing.id,
+      clientName: existing.clientName,
+      serviceName: existing.serviceName,
+      servicePrice: existing.servicePrice,
+      serviceDuration: existing.serviceDuration,
+      notes: existing.notes,
+      position: nextPosition,
+      status: "waiting",
+    });
+
+    const [approved] = await tx
+      .update(appointmentsTable)
+      .set({
+        status: "pending",
+        creditsUsed: creditsToUse > 0 ? creditsToUse : null,
+        loyaltyPointsRedeemed: pointsToRedeem,
+        loyaltyPointsEarned: pointsToEarn,
+        pendingCreditsUsed: null,
+        pendingLoyaltyPointsRedeemed: 0,
+        pendingLoyaltyPointsEarned: 0,
+      })
+      .where(and(
+        eq(appointmentsTable.id, existing.id),
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "pending_payment"),
+      ))
+      .returning();
+    if (!approved) return { error: "state" as const };
+    return { appointment: approved };
+  });
+
+  if (result.error === "notfound") {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+  if (result.error === "state") {
+    res.status(409).json({ error: "Este agendamento não está aguardando aprovação de pagamento." });
+    return;
+  }
+  if (result.error === "points") {
+    res.status(409).json({ error: "O cliente não possui mais pontos suficientes para este agendamento." });
+    return;
+  }
+  if (result.error === "credits") {
+    res.status(409).json({ error: "O plano do cliente não possui mais créditos suficientes." });
+    return;
+  }
+
+  const appointment = result.appointment!;
+  await sendClientAppointmentPush(appointment.cancelToken!, {
+    title: "✅ Pagamento Pix confirmado",
+    body: `Seu agendamento de ${appointment.serviceName} foi liberado para ${new Date(appointment.scheduledAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: TZ })}.`,
+    tag: `payment-approved-${appointment.id}`,
+    url: `/agendamento/${appointment.cancelToken}`,
+  }).catch(() => {});
+  broadcastQueueUpdate(userId);
+  res.json(formatAppointmentWithToken(appointment));
+});
+
+router.post("/appointments/:id/reject-payment", requireActiveAuth, async (req, res): Promise<void> => {
+  const params = GetAppointmentParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const userId = req.session.userId!;
+  const [appointment] = await db
+    .update(appointmentsTable)
+    .set({
+      status: "payment_rejected",
+      pendingCreditsUsed: null,
+      pendingLoyaltyPointsRedeemed: 0,
+      pendingLoyaltyPointsEarned: 0,
+    })
+    .where(and(
+      eq(appointmentsTable.id, params.data.id),
+      eq(appointmentsTable.userId, userId),
+      eq(appointmentsTable.status, "pending_payment"),
+    ))
+    .returning();
+  if (!appointment) {
+    const [existing] = await db
+      .select({ id: appointmentsTable.id, status: appointmentsTable.status })
+      .from(appointmentsTable)
+      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+      .limit(1);
+    if (!existing) {
+      res.status(404).json({ error: "Appointment not found" });
+    } else {
+      res.status(409).json({ error: "Este agendamento não está aguardando aprovação de pagamento." });
+    }
+    return;
+  }
+  await db.delete(queueTable).where(eq(queueTable.appointmentId, appointment.id));
+  await sendClientAppointmentPush(appointment.cancelToken!, {
+    title: "Pagamento Pix não confirmado",
+    body: "A barbearia não confirmou o pagamento. O horário foi liberado; faça um novo agendamento quando quiser.",
+    tag: `payment-rejected-${appointment.id}`,
+    url: `/agendamento/${appointment.cancelToken}`,
+  }).catch(() => {});
+  broadcastQueueUpdate(userId);
+  res.json(formatAppointmentWithToken(appointment));
 });
 
 router.post("/appointments/:id/complete", requireActiveAuth, async (req, res): Promise<void> => {
@@ -1376,7 +1577,7 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
       .set({ status: "cancelled" })
       .where(and(
         eq(appointmentsTable.id, existing.id),
-        sql`${appointmentsTable.status} IN ('pending', 'confirmed')`,
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment')`,
       ))
       .returning();
     if (!updated) return { error: "locked" as const };
@@ -1537,7 +1738,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
       .set(updateSet)
       .where(and(
         eq(appointmentsTable.id, existing.id),
-        sql`${appointmentsTable.status} IN ('pending', 'confirmed')`,
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment')`,
       ))
       .returning();
     if (!updated) return { error: "locked" as const };

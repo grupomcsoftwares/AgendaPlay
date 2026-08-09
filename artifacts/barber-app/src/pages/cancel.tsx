@@ -20,6 +20,8 @@ const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Confirmado",
+  pending_payment: "Aguardando confirmação do Pix",
+  payment_rejected: "Pagamento Pix não confirmado",
   in_progress: "Em atendimento",
   completed: "Concluído",
   cancelled: "Cancelado",
@@ -51,7 +53,11 @@ export default function CancelBooking() {
   const shopId = new URLSearchParams(window.location.search).get("shopId") ?? undefined;
 
   const { data: appointment, isLoading, isError } = useGetAppointmentByToken(token, {
-    query: { queryKey: getGetAppointmentByTokenQueryKey(token), enabled: !!token },
+    query: {
+      queryKey: getGetAppointmentByTokenQueryKey(token),
+      enabled: !!token,
+      refetchInterval: 5_000,
+    },
   });
 
   // Check appointment time and show reminder banner when 15 min left
@@ -208,8 +214,10 @@ export default function CancelBooking() {
   }
 
   const { date, time } = formatDateTime(appointment.scheduledAt);
-  const cancelled = appointment.status === "cancelled";
+  const paymentRejected = appointment.status === "payment_rejected";
+  const cancelled = appointment.status === "cancelled" || paymentRejected;
   const locked = appointment.status === "in_progress" || appointment.status === "completed";
+  const paymentPending = appointment.status === "pending_payment";
 
   // Show notification gate for active appointments the user hasn't interacted with yet
   const showNotifGate = !cancelled && !locked && !notifGatePassed && pushState !== "subscribed";
@@ -457,14 +465,26 @@ export default function CancelBooking() {
             <span
               className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full"
               style={{
-                backgroundColor: cancelled ? "hsl(0 62% 50% / 0.15)" : locked ? "hsl(0 0% 50% / 0.15)" : "hsl(142 70% 45% / 0.15)",
-                color: cancelled ? "hsl(0 70% 65%)" : locked ? "hsl(0 0% 70%)" : "hsl(142 70% 55%)",
+                backgroundColor: cancelled ? "hsl(0 62% 50% / 0.15)" : locked ? "hsl(0 0% 50% / 0.15)" : paymentPending ? "hsl(38 88% 55% / 0.15)" : "hsl(142 70% 45% / 0.15)",
+                color: cancelled ? "hsl(0 70% 65%)" : locked ? "hsl(0 0% 70%)" : paymentPending ? AMBER : "hsl(142 70% 55%)",
               }}
               data-testid="text-status"
             >
               {STATUS_LABEL[appointment.status] ?? appointment.status}
             </span>
           </div>
+
+        {paymentPending && (
+          <div
+            className="rounded-xl p-4 flex items-start gap-3"
+            style={{ backgroundColor: "hsl(38 88% 55% / 0.12)", border: `1px solid ${AMBER}66` }}
+          >
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: AMBER }} />
+            <p className="text-sm" style={{ color: "hsl(38 88% 75%)" }}>
+              O horário está reservado enquanto a barbearia confere o pagamento Pix. Você será avisado quando o pagamento for aprovado ou recusado.
+            </p>
+          </div>
+        )}
 
           <div className="space-y-3 pt-2">
             <Row icon={<User className="w-4 h-4" />} label="Cliente" value={appointment.clientName} />
@@ -481,7 +501,15 @@ export default function CancelBooking() {
           </div>
         )}
 
-        {cancelled ? (
+        {paymentRejected ? (
+          <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "hsl(0 62% 50% / 0.12)", border: "1px solid hsl(0 62% 50% / 0.4)" }}>
+            <XCircle className="w-5 h-5" style={{ color: "hsl(0 70% 65%)" }} />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold" style={{ color: "hsl(0 70% 75%)" }}>O pagamento Pix não foi confirmado pela barbearia.</p>
+              <p className="text-sm text-muted-foreground">O horário foi liberado. Faça um novo agendamento quando quiser.</p>
+            </div>
+          </div>
+        ) : cancelled ? (
           <div className="rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "hsl(0 0% 14%)", border: "1px solid hsl(0 0% 20%)" }}>
             <CheckCircle2 className="w-5 h-5" style={{ color: "hsl(0 70% 65%)" }} />
             <div className="space-y-1">

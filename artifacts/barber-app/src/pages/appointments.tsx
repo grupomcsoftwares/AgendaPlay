@@ -8,6 +8,8 @@ import {
   useStartAppointment,
   useCompleteAppointment,
   useCancelAppointment,
+  useApproveAppointmentPayment,
+  useRejectAppointmentPayment,
   getListAppointmentsQueryKey,
   useListServices,
   getListServicesQueryKey,
@@ -26,7 +28,7 @@ import {
   type Appointment,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare, AlertTriangle } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Check, Play, X, Trash2, Pencil, Printer, MessageCircle, MessageSquare, AlertTriangle, ShieldCheck, Ban } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -103,6 +105,8 @@ export default function Appointments() {
   const startAppointment = useStartAppointment();
   const completeAppointment = useCompleteAppointment();
   const cancelAppointment = useCancelAppointment();
+  const approvePayment = useApproveAppointmentPayment();
+  const rejectPayment = useRejectAppointmentPayment();
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -505,9 +509,11 @@ export default function Appointments() {
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500/20 bg-yellow-500/10">Pendente</Badge>;
+      case 'pending_payment': return <Badge variant="outline" className="text-violet-300 border-violet-400/30 bg-violet-400/10">Pix pendente</Badge>;
       case 'in_progress': return <Badge variant="outline" className="text-teal-500 border-teal-500/20 bg-teal-500/10">Em Andamento</Badge>;
       case 'completed': return <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/10">Concluído</Badge>;
       case 'cancelled': return <Badge variant="outline" className="text-destructive border-destructive/20 bg-destructive/10">Cancelado</Badge>;
+      case 'payment_rejected': return <Badge variant="outline" className="text-red-400 border-red-400/20 bg-red-400/10">Pix recusado</Badge>;
       default: return <Badge>{status}</Badge>;
     }
   };
@@ -517,6 +523,44 @@ export default function Appointments() {
       return <Badge variant="outline" className="text-violet-400 border-violet-400/20 bg-violet-400/10 gap-1"><span>Pix</span><span className="text-[10px] opacity-70">online</span></Badge>;
     }
     return <Badge variant="outline" className="text-muted-foreground border-border gap-1">Na barbearia</Badge>;
+  };
+
+  const approvePendingPayment = (apt: Appointment) => {
+    approvePayment.mutate(
+      { id: apt.id },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast({ title: "Pagamento aprovado", description: "O agendamento foi liberado e entrou na fila." });
+        },
+        onError: (error: any) => {
+          toast({
+            variant: "destructive",
+            title: "Não foi possível aprovar",
+            description: error?.data?.error ?? "Atualize a lista e tente novamente.",
+          });
+        },
+      },
+    );
+  };
+
+  const rejectPendingPayment = (apt: Appointment) => {
+    rejectPayment.mutate(
+      { id: apt.id },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast({ title: "Pagamento recusado", description: "O horário foi liberado e o cliente será avisado." });
+        },
+        onError: (error: any) => {
+          toast({
+            variant: "destructive",
+            title: "Não foi possível recusar",
+            description: error?.data?.error ?? "Atualize a lista e tente novamente.",
+          });
+        },
+      },
+    );
   };
 
   const extractClientNote = (notes: string | null | undefined): string => {
@@ -980,6 +1024,32 @@ export default function Appointments() {
                       {getPaymentBadge(apt.paymentMethod ?? "on_site")}
                     </div>
                     <div className="flex items-center gap-1">
+                      {apt.status === 'pending_payment' && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Aprovar pagamento Pix"
+                            className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                            onClick={() => approvePendingPayment(apt)}
+                            disabled={approvePayment.isPending || rejectPayment.isPending}
+                            data-testid={`button-approve-payment-${apt.id}`}
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Recusar pagamento Pix"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => rejectPendingPayment(apt)}
+                            disabled={approvePayment.isPending || rejectPayment.isPending}
+                            data-testid={`button-reject-payment-${apt.id}`}
+                          >
+                            <Ban className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                       {(apt.status === 'pending' || apt.status === 'cancelled') && (
                         <Button variant="ghost" size="icon" title="Editar" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}><Pencil className="h-4 w-4" /></Button>
                       )}
@@ -1055,6 +1125,32 @@ export default function Appointments() {
                       <TableCell>{getStatusBadge(apt.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          {apt.status === 'pending_payment' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Aprovar pagamento Pix"
+                                className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                                onClick={() => approvePendingPayment(apt)}
+                                disabled={approvePayment.isPending || rejectPayment.isPending}
+                                data-testid={`button-approve-payment-${apt.id}`}
+                              >
+                                <ShieldCheck className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Recusar pagamento Pix"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => rejectPendingPayment(apt)}
+                                disabled={approvePayment.isPending || rejectPayment.isPending}
+                                data-testid={`button-reject-payment-${apt.id}`}
+                              >
+                                <Ban className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                           {(apt.status === 'pending' || apt.status === 'cancelled') && (
                             <Button variant="ghost" size="icon" title="Editar horário" className="text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" onClick={() => openEdit(apt)} data-testid={`button-edit-${apt.id}`}><Pencil className="h-4 w-4" /></Button>
                           )}

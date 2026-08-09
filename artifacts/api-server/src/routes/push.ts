@@ -11,7 +11,7 @@ import {
   clientReengagementPushSubscriptionsTable,
   nativePushSubscriptionsTable,
 } from "@workspace/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, notInArray } from "drizzle-orm";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router = Router();
@@ -231,10 +231,13 @@ router.post("/push/trigger-reminders", async (req, res) => {
       .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
       .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
       .where(
-        or(
-          eq(pushSubscriptionsTable.notify15Sent, false),
-          eq(pushSubscriptionsTable.notify10Sent, false),
-          eq(pushSubscriptionsTable.notify5Sent,  false),
+        and(
+          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "completed"]),
+          or(
+            eq(pushSubscriptionsTable.notify15Sent, false),
+            eq(pushSubscriptionsTable.notify10Sent, false),
+            eq(pushSubscriptionsTable.notify5Sent,  false),
+          )!,
         )!
       );
 
@@ -387,6 +390,29 @@ export async function sendAdminPush(userId: string, payload: {
   }
 }
 
+export async function sendClientAppointmentPush(cancelToken: string, payload: {
+  title: string;
+  body: string;
+  tag?: string;
+  url?: string;
+}) {
+  if (!process.env.VAPID_PUBLIC_KEY) return;
+  const [sub] = await db
+    .select()
+    .from(pushSubscriptionsTable)
+    .where(eq(pushSubscriptionsTable.cancelToken, cancelToken))
+    .limit(1);
+  if (!sub) return;
+  try {
+    await webpush.sendNotification(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      JSON.stringify(payload),
+    );
+  } catch {
+    await db.delete(pushSubscriptionsTable).where(eq(pushSubscriptionsTable.id, sub.id));
+  }
+}
+
 export async function runPushScheduler() {
   if (!process.env.VAPID_PUBLIC_KEY) return;
   setInterval(async () => {
@@ -414,7 +440,10 @@ export async function runPushScheduler() {
         .from(pushSubscriptionsTable)
         .innerJoin(appointmentsTable, eq(pushSubscriptionsTable.cancelToken, appointmentsTable.cancelToken))
         .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
-        .where(eq(pushSubscriptionsTable.notify15Sent, false));
+        .where(and(
+          eq(pushSubscriptionsTable.notify15Sent, false),
+          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "completed"]),
+        ));
 
       for (const row of rows) {
         const apptTime = new Date(row.scheduledAt).getTime();

@@ -1350,6 +1350,146 @@ export const useStartAppointment = <TError = ErrorType<unknown>,
       return useMutation(getStartAppointmentMutationOptions(options));
     }
 
+export const getApproveAppointmentPaymentUrl = (id: number,) => {
+
+
+
+
+  return `/api/appointments/${id}/approve-payment`
+}
+
+/**
+ * @summary Approve a Pix payment and release the appointment
+ */
+export const approveAppointmentPayment = async (id: number, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getApproveAppointmentPaymentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApproveAppointmentPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAppointmentPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveAppointmentPayment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['approveAppointmentPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveAppointmentPayment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveAppointmentPayment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveAppointmentPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof approveAppointmentPayment>>>
+
+    export type ApproveAppointmentPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Approve a Pix payment and release the appointment
+ */
+export const useApproveAppointmentPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveAppointmentPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveAppointmentPayment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getApproveAppointmentPaymentMutationOptions(options));
+    }
+
+export const getRejectAppointmentPaymentUrl = (id: number,) => {
+
+
+
+
+  return `/api/appointments/${id}/reject-payment`
+}
+
+/**
+ * @summary Reject a Pix payment and release the appointment slot
+ */
+export const rejectAppointmentPayment = async (id: number, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getRejectAppointmentPaymentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRejectAppointmentPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAppointmentPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAppointmentPayment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['rejectAppointmentPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAppointmentPayment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectAppointmentPayment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAppointmentPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAppointmentPayment>>>
+
+    export type RejectAppointmentPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Reject a Pix payment and release the appointment slot
+ */
+export const useRejectAppointmentPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAppointmentPayment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAppointmentPayment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRejectAppointmentPaymentMutationOptions(options));
+    }
+
 export const getCompleteAppointmentUrl = (id: number,) => {
 
 

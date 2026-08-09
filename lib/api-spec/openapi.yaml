@@ -361,6 +361,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /appointments/{id}/approve-payment:
+    post:
+      operationId: approveAppointmentPayment
+      tags: [appointments]
+      summary: Approve a Pix payment and release the appointment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment approved and appointment released
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "409":
+          description: Appointment is no longer awaiting payment
+
+  /appointments/{id}/reject-payment:
+    post:
+      operationId: rejectAppointmentPayment
+      tags: [appointments]
+      summary: Reject a Pix payment and release the appointment slot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payment rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+        "409":
+          description: Appointment is no longer awaiting payment
+
   /appointments/{id}/complete:
     post:
       operationId: completeAppointment

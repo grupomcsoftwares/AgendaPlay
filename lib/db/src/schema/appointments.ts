@@ -20,6 +20,9 @@ export const appointmentsTable = pgTable("appointments", {
   creditsUsed: integer("credits_used"), // how many plan credits were spent on this appointment
   loyaltyPointsRedeemed: integer("loyalty_points_redeemed").notNull().default(0),
   loyaltyPointsEarned: integer("loyalty_points_earned").notNull().default(0),
+  pendingCreditsUsed: integer("pending_credits_used"),
+  pendingLoyaltyPointsRedeemed: integer("pending_loyalty_points_redeemed").notNull().default(0),
+  pendingLoyaltyPointsEarned: integer("pending_loyalty_points_earned").notNull().default(0),
   notes: text("notes"),
   cancelToken: text("cancel_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
