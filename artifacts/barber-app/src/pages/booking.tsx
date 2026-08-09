@@ -1386,9 +1386,28 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   const availableSlots = (availability?.slots ?? []).filter((s) => s.available);
                   if (availability?.dayClosed) {
                     return (
-                      <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
-                        Fechado neste dia. Escolha outra data.
-                      </p>
+                      <div
+                        className="flex items-start gap-3 rounded-xl px-4 py-4"
+                        style={{
+                          backgroundColor: "hsl(38 88% 55% / 0.10)",
+                          border: "1px solid hsl(38 88% 55% / 0.35)",
+                        }}
+                      >
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                          style={{ backgroundColor: "hsl(38 88% 55% / 0.18)" }}
+                        >
+                          <AlertTriangle className="h-5 w-5" style={{ color: AMBER }} />
+                        </div>
+                        <div>
+                          <p className="text-base font-bold" style={{ color: "hsl(0 0% 92%)" }}>
+                            Dia fechado
+                          </p>
+                          <p className="mt-1 text-sm leading-relaxed" style={{ color: "hsl(0 0% 65%)" }}>
+                            Não há atendimento nesta data. Escolha outro dia para ver os horários disponíveis.
+                          </p>
+                        </div>
+                      </div>
                     );
                   }
                   if (loadingSlots && !availability) {
@@ -1400,9 +1419,29 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   }
                   if (availability && availableSlots.length === 0) {
                     return (
-                      <p className="text-center text-sm py-8" style={{ color: "hsl(0 0% 55%)" }}>
-                        Nenhum horário disponível neste dia. Escolha outra data.
-                      </p>
+                      <div
+                        className="flex items-start gap-3 rounded-xl px-4 py-4"
+                        style={{
+                          backgroundColor: "hsl(0 72% 50% / 0.10)",
+                          border: "1px solid hsl(0 72% 50% / 0.35)",
+                        }}
+                        data-testid="notice-no-available-slots"
+                      >
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                          style={{ backgroundColor: "hsl(0 72% 50% / 0.18)" }}
+                        >
+                          <AlertTriangle className="h-5 w-5" style={{ color: "hsl(0 78% 65%)" }} />
+                        </div>
+                        <div>
+                          <p className="text-base font-bold" style={{ color: "hsl(0 0% 92%)" }}>
+                            Nenhum horário disponível
+                          </p>
+                          <p className="mt-1 text-sm leading-relaxed" style={{ color: "hsl(0 0% 65%)" }}>
+                            Todos os horários deste dia estão ocupados. Escolha outra data para continuar o agendamento.
+                          </p>
+                        </div>
+                      </div>
                     );
                   }
                   return (
