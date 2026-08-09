@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, useGetAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey } from "@workspace/api-client-react";
+import { useQueries } from "@tanstack/react-query";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, getAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,148 @@ function parseBookingTime(value: string | undefined, fallback: number): number {
   return Number.isFinite(hours) && Number.isFinite(minutes)
     ? hours * 60 + minutes
     : fallback;
+}
+
+function readPendingAppointmentTokens(tokensKey: string, legacyKey: string): string[] {
+  try {
+    const savedTokens = localStorage.getItem(tokensKey);
+    if (savedTokens) {
+      const parsed = JSON.parse(savedTokens);
+      if (Array.isArray(parsed)) {
+        const tokens = parsed.filter((token): token is string => typeof token === "string" && token.length > 0);
+        if (tokens.length > 0) return [...new Set(tokens)];
+      }
+    }
+    const legacyToken = localStorage.getItem(legacyKey);
+    return legacyToken ? [legacyToken] : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePendingAppointmentTokens(tokensKey: string, tokens: string[]): void {
+  try {
+    const uniqueTokens = [...new Set(tokens.filter(Boolean))];
+    if (uniqueTokens.length > 0) {
+      localStorage.setItem(tokensKey, JSON.stringify(uniqueTokens));
+    } else {
+      localStorage.removeItem(tokensKey);
+    }
+  } catch {
+    // Local storage may be unavailable in private browsing; the booking still works.
+  }
+}
+
+function addPendingAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
+  const tokens = readPendingAppointmentTokens(tokensKey, legacyKey);
+  savePendingAppointmentTokens(tokensKey, [...tokens, token]);
+  try {
+    localStorage.removeItem(legacyKey);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function formatPendingAppointmentDate(value: string): string {
+  return new Date(value).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+}
+
+function formatPendingAppointmentTime(value: string): string {
+  return new Date(value).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+type PendingAppointmentSummary = {
+  cancelToken?: string | null;
+  clientName: string;
+  serviceName: string;
+  serviceDuration: number;
+  scheduledAt: string;
+  status: string;
+};
+
+function AppointmentChooser({
+  appointments,
+  onSelect,
+  onNewBooking,
+}: {
+  appointments: PendingAppointmentSummary[];
+  onSelect: (token: string) => void;
+  onNewBooking: () => void;
+}) {
+  return (
+    <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center space-y-3">
+          <div
+            className="mx-auto rounded-full flex items-center justify-center"
+            style={{ width: 72, height: 72, backgroundColor: AMBER_SOFT, border: `2px solid ${AMBER}` }}
+          >
+            <CalendarIcon className="w-8 h-8" style={{ color: AMBER }} />
+          </div>
+          <h1 className="text-2xl font-bold">Seus agendamentos</h1>
+          <p className="text-sm text-muted-foreground">
+            Escolha qual agendamento você deseja cancelar ou mudar de horário.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {appointments.map((appointment) => (
+            <button
+              key={appointment.cancelToken}
+              type="button"
+              onClick={() => {
+                if (appointment.cancelToken) onSelect(appointment.cancelToken);
+              }}
+              className="w-full text-left rounded-2xl p-4 transition-all"
+              style={{
+                backgroundColor: "hsl(0 0% 9%)",
+                border: "1px solid hsl(0 0% 18%)",
+                cursor: "pointer",
+              }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{appointment.serviceName}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {appointment.clientName} · {appointment.serviceDuration} min
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 shrink-0" style={{ color: AMBER }} />
+              </div>
+              <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: AMBER }}>
+                <CalendarIcon className="w-4 h-4" />
+                <span className="capitalize">{formatPendingAppointmentDate(appointment.scheduledAt)}</span>
+                <Clock className="w-4 h-4 ml-2" />
+                <span>{formatPendingAppointmentTime(appointment.scheduledAt)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={onNewBooking}
+          className="w-full rounded-xl py-3 text-sm font-semibold"
+          style={{
+            backgroundColor: AMBER_DEEP,
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Fazer outro agendamento
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
@@ -83,41 +226,67 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const urlChildLastName = searchParams.get("cls") ?? "";
 
   // ── Existing-appointment redirect ──────────────────────────────────────────
-  // After a successful booking the token is saved to localStorage. Next time
-  // the client opens the booking link we check: if the appointment is still
-  // upcoming we send them straight to the cancel/reschedule page.
+  // Keep every active appointment token so a client can choose which booking
+  // to cancel or reschedule when they return to the public link.
   const storageKey = `barber_pending_token_${shopId ?? "admin"}`;
-  const [pendingToken, setPendingToken] = useState<string | null>(() =>
-    isNewBooking ? null : localStorage.getItem(storageKey)
+  const tokensStorageKey = `barber_pending_tokens_${shopId ?? "admin"}`;
+  const [pendingTokens, setPendingTokens] = useState<string[]>(() =>
+    isNewBooking ? [] : readPendingAppointmentTokens(tokensStorageKey, storageKey)
   );
-  const { data: pendingAppt, isError: pendingError } = useGetAppointmentByToken(
-    pendingToken ?? "",
-    { query: { queryKey: getGetAppointmentByTokenQueryKey(pendingToken ?? ""), enabled: !!pendingToken } }
+  const pendingAppointmentQueries = useQueries({
+    queries: pendingTokens.map((token) => ({
+      queryKey: getGetAppointmentByTokenQueryKey(token),
+      queryFn: () => getAppointmentByToken(token),
+      enabled: !isNewBooking,
+    })),
+  });
+  const pendingAppointments = pendingAppointmentQueries
+    .map((query) => query.data)
+    .filter((appointment): appointment is NonNullable<typeof appointment> => Boolean(appointment));
+  const pendingQueriesSettled = pendingAppointmentQueries.every((query) => !query.isPending && !query.isFetching);
+  const redirectedPendingToken = React.useRef<string | null>(null);
+  const activePendingAppointments = pendingAppointments.filter((appointment) =>
+    appointment.status !== "cancelled" &&
+    appointment.status !== "completed" &&
+    appointment.status !== "payment_rejected" &&
+    Boolean(appointment.cancelToken)
   );
+
   useEffect(() => {
-    if (!pendingToken) return;
-    if (pendingError) {
-      // Appointment not found — clear token so the client can book again.
-      localStorage.removeItem(storageKey);
-      setPendingToken(null);
-      return;
+    if (isNewBooking || !shopId || pendingTokens.length === 0 || !pendingQueriesSettled) return;
+
+    const activeAppointments = activePendingAppointments;
+    const activeTokens = activeAppointments
+      .map((appointment) => appointment.cancelToken)
+      .filter((token): token is string => Boolean(token));
+
+    if (activeTokens.length !== pendingTokens.length || activeTokens.some((token, index) => token !== pendingTokens[index])) {
+      setPendingTokens(activeTokens);
+      savePendingAppointmentTokens(tokensStorageKey, activeTokens);
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // Ignore storage cleanup failures.
+      }
     }
-    if (!pendingAppt) return;
-    if (pendingAppt.status === "cancelled" || pendingAppt.status === "completed") {
-      // Cancelled or already completed — clear token so the client can make a new booking.
-      localStorage.removeItem(storageKey);
-      setPendingToken(null);
-      return;
-    }
-    // For any other status (pending, confirmed, in_progress) always
-    // redirect the client to their appointment preview page.
-    // Use shopIdProp (not adminUser) so public-link visitors are always redirected,
-    // even when an admin session cookie is present in the same browser.
-    if (!!shopIdProp) {
-      const shopParam = shopId ? `?shopId=${shopId}` : "";
-      setLocation(`/agendamento/${pendingToken}${shopParam}`);
-    }
-  }, [pendingAppt, pendingError, pendingToken, storageKey, shopId, setLocation]);
+
+    if (activeAppointments.length !== 1) return;
+    const token = activeAppointments[0]?.cancelToken;
+    if (!token || redirectedPendingToken.current === token) return;
+    redirectedPendingToken.current = token;
+    const shopParam = shopId ? `?shopId=${encodeURIComponent(shopId)}` : "";
+    setLocation(`/agendamento/${token}${shopParam}`);
+  }, [
+    isNewBooking,
+    activePendingAppointments,
+    pendingQueriesSettled,
+    pendingTokens,
+    shopId,
+    shopIdProp,
+    setLocation,
+    storageKey,
+    tokensStorageKey,
+  ]);
   // ──────────────────────────────────────────────────────────────────────────
 
   const { data: services } = useListServices(
@@ -347,9 +516,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       }},
       {
         onSuccess: (created) => {
-          // Save token on the public booking page (shopIdProp set), regardless of admin session.
-          if (created?.cancelToken && !!shopIdProp) {
-            localStorage.setItem(storageKey, created.cancelToken);
+          // Keep every active token on the public booking page so the client can
+          // choose which appointment to manage when returning to the link.
+          if (created?.cancelToken && !!shopId) {
+            addPendingAppointmentToken(tokensStorageKey, storageKey, created.cancelToken);
             setConfirmedToken(created.cancelToken);
           }
           // Persist name+phone so the client doesn't have to retype next visit
@@ -772,6 +942,24 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       setFormData(prev => ({ ...prev, time: "" }));
     }
   }, [availability, formData.time]);
+
+  const showAppointmentChooser =
+    !isNewBooking &&
+    pendingQueriesSettled &&
+    activePendingAppointments.length > 1;
+
+  if (showAppointmentChooser) {
+    return (
+      <AppointmentChooser
+        appointments={activePendingAppointments}
+        onSelect={(token) => {
+          const shopParam = shopId ? `?shopId=${encodeURIComponent(shopId)}` : "";
+          setLocation(`/agendamento/${token}${shopParam}`);
+        }}
+        onNewBooking={() => setLocation(`/booking?${shopId ? `shopId=${encodeURIComponent(shopId)}&` : ""}novo=1`)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">

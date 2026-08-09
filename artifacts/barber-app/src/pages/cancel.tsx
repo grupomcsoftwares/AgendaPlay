@@ -18,6 +18,26 @@ import { playRescheduled } from "@/lib/sounds";
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 
+function removePendingAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
+  try {
+    const saved = localStorage.getItem(tokensKey);
+    const tokens = saved ? JSON.parse(saved) : [];
+    if (Array.isArray(tokens)) {
+      const remaining = tokens.filter((value): value is string => typeof value === "string" && value !== token);
+      if (remaining.length > 0) {
+        localStorage.setItem(tokensKey, JSON.stringify(remaining));
+      } else {
+        localStorage.removeItem(tokensKey);
+      }
+    }
+    if (localStorage.getItem(legacyKey) === token) {
+      localStorage.removeItem(legacyKey);
+    }
+  } catch {
+    // Local storage may be unavailable; the server-side cancellation still succeeds.
+  }
+}
+
 const STATUS_LABEL: Record<string, string> = {
   pending: "Confirmado",
   pending_payment: "Aguardando confirmação do Pix",
@@ -63,6 +83,8 @@ export default function CancelBooking() {
   // Older appointment links may not include shopId. The token response still
   // carries the appointment owner's userId, which is the shop identifier.
   const shopId = urlShopId ?? appointment?.userId ?? undefined;
+  const tokensStorageKey = `barber_pending_tokens_${shopId ?? "admin"}`;
+  const legacyStorageKey = `barber_pending_token_${shopId ?? "admin"}`;
 
   // Check appointment time and show reminder banner when 15 min left
   useEffect(() => {
@@ -373,7 +395,7 @@ export default function CancelBooking() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetAppointmentByTokenQueryKey(token) });
-          localStorage.removeItem(`barber_pending_token_${shopId ?? "admin"}`);
+          removePendingAppointmentToken(tokensStorageKey, legacyStorageKey, token);
           setConfirming(false);
           setCancelRedirectSeconds(5);
         },
