@@ -1060,20 +1060,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                           )}
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
+                          <div>
                             <p className="font-semibold text-base">{service.name}</p>
-                            {hasPromotion && (
-                              <span
-                                className="promotion-badge relative top-1 min-w-[7.5rem] shrink-0 rounded-full px-4 py-1.5 text-center text-sm font-extrabold tracking-wide"
-                                style={{
-                                  backgroundColor: "hsl(142 71% 45%)",
-                                  color: "hsl(0 0% 7%)",
-                                }}
-                                data-testid={`badge-promotion-${service.id}`}
-                              >
-                                PROMOÇÃO
-                              </span>
-                            )}
                           </div>
                           {service.description && (
                             <p className="text-sm text-muted-foreground mt-0.5">
@@ -1127,6 +1115,20 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               </span>
                             )}
                           </div>
+                          {hasPromotion && (
+                            <div className="flex justify-end pt-1">
+                              <span
+                                className="promotion-badge min-w-[7.5rem] rounded-full px-4 py-1.5 text-center text-sm font-extrabold tracking-wide"
+                                style={{
+                                  backgroundColor: "hsl(142 71% 45%)",
+                                  color: "hsl(0 0% 7%)",
+                                }}
+                                data-testid={`badge-promotion-${service.id}`}
+                              >
+                                PROMOÇÃO
+                              </span>
+                            </div>
+                          )}
                         </div>
                         {!isSelected && (
                           <div
