@@ -16,6 +16,7 @@ import usersRouter from "./users.js";
 import stripeRouter from "./stripe.js";
 import shopRouter from "./shop.js";
 import pushRouter from "./push.js";
+import waitlistRouter from "./waitlist.js";
 import { requireActiveAccount } from "../middleware/accountActive.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -31,6 +32,7 @@ const router: IRouter = Router();
 router.use(authRouter);
 router.use(usersRouter);
 router.use(pushRouter);
+router.use(waitlistRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
 router.use(shopRouter);

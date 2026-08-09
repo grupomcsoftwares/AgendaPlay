@@ -66,7 +66,10 @@ import type {
   SubscriptionPlanInput,
   SubscriptionPlanUpdate,
   SubscriptionStatusUpdate,
-  UserSlugResponse
+  UserSlugResponse,
+  WaitlistEntry,
+  WaitlistInput,
+  WaitlistOffer
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1847,6 +1850,294 @@ export const useRescheduleAppointmentByToken = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRescheduleAppointmentByTokenMutationOptions(options));
+    }
+
+export const getJoinWaitlistUrl = () => {
+
+
+
+
+  return `/api/waitlist`
+}
+
+/**
+ * @summary Join the public waitlist for a fully booked date
+ */
+export const joinWaitlist = async (waitlistInput: WaitlistInput, options?: RequestInit): Promise<WaitlistEntry> => {
+
+  return customFetch<WaitlistEntry>(getJoinWaitlistUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      waitlistInput,)
+  }
+);}
+
+
+
+
+export const getJoinWaitlistMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinWaitlist>>, TError,{data: BodyType<WaitlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinWaitlist>>, TError,{data: BodyType<WaitlistInput>}, TContext> => {
+
+const mutationKey = ['joinWaitlist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinWaitlist>>, {data: BodyType<WaitlistInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinWaitlist(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinWaitlistMutationResult = NonNullable<Awaited<ReturnType<typeof joinWaitlist>>>
+    export type JoinWaitlistMutationBody = BodyType<WaitlistInput>
+    export type JoinWaitlistMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Join the public waitlist for a fully booked date
+ */
+export const useJoinWaitlist = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinWaitlist>>, TError,{data: BodyType<WaitlistInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof joinWaitlist>>,
+        TError,
+        {data: BodyType<WaitlistInput>},
+        TContext
+      > => {
+      return useMutation(getJoinWaitlistMutationOptions(options));
+    }
+
+export const getGetWaitlistOfferUrl = (token: string,) => {
+
+
+
+
+  return `/api/waitlist/offers/${token}`
+}
+
+/**
+ * @summary Get a waitlist time offer by token
+ */
+export const getWaitlistOffer = async (token: string, options?: RequestInit): Promise<WaitlistOffer> => {
+
+  return customFetch<WaitlistOffer>(getGetWaitlistOfferUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWaitlistOfferQueryKey = (token: string,) => {
+    return [
+    `/api/waitlist/offers/${token}`
+    ] as const;
+    }
+
+
+export const getGetWaitlistOfferQueryOptions = <TData = Awaited<ReturnType<typeof getWaitlistOffer>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaitlistOffer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWaitlistOfferQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWaitlistOffer>>> = ({ signal }) => getWaitlistOffer(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWaitlistOffer>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWaitlistOfferQueryResult = NonNullable<Awaited<ReturnType<typeof getWaitlistOffer>>>
+export type GetWaitlistOfferQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a waitlist time offer by token
+ */
+
+export function useGetWaitlistOffer<TData = Awaited<ReturnType<typeof getWaitlistOffer>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaitlistOffer>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWaitlistOfferQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getAcceptWaitlistOfferUrl = (token: string,) => {
+
+
+
+
+  return `/api/waitlist/offers/${token}/accept`
+}
+
+/**
+ * @summary Accept a waitlist time offer and create the appointment
+ */
+export const acceptWaitlistOffer = async (token: string, options?: RequestInit): Promise<Appointment> => {
+
+  return customFetch<Appointment>(getAcceptWaitlistOfferUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getAcceptWaitlistOfferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptWaitlistOffer>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptWaitlistOffer>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['acceptWaitlistOffer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptWaitlistOffer>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  acceptWaitlistOffer(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptWaitlistOfferMutationResult = NonNullable<Awaited<ReturnType<typeof acceptWaitlistOffer>>>
+
+    export type AcceptWaitlistOfferMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Accept a waitlist time offer and create the appointment
+ */
+export const useAcceptWaitlistOffer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptWaitlistOffer>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptWaitlistOffer>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getAcceptWaitlistOfferMutationOptions(options));
+    }
+
+export const getDeclineWaitlistOfferUrl = (token: string,) => {
+
+
+
+
+  return `/api/waitlist/offers/${token}/decline`
+}
+
+/**
+ * @summary Decline a waitlist time offer
+ */
+export const declineWaitlistOffer = async (token: string, options?: RequestInit): Promise<WaitlistEntry> => {
+
+  return customFetch<WaitlistEntry>(getDeclineWaitlistOfferUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getDeclineWaitlistOfferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof declineWaitlistOffer>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof declineWaitlistOffer>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['declineWaitlistOffer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof declineWaitlistOffer>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  declineWaitlistOffer(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeclineWaitlistOfferMutationResult = NonNullable<Awaited<ReturnType<typeof declineWaitlistOffer>>>
+
+    export type DeclineWaitlistOfferMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Decline a waitlist time offer
+ */
+export const useDeclineWaitlistOffer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof declineWaitlistOffer>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof declineWaitlistOffer>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getDeclineWaitlistOfferMutationOptions(options));
     }
 
 export const getGetNextAvailableUrl = (slug: string,) => {

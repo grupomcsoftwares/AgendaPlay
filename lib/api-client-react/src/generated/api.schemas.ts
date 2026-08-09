@@ -248,6 +248,57 @@ export interface AppointmentUpdate {
   notes?: string | null;
 }
 
+export interface WaitlistInput {
+  shopId: string;
+  clientName: string;
+  clientPhone: string;
+  serviceIds: number[];
+  serviceName: string;
+  serviceDuration: number;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
+  desiredDate: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+export type WaitlistEntryStatus = typeof WaitlistEntryStatus[keyof typeof WaitlistEntryStatus];
+
+
+export const WaitlistEntryStatus = {
+  active: 'active',
+  offered: 'offered',
+  accepted: 'accepted',
+  declined: 'declined',
+  expired: 'expired',
+} as const;
+
+export interface WaitlistEntry {
+  id: number;
+  userId: string;
+  clientName: string;
+  serviceName: string;
+  serviceDuration: number;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
+  desiredDate: string;
+  status: WaitlistEntryStatus;
+  /** @nullable */
+  offerToken?: string | null;
+  /** @nullable */
+  offeredScheduledAt?: string | null;
+}
+
+export type WaitlistOffer = WaitlistEntry & {
+  shopName: string;
+  offerExpiresAt: string;
+};
+
 export type AvailabilitySlotsItem = {
   /** HH:MM */
   time: string;
@@ -257,6 +308,8 @@ export type AvailabilitySlotsItem = {
 export interface Availability {
   date: string;
   dayClosed: boolean;
+  /** Whether a future cancellation could still create a compatible slot on this date. */
+  waitlistAvailable: boolean;
   slots: AvailabilitySlotsItem[];
 }
 

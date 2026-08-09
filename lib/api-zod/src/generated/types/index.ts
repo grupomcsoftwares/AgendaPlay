@@ -76,4 +76,8 @@ export * from './subscriptionPlanUpdate';
 export * from './subscriptionStatusUpdate';
 export * from './subscriptionStatusUpdateStatus';
 export * from './userSlugResponse';
+export * from './waitlistEntry';
+export * from './waitlistEntryStatus';
+export * from './waitlistInput';
+export * from './waitlistOffer';
 export * from './weeklySchedule';

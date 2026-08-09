@@ -10,5 +10,7 @@ import type { AvailabilitySlotsItem } from './availabilitySlotsItem';
 export interface Availability {
   date: string;
   dayClosed: boolean;
+  /** Whether a future cancellation could still create a compatible slot on this date. */
+  waitlistAvailable: boolean;
   slots: AvailabilitySlotsItem[];
 }

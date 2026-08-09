@@ -17,6 +17,7 @@ import Appointments from "./pages/appointments";
 import Financial from "./pages/financial";
 import Booking from "./pages/booking";
 import CancelBooking from "./pages/cancel";
+import WaitlistOffer from "./pages/waitlist-offer";
 import PublicBooking from "./pages/public-booking";
 import Landing from "./pages/landing";
 import Login from "./pages/login";
@@ -87,6 +88,7 @@ function ThemeWrapper({ children }: { children: React.ReactNode }) {
         if (s === "pix_pending") playPixPending();
         else if (s === "changed" || s === "rescheduled") playRescheduled();
         else if (s === "new") playNewAppointment();
+        else if (s === "waitlist") playAlert15();
         else playAlert15();
       }
     };
@@ -154,6 +156,9 @@ function Router() {
       </Route>
       <Route path="/agendamento/:token">
         <CancelBooking />
+      </Route>
+      <Route path="/fila-espera/:token">
+        <WaitlistOffer />
       </Route>
       <Route component={NotFound} />
     </Switch>

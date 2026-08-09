@@ -15,6 +15,8 @@ tags:
     description: Service operations
   - name: appointments
     description: Appointment operations
+  - name: waitlist
+    description: Public waitlist operations
   - name: queue
     description: Queue operations
   - name: dashboard
@@ -503,6 +505,82 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Appointment"
+
+  /waitlist:
+    post:
+      operationId: joinWaitlist
+      tags: [waitlist]
+      summary: Join the public waitlist for a fully booked date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WaitlistInput"
+      responses:
+        "201":
+          description: Waitlist entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
+
+  /waitlist/offers/{token}:
+    get:
+      operationId: getWaitlistOffer
+      tags: [waitlist]
+      summary: Get a waitlist time offer by token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Waitlist offer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistOffer"
+
+  /waitlist/offers/{token}/accept:
+    post:
+      operationId: acceptWaitlistOffer
+      tags: [waitlist]
+      summary: Accept a waitlist time offer and create the appointment
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
+  /waitlist/offers/{token}/decline:
+    post:
+      operationId: declineWaitlistOffer
+      tags: [waitlist]
+      summary: Decline a waitlist time offer
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Offer declined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
 
   /b/{slug}/next-available:
     get:
@@ -1503,14 +1581,87 @@ components:
         notes:
           type: ["string", "null"]
 
+    WaitlistInput:
+      type: object
+      required: [shopId, clientName, clientPhone, serviceIds, serviceName, serviceDuration, desiredDate, endpoint, p256dh, auth]
+      properties:
+        shopId:
+          type: string
+        clientName:
+          type: string
+        clientPhone:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: integer
+        serviceName:
+          type: string
+        serviceDuration:
+          type: integer
+        barberId:
+          type: ["integer", "null"]
+        barberName:
+          type: ["string", "null"]
+        desiredDate:
+          type: string
+        endpoint:
+          type: string
+        p256dh:
+          type: string
+        auth:
+          type: string
+
+    WaitlistEntry:
+      type: object
+      required: [id, userId, clientName, serviceName, serviceDuration, desiredDate, status]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        clientName:
+          type: string
+        serviceName:
+          type: string
+        serviceDuration:
+          type: integer
+        barberId:
+          type: ["integer", "null"]
+        barberName:
+          type: ["string", "null"]
+        desiredDate:
+          type: string
+        status:
+          type: string
+          enum: [active, offered, accepted, declined, expired]
+        offerToken:
+          type: ["string", "null"]
+        offeredScheduledAt:
+          type: ["string", "null"]
+
+    WaitlistOffer:
+      allOf:
+        - $ref: "#/components/schemas/WaitlistEntry"
+        - type: object
+          required: [shopName, offerExpiresAt]
+          properties:
+            shopName:
+              type: string
+            offerExpiresAt:
+              type: string
+
     Availability:
       type: object
-      required: [date, slots, dayClosed]
+      required: [date, slots, dayClosed, waitlistAvailable]
       properties:
         date:
           type: string
         dayClosed:
           type: boolean
+        waitlistAvailable:
+          type: boolean
+          description: Whether a future cancellation could still create a compatible slot on this date.
         slots:
           type: array
           items:

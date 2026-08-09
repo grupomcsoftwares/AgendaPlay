@@ -5,6 +5,7 @@ import { getStripeSync } from "./stripeClient.js";
 import { getUncachableStripeClient } from "./stripeClient.js";
 import { runPushScheduler } from "./routes/push.js";
 import { startAppointmentScheduler } from "./routes/appointments.js";
+import { cleanupWaitlist } from "./waitlistService.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -100,6 +101,7 @@ async function initStripe() {
 await initStripe();
 runPushScheduler();
 startAppointmentScheduler();
+setInterval(() => cleanupWaitlist().catch(() => {}), 60_000);
 
 app.listen(port, (err) => {
   if (err) {

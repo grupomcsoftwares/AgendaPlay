@@ -10,8 +10,9 @@ import {
   clientsTable,
   clientReengagementPushSubscriptionsTable,
   nativePushSubscriptionsTable,
+  waitlistTable,
 } from "@workspace/db/schema";
-import { and, eq, isNull, notInArray } from "drizzle-orm";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 
 const router = Router();
@@ -201,6 +202,13 @@ router.post("/push/trigger-reminders", async (req, res) => {
     } catch { /* non-critical */ }
   }
 
+  try {
+    const { cleanupWaitlist } = await import("../waitlistService.js");
+    await cleanupWaitlist();
+    await sendWaitlistOfferReminders();
+  } catch {
+    // Waitlist cleanup is best-effort and must not block appointment reminders.
+  }
   if (!process.env.VAPID_PUBLIC_KEY) {
     res.json({ sent: 0, reason: "vapid_not_configured" });
     return;
@@ -462,6 +470,67 @@ export async function sendClientAppointmentPush(cancelToken: string, payload: {
   }
 }
 
+export async function sendClientWaitlistPush(offerToken: string, payload: {
+  title: string;
+  body: string;
+  tag?: string;
+  url?: string;
+  sound?: "waitlist";
+}) {
+  if (!process.env.VAPID_PUBLIC_KEY) return;
+  const [sub] = await db
+    .select()
+    .from(waitlistTable)
+    .where(eq(waitlistTable.offerToken, offerToken))
+    .limit(1);
+  if (!sub) return;
+  try {
+    await webpush.sendNotification(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+      JSON.stringify(payload),
+    );
+  } catch {
+    await db.delete(waitlistTable).where(eq(waitlistTable.id, sub.id));
+  }
+}
+
+export async function sendWaitlistOfferReminders(): Promise<number> {
+  if (!process.env.VAPID_PUBLIC_KEY) return 0;
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(waitlistTable)
+    .where(and(
+      eq(waitlistTable.status, "offered"),
+      sql`${waitlistTable.offerExpiresAt} > ${now}`,
+      sql`${waitlistTable.offeredScheduledAt} > ${now}`,
+      sql`(${waitlistTable.offerLastNotifiedAt} IS NULL OR ${waitlistTable.offerLastNotifiedAt} <= ${new Date(now.getTime() - 60_000)})`,
+    ));
+  let sent = 0;
+  for (const row of rows) {
+    const [claimed] = await db
+      .update(waitlistTable)
+      .set({ offerLastNotifiedAt: now, updatedAt: now })
+      .where(and(
+        eq(waitlistTable.id, row.id),
+        eq(waitlistTable.status, "offered"),
+        sql`(${waitlistTable.offerLastNotifiedAt} IS NULL OR ${waitlistTable.offerLastNotifiedAt} <= ${new Date(now.getTime() - 60_000)})`,
+      ))
+      .returning({ id: waitlistTable.id });
+    if (!claimed) continue;
+    const scheduled = row.offeredScheduledAt!;
+    await sendClientWaitlistPush(row.offerToken, {
+      title: "⏰ Horário liberado — confirme agora",
+      body: `${row.serviceName} em ${scheduled.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}. Você tem até 5 minutos para aceitar.`,
+      tag: `waitlist-${row.offerToken}`,
+      url: `/fila-espera/${row.offerToken}`,
+      sound: "waitlist",
+    }).catch(() => {});
+    sent++;
+  }
+  return sent;
+}
+
 export async function runPushScheduler() {
   let running = false;
   const run = async () => {
@@ -534,6 +603,7 @@ export async function runPushScheduler() {
         }
       }
       await sendClientReengagementPushes();
+      await sendWaitlistOfferReminders();
     } catch { /* ignore scheduler errors */ }
     finally {
       running = false;

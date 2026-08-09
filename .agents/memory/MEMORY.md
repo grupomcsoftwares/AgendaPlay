@@ -29,3 +29,4 @@
 - [Booking availability by business hours](booking-availability-hours.md) — keep today selected with a highlighted no-slots message during open hours; advance only when the link opens outside hours.
 - [Pix payment appointment states](pix-payment-appointment-states.md) — pending Pix bookings reserve time but only approval may consume credits/points and insert them into the live queue.
 - [Barber notification sounds](barber-notification-sounds.md) — notification categories need distinct web audio and Android channels; pending Pix repeats on the server while status remains pending.
+- [Waitlist offer safety](waitlist-offer-safety.md) — waitlist offers must be claimed atomically, revalidate the normal booking path, and expire/release in sequence.

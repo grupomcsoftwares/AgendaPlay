@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueries } from "@tanstack/react-query";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, getAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, getAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useJoinWaitlist } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -439,17 +439,19 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
   };
 
-  const handleEnablePush = async () => {
+  const handleEnablePush = async (): Promise<PushSubscriptionJSON | null> => {
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") { setPushState("denied"); return; }
+      if (perm !== "granted") { setPushState("denied"); return null; }
       const keyRes = await fetch(`${BASE}/api/push/vapid-public-key`);
       const { key } = await keyRes.json() as { key: string };
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(key) });
-      setPendingPushSub(sub.toJSON());
+      const json = sub.toJSON();
+      setPendingPushSub(json);
       setPushState("subscribed");
-    } catch { setPushState("idle"); }
+      return json;
+    } catch { setPushState("idle"); return null; }
   };
 
   const clientInfoKey = `barber_client_info_${shopId ?? "public"}`;
@@ -1006,6 +1008,42 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       enabled: step === 2 && totalDuration > 0 && !pickingBarber && !isBookingDateClosed(formData.date),
     } }
   );
+  const joinWaitlist = useJoinWaitlist();
+  const [joiningWaitlist, setJoiningWaitlist] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
+
+  const handleJoinWaitlist = async () => {
+    if (!shopId || !formData.name.trim() || !formData.phone.trim() || selectedServices.length === 0) return;
+    setJoiningWaitlist(true);
+    try {
+      const pushSub = pendingPushSub ?? await handleEnablePush();
+      if (!pushSub?.endpoint || !pushSub.keys?.p256dh || !pushSub.keys?.auth) {
+        toast({ title: "Ative as notificações para entrar na fila.", variant: "destructive" });
+        return;
+      }
+      await joinWaitlist.mutateAsync({
+        data: {
+          shopId,
+          clientName: `${formData.name.trim()} ${formData.lastName.trim()}`.trim(),
+          clientPhone: formData.phone,
+          serviceIds: selectedServices.map((service) => service.id),
+          serviceName: selectedServices.map((service) => service.name).join(" + "),
+          serviceDuration: totalDuration,
+          barberId: availabilityBarberId ?? null,
+          barberName: selectedBarber?.name ?? null,
+          desiredDate: dateKey,
+          endpoint: pushSub.endpoint,
+          p256dh: pushSub.keys.p256dh,
+          auth: pushSub.keys.auth,
+        },
+      });
+      setWaitlistJoined(true);
+    } catch (error: any) {
+      toast({ title: error?.response?.data?.error ?? error?.message ?? "Não foi possível entrar na fila.", variant: "destructive" });
+    } finally {
+      setJoiningWaitlist(false);
+    }
+  };
 
   // Clear selected time if it's no longer available after a refresh.
   useEffect(() => {
@@ -1717,6 +1755,16 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     );
                   }
                   if (availability && availableSlots.length === 0) {
+                    if (waitlistJoined) {
+                      return (
+                        <div className="rounded-xl px-4 py-4" style={{ backgroundColor: "hsl(142 60% 40% / 0.12)", border: "1px solid hsl(142 60% 40% / 0.35)" }}>
+                          <p className="text-base font-bold">Você entrou na fila de espera</p>
+                          <p className="mt-1 text-sm leading-relaxed" style={{ color: "hsl(0 0% 65%)" }}>
+                            Avisaremos por notificação se surgir um horário compatível nesta data.
+                          </p>
+                        </div>
+                      );
+                    }
                     return (
                       <div
                         className="flex items-start gap-3 rounded-xl px-4 py-4"
@@ -1737,8 +1785,21 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                             Nenhum horário disponível
                           </p>
                           <p className="mt-1 text-sm leading-relaxed" style={{ color: "hsl(0 0% 65%)" }}>
-                            Todos os horários deste dia estão ocupados. Escolha outra data para continuar o agendamento.
+                            {availability.waitlistAvailable
+                              ? "Todos os horários deste dia estão ocupados. Você pode escolher outra data ou entrar na fila."
+                              : "Não há mais tempo útil para abrir outro horário neste dia. Escolha outra data."}
                           </p>
+                          {availability.waitlistAvailable && (
+                            <button
+                              type="button"
+                              onClick={handleJoinWaitlist}
+                              disabled={joiningWaitlist || !formData.name.trim() || !formData.phone.trim()}
+                              className="mt-3 rounded-lg px-4 py-2 text-sm font-semibold"
+                              style={{ backgroundColor: AMBER, color: "hsl(0 0% 8%)", border: "none", cursor: "pointer", opacity: joiningWaitlist ? 0.6 : 1 }}
+                            >
+                              {joiningWaitlist ? "Entrando na fila…" : "Avisar-me se abrir um horário"}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

@@ -601,6 +601,80 @@ export const RescheduleAppointmentByTokenResponse = zod.object({
 
 
 /**
+ * @summary Join the public waitlist for a fully booked date
+ */
+export const JoinWaitlistBody = zod.object({
+  "shopId": zod.string(),
+  "clientName": zod.string(),
+  "clientPhone": zod.string(),
+  "serviceIds": zod.array(zod.number()),
+  "serviceName": zod.string(),
+  "serviceDuration": zod.number(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "desiredDate": zod.string(),
+  "endpoint": zod.string(),
+  "p256dh": zod.string(),
+  "auth": zod.string()
+})
+
+
+/**
+ * @summary Get a waitlist time offer by token
+ */
+export const GetWaitlistOfferParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetWaitlistOfferResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "clientName": zod.string(),
+  "serviceName": zod.string(),
+  "serviceDuration": zod.number(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "desiredDate": zod.string(),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired']),
+  "offerToken": zod.string().nullish(),
+  "offeredScheduledAt": zod.string().nullish()
+}).and(zod.object({
+  "shopName": zod.string(),
+  "offerExpiresAt": zod.string()
+}))
+
+
+/**
+ * @summary Accept a waitlist time offer and create the appointment
+ */
+export const AcceptWaitlistOfferParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+
+/**
+ * @summary Decline a waitlist time offer
+ */
+export const DeclineWaitlistOfferParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const DeclineWaitlistOfferResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "clientName": zod.string(),
+  "serviceName": zod.string(),
+  "serviceDuration": zod.number(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "desiredDate": zod.string(),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired']),
+  "offerToken": zod.string().nullish(),
+  "offeredScheduledAt": zod.string().nullish()
+})
+
+
+/**
  * @summary Get next available slot for a public shop (no auth required)
  */
 export const GetNextAvailableParams = zod.object({
@@ -628,6 +702,7 @@ export const GetAvailabilityQueryParams = zod.object({
 export const GetAvailabilityResponse = zod.object({
   "date": zod.string(),
   "dayClosed": zod.boolean(),
+  "waitlistAvailable": zod.boolean().describe('Whether a future cancellation could still create a compatible slot on this date.'),
   "slots": zod.array(zod.object({
   "time": zod.string().describe('HH:MM'),
   "available": zod.boolean()

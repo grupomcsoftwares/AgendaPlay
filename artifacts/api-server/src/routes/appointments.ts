@@ -4,6 +4,7 @@ import { requireActiveAuth } from "../middleware/accountActive.js";
 import { db, appointmentsTable, queueTable, servicesTable, serviceDayPricingTable, comboDiscountsTable, settingsTable, barbersTable, usersTable, loyaltyPointsTable, clientsTable, clientSubscriptionsTable, subscriptionPlansTable, clientReengagementPushSubscriptionsTable, type DaySchedule, type WeeklySchedule, type LoyaltyConfig } from "@workspace/db";
 import { isBarberAllowedForService } from "./barbers.js";
 import { sendAdminPush, sendClientAppointmentPush } from "./push.js";
+import { offerNextWaitlistForSlot } from "../waitlistService.js";
 import { broadcastQueueUpdate } from "./queue.js";
 import { accountCanAccess } from "./accountStatus.js";
 import {
@@ -148,7 +149,7 @@ async function getBookingWindowError(
   return null;
 }
 
-async function resolveAuthoritativeBooking(
+export async function resolveAuthoritativeBooking(
   shopId: string,
   data: {
     serviceId?: number;
@@ -564,7 +565,7 @@ router.get("/availability", async (req, res): Promise<void> => {
   // maxBookingDays is the number of selectable calendar days including today.
   // For example, a 7-day window exposes today through today + 6.
   if (daysDiff >= maxBookingDays) {
-    res.json({ date, dayClosed: true, slots: [] });
+    res.json({ date, dayClosed: true, waitlistAvailable: false, slots: [] });
     return;
   }
 
@@ -582,7 +583,7 @@ router.get("/availability", async (req, res): Promise<void> => {
   const day: DaySchedule = weekly?.[dayKey] ?? defaults;
 
   if (day.closed) {
-    res.json({ date, dayClosed: true, slots: [] });
+    res.json({ date, dayClosed: true, waitlistAvailable: false, slots: [] });
     return;
   }
 
@@ -647,7 +648,8 @@ router.get("/availability", async (req, res): Promise<void> => {
     slots.push({ time: `${hh}:${mm}`, available });
   }
 
-  res.json({ date, dayClosed: false, slots });
+  const waitlistAvailable = nowMin < 0 || nowMin + duration <= closeMin;
+  res.json({ date, dayClosed: false, waitlistAvailable, slots });
 });
 
 router.post("/appointments", async (req, res): Promise<void> => {
@@ -1633,6 +1635,12 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
       url: `/agendamento/${a.cancelToken}`,
       sound: "changed",
     }).catch(() => {});
+    await offerNextWaitlistForSlot({
+      userId: result.appointment.userId,
+      scheduledAt: result.appointment.scheduledAt,
+      serviceDuration: result.appointment.serviceDuration,
+      barberId: result.appointment.barberId,
+    }).catch(() => {});
   }
   res.json(formatAppointmentWithToken(result.appointment!));
 });
@@ -1850,6 +1858,12 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  await offerNextWaitlistForSlot({
+    userId: appointment.userId,
+    scheduledAt: appointment.scheduledAt,
+    serviceDuration: appointment.serviceDuration,
+    barberId: appointment.barberId,
+  }).catch(() => {});
   const apptHH = new Date(appointment.scheduledAt).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
