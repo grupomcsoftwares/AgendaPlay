@@ -1027,26 +1027,30 @@ export default function Appointments() {
                       {apt.status === 'pending_payment' && (
                         <>
                           <Button
-                            variant="ghost"
-                            size="icon"
+                            variant="outline"
+                            size="sm"
                             title="Aprovar pagamento Pix"
-                            className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                            aria-label="Aprovar pagamento Pix"
+                            className="gap-1 border-emerald-500/40 px-2 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
                             onClick={() => approvePendingPayment(apt)}
                             disabled={approvePayment.isPending || rejectPayment.isPending}
                             data-testid={`button-approve-payment-${apt.id}`}
                           >
                             <ShieldCheck className="h-4 w-4" />
+                            <span>Aprovar Pix</span>
                           </Button>
                           <Button
-                            variant="ghost"
-                            size="icon"
+                            variant="outline"
+                            size="sm"
                             title="Recusar pagamento Pix"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            aria-label="Recusar pagamento Pix"
+                            className="gap-1 border-destructive/40 px-2 text-destructive hover:bg-destructive/10"
                             onClick={() => rejectPendingPayment(apt)}
                             disabled={approvePayment.isPending || rejectPayment.isPending}
                             data-testid={`button-reject-payment-${apt.id}`}
                           >
                             <Ban className="h-4 w-4" />
+                            <span>Recusar</span>
                           </Button>
                         </>
                       )}
@@ -1128,26 +1132,30 @@ export default function Appointments() {
                           {apt.status === 'pending_payment' && (
                             <>
                               <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="outline"
+                                size="sm"
                                 title="Aprovar pagamento Pix"
-                                className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                                aria-label="Aprovar pagamento Pix"
+                                className="gap-1 whitespace-nowrap border-emerald-500/40 px-2 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
                                 onClick={() => approvePendingPayment(apt)}
                                 disabled={approvePayment.isPending || rejectPayment.isPending}
                                 data-testid={`button-approve-payment-${apt.id}`}
                               >
                                 <ShieldCheck className="h-4 w-4" />
+                                <span>Aprovar Pix</span>
                               </Button>
                               <Button
-                                variant="ghost"
-                                size="icon"
+                                variant="outline"
+                                size="sm"
                                 title="Recusar pagamento Pix"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                aria-label="Recusar pagamento Pix"
+                                className="gap-1 whitespace-nowrap border-destructive/40 px-2 text-destructive hover:bg-destructive/10"
                                 onClick={() => rejectPendingPayment(apt)}
                                 disabled={approvePayment.isPending || rejectPayment.isPending}
                                 data-testid={`button-reject-payment-${apt.id}`}
                               >
                                 <Ban className="h-4 w-4" />
+                                <span>Recusar</span>
                               </Button>
                             </>
                           )}
