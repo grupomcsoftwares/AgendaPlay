@@ -1778,7 +1778,9 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   className="rounded-2xl p-4"
                   style={{ backgroundColor: "hsl(0 0% 7%)", border: "1px solid hsl(38 88% 55% / 0.3)" }}
                 >
-                  <p className="text-sm font-semibold text-center" style={{ color: AMBER }}>O QR Code Pix será exibido após confirmar</p>
+                  <p className="animate-pulse text-sm font-semibold text-center" style={{ color: AMBER }}>
+                    Chave Pix — copie e faça o pagamento
+                  </p>
                   <div
                     className="mt-3 flex items-center gap-2 rounded-xl px-3 py-2"
                     style={{ backgroundColor: "hsl(0 0% 10%)", border: "1px solid hsl(0 0% 18%)" }}
