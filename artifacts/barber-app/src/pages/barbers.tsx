@@ -260,22 +260,30 @@ export default function Barbers() {
   const handleChangePlan = async (priceId: string) => {
     setChangingPlanId(priceId);
     try {
-      const res = await fetch("/api/stripe/change-plan", {
+      const hasActiveSubscription = subscriptionStatus?.hasActiveSubscription === true;
+      const res = await fetch(hasActiveSubscription ? "/api/stripe/change-plan" : "/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ priceId }),
       });
-      const data = await res.json().catch(() => ({})) as { error?: string };
+      const data = await res.json().catch(() => ({})) as { error?: string; url?: string };
       if (!res.ok) {
-        throw new Error(data.error ?? "Não foi possível trocar de plano.");
+        throw new Error(data.error ?? "Não foi possível iniciar o pagamento.");
+      }
+      if (!hasActiveSubscription) {
+        if (!data.url) throw new Error("O servidor não retornou o link de pagamento.");
+        window.location.href = data.url;
+        return;
       }
       await queryClient.invalidateQueries({ queryKey: ["stripe-subscription-status"] });
       setPlanDialogOpen(false);
       toast({ title: "Plano atualizado", description: "Agora você já pode cadastrar o novo barbeiro." });
     } catch (error) {
       toast({
-        title: "Não foi possível trocar de plano",
+        title: subscriptionStatus?.hasActiveSubscription
+          ? "Não foi possível trocar de plano"
+          : "Não foi possível iniciar o pagamento",
         description: error instanceof Error ? error.message : "Tente novamente.",
         variant: "destructive",
       });
@@ -621,7 +629,11 @@ export default function Barbers() {
                         ) : (
                           <CreditCard className="h-4 w-4" />
                         )}
-                        {isCurrent ? "Plano atual" : changingPlanId === plan.price_id ? "Atualizando..." : "Trocar para este plano"}
+                        {isCurrent
+                          ? "Plano atual"
+                          : changingPlanId === plan.price_id
+                            ? subscriptionStatus?.hasActiveSubscription ? "Atualizando..." : "Abrindo checkout..."
+                            : subscriptionStatus?.hasActiveSubscription ? "Trocar para este plano" : "Ir para pagamento"}
                       </Button>
                     </div>
                   );
