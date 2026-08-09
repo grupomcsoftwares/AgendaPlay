@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, CalendarClock, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -101,6 +101,12 @@ type PendingAppointmentSummary = {
   status: string;
 };
 
+const PENDING_STATUS_LABEL: Record<string, string> = {
+  pending: "Confirmado",
+  pending_payment: "Aguardando Pix",
+  in_progress: "Em atendimento",
+};
+
 function AppointmentChooser({
   appointments,
   onSelect,
@@ -122,41 +128,103 @@ function AppointmentChooser({
           </div>
           <h1 className="text-2xl font-bold">Seus agendamentos</h1>
           <p className="text-sm text-muted-foreground">
-            Escolha qual agendamento você deseja cancelar ou mudar de horário.
+            Você tem mais de um agendamento. Escolha qual deseja cancelar ou mudar de horário.
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {appointments.map((appointment) => (
-            <button
+            <article
               key={appointment.cancelToken}
-              type="button"
-              onClick={() => {
-                if (appointment.cancelToken) onSelect(appointment.cancelToken);
-              }}
-              className="w-full text-left rounded-2xl p-4 transition-all"
+              className="w-full rounded-2xl p-5 space-y-4"
               style={{
-                backgroundColor: "hsl(0 0% 9%)",
-                border: "1px solid hsl(0 0% 18%)",
-                cursor: "pointer",
+                backgroundColor: "hsl(0 0% 7%)",
+                border: "1px solid hsl(0 0% 19%)",
               }}
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold truncate">{appointment.serviceName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {appointment.clientName} · {appointment.serviceDuration} min
-                  </p>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Agendamento
+                </span>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
+                  style={{
+                    backgroundColor: "hsl(142 70% 45% / 0.15)",
+                    color: "hsl(142 70% 55%)",
+                  }}
+                >
+                  {PENDING_STATUS_LABEL[appointment.status] ?? appointment.status}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <User className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cliente</p>
+                    <p className="text-sm font-semibold truncate">{appointment.clientName}</p>
+                  </div>
                 </div>
-                <ChevronRight className="w-5 h-5 shrink-0" style={{ color: AMBER }} />
+                <div className="flex items-start gap-3">
+                  <Scissors className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Serviço</p>
+                    <p className="text-sm font-semibold truncate">
+                      {appointment.serviceName} · {appointment.serviceDuration} min
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CalendarIcon className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Data</p>
+                    <p className="text-sm font-semibold capitalize">{formatPendingAppointmentDate(appointment.scheduledAt)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-4 h-4 mt-0.5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Horário</p>
+                    <p className="text-sm font-semibold">{formatPendingAppointmentTime(appointment.scheduledAt)}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2 mt-3 text-sm" style={{ color: AMBER }}>
-                <CalendarIcon className="w-4 h-4" />
-                <span className="capitalize">{formatPendingAppointmentDate(appointment.scheduledAt)}</span>
-                <Clock className="w-4 h-4 ml-2" />
-                <span>{formatPendingAppointmentTime(appointment.scheduledAt)}</span>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (appointment.cancelToken) onSelect(appointment.cancelToken);
+                  }}
+                  className="rounded-xl py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+                  style={{
+                    backgroundColor: "hsl(0 0% 9%)",
+                    border: `1px solid ${AMBER}`,
+                    color: AMBER,
+                    cursor: "pointer",
+                  }}
+                >
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  Mudar horário
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (appointment.cancelToken) onSelect(appointment.cancelToken);
+                  }}
+                  className="rounded-xl py-2.5 text-xs font-semibold flex items-center justify-center gap-1.5"
+                  style={{
+                    backgroundColor: "hsl(0 0% 9%)",
+                    border: "1px solid hsl(0 62% 50% / 0.45)",
+                    color: "hsl(0 70% 65%)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  Cancelar
+                </button>
               </div>
-            </button>
+            </article>
           ))}
         </div>
 

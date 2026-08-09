@@ -556,7 +556,7 @@ export default function CancelBooking() {
               className="w-full"
               data-testid="button-new-booking"
               onClick={() => {
-                try { localStorage.removeItem(`barber_pending_token_${shopId ?? "admin"}`); } catch { /* ignore */ }
+                removePendingAppointmentToken(tokensStorageKey, legacyStorageKey, token);
                 window.location.href = shopId ? `/booking?shopId=${shopId}&novo=1` : "/booking?novo=1";
               }}
             >
