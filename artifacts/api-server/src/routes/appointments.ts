@@ -632,14 +632,24 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  // Step: smartSlots spaces slots by the service duration itself so each slot
-  // is a natural fit for the selected service/combo. Normal mode uses the
-  // configured fixed grid (e.g. every 15 min).
+  // Smart slots use the service duration as the step, but today's first slot
+  // must be based on the current time rather than anchored to opening time.
+  // Otherwise a shop opened at 08:00 with an 18-minute service could show
+  // 13:42 as the first option at 13:29 even though 13:30 is free.
   const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
+  const firstSlotMin = smartSlots && nowMin >= 0
+    ? Math.max(openMin, Math.ceil((nowMin + minAdvanceMinutes) / 5) * 5)
+    : openMin;
   const BUFFER = 0; // no gap between appointments — back-to-back booking allowed
-  for (let t = openMin; t + duration <= closeMin; t += step) {
+  for (let t = firstSlotMin; t + duration <= closeMin; t += step) {
     const end = t + duration;
     const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
+    if (overlapsLunch && smartSlots && t < lunchEnd) {
+      // Restart the smart-slot sequence after lunch instead of preserving a
+      // pre-lunch anchor that can skip the first valid afternoon slot.
+      t = lunchEnd - step;
+      continue;
+    }
     const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
     const inPast = nowMin >= 0 && t < nowMin + minAdvanceMinutes;
     const available = !overlapsLunch && !overlapsAppt && !inPast;
