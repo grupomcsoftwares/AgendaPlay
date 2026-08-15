@@ -160,6 +160,50 @@ router.post("/waitlist", async (req, res): Promise<void> => {
   res.status(201).json(formatPublicWaitlistEntry(entry));
 });
 
+router.get("/waitlist/entries/:token", async (req, res): Promise<void> => {
+  const parsed = GetWaitlistOfferParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const entry = await getOffer(parsed.data.token);
+  if (!entry || !["active", "offered"].includes(entry.status)) {
+    res.status(404).json({ error: "Inscrição na fila não encontrada." });
+    return;
+  }
+  res.json(formatPublicWaitlistEntry(entry));
+});
+
+router.delete("/waitlist/entries/:token", async (req, res): Promise<void> => {
+  const parsed = GetWaitlistOfferParams.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const entry = await getOffer(parsed.data.token);
+  if (!entry || !["active", "offered"].includes(entry.status)) {
+    res.status(404).json({ error: "Inscrição na fila não encontrada." });
+    return;
+  }
+  const [cancelled] = await db.update(waitlistTable)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(and(eq(waitlistTable.id, entry.id), inArray(waitlistTable.status, ["active", "offered"])))
+    .returning();
+  if (!cancelled) {
+    res.status(409).json({ error: "A inscrição na fila já foi encerrada." });
+    return;
+  }
+  if (cancelled.status === "cancelled" && entry.status === "offered" && entry.offeredScheduledAt) {
+    await offerNextWaitlistForSlot({
+      userId: cancelled.userId,
+      scheduledAt: entry.offeredScheduledAt,
+      serviceDuration: entry.offerSlotDuration ?? entry.serviceDuration,
+      barberId: entry.offeredBarberId ?? entry.barberId,
+    });
+  }
+  res.json(formatPublicWaitlistEntry(cancelled));
+});
+
 router.get("/waitlist/offers/:token", async (req, res): Promise<void> => {
   const parsed = GetWaitlistOfferParams.safeParse(req.params);
   if (!parsed.success) {

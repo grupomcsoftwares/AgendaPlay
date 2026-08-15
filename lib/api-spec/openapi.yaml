@@ -525,6 +525,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/WaitlistEntry"
 
+  /waitlist/entries/{token}:
+    get:
+      operationId: getWaitlistEntry
+      tags: [waitlist]
+      summary: Get a public waitlist entry by its private token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Waitlist entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
+    delete:
+      operationId: leaveWaitlist
+      tags: [waitlist]
+      summary: Leave a public waitlist entry
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Waitlist entry cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistEntry"
+
   /waitlist/offers/{token}:
     get:
       operationId: getWaitlistOffer
@@ -1634,7 +1670,7 @@ components:
           type: string
         status:
           type: string
-          enum: [active, offered, accepted, declined, expired]
+          enum: [active, offered, accepted, declined, expired, cancelled]
         offerToken:
           type: ["string", "null"]
         offeredScheduledAt:

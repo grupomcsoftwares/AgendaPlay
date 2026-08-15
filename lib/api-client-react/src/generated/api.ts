@@ -1923,6 +1923,153 @@ export const useJoinWaitlist = <TError = ErrorType<unknown>,
       return useMutation(getJoinWaitlistMutationOptions(options));
     }
 
+export const getGetWaitlistEntryUrl = (token: string,) => {
+
+
+
+
+  return `/api/waitlist/entries/${token}`
+}
+
+/**
+ * @summary Get a public waitlist entry by its private token
+ */
+export const getWaitlistEntry = async (token: string, options?: RequestInit): Promise<WaitlistEntry> => {
+
+  return customFetch<WaitlistEntry>(getGetWaitlistEntryUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWaitlistEntryQueryKey = (token: string,) => {
+    return [
+    `/api/waitlist/entries/${token}`
+    ] as const;
+    }
+
+
+export const getGetWaitlistEntryQueryOptions = <TData = Awaited<ReturnType<typeof getWaitlistEntry>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaitlistEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWaitlistEntryQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWaitlistEntry>>> = ({ signal }) => getWaitlistEntry(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWaitlistEntry>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWaitlistEntryQueryResult = NonNullable<Awaited<ReturnType<typeof getWaitlistEntry>>>
+export type GetWaitlistEntryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a public waitlist entry by its private token
+ */
+
+export function useGetWaitlistEntry<TData = Awaited<ReturnType<typeof getWaitlistEntry>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWaitlistEntry>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWaitlistEntryQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getLeaveWaitlistUrl = (token: string,) => {
+
+
+
+
+  return `/api/waitlist/entries/${token}`
+}
+
+/**
+ * @summary Leave a public waitlist entry
+ */
+export const leaveWaitlist = async (token: string, options?: RequestInit): Promise<WaitlistEntry> => {
+
+  return customFetch<WaitlistEntry>(getLeaveWaitlistUrl(token),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getLeaveWaitlistMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveWaitlist>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof leaveWaitlist>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['leaveWaitlist'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof leaveWaitlist>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  leaveWaitlist(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LeaveWaitlistMutationResult = NonNullable<Awaited<ReturnType<typeof leaveWaitlist>>>
+
+    export type LeaveWaitlistMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Leave a public waitlist entry
+ */
+export const useLeaveWaitlist = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof leaveWaitlist>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof leaveWaitlist>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getLeaveWaitlistMutationOptions(options));
+    }
+
 export const getGetWaitlistOfferUrl = (token: string,) => {
 
 

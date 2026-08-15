@@ -15,4 +15,5 @@ export const WaitlistEntryStatus = {
   accepted: 'accepted',
   declined: 'declined',
   expired: 'expired',
+  cancelled: 'cancelled',
 } as const;

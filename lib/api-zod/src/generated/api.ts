@@ -620,6 +620,50 @@ export const JoinWaitlistBody = zod.object({
 
 
 /**
+ * @summary Get a public waitlist entry by its private token
+ */
+export const GetWaitlistEntryParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetWaitlistEntryResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "clientName": zod.string(),
+  "serviceName": zod.string(),
+  "serviceDuration": zod.number(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "desiredDate": zod.string(),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired', 'cancelled']),
+  "offerToken": zod.string().nullish(),
+  "offeredScheduledAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Leave a public waitlist entry
+ */
+export const LeaveWaitlistParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const LeaveWaitlistResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string(),
+  "clientName": zod.string(),
+  "serviceName": zod.string(),
+  "serviceDuration": zod.number(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "desiredDate": zod.string(),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired', 'cancelled']),
+  "offerToken": zod.string().nullish(),
+  "offeredScheduledAt": zod.string().nullish()
+})
+
+
+/**
  * @summary Get a waitlist time offer by token
  */
 export const GetWaitlistOfferParams = zod.object({
@@ -635,7 +679,7 @@ export const GetWaitlistOfferResponse = zod.object({
   "barberId": zod.number().nullish(),
   "barberName": zod.string().nullish(),
   "desiredDate": zod.string(),
-  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired']),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired', 'cancelled']),
   "offerToken": zod.string().nullish(),
   "offeredScheduledAt": zod.string().nullish()
 }).and(zod.object({
@@ -668,7 +712,7 @@ export const DeclineWaitlistOfferResponse = zod.object({
   "barberId": zod.number().nullish(),
   "barberName": zod.string().nullish(),
   "desiredDate": zod.string(),
-  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired']),
+  "status": zod.enum(['active', 'offered', 'accepted', 'declined', 'expired', 'cancelled']),
   "offerToken": zod.string().nullish(),
   "offeredScheduledAt": zod.string().nullish()
 })
