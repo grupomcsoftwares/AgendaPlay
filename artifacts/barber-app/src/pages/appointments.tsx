@@ -76,6 +76,29 @@ export default function Appointments() {
     },
   );
 
+  // Pending Pix bookings must remain visible even when the barber is browsing
+  // another day in the agenda. The date-filtered query is still used for the
+  // main list, while this lightweight query powers the global alert below.
+  const pendingPaymentParams = { status: "pending_payment" };
+  const { data: pendingPaymentAppointments } = useListAppointments(
+    pendingPaymentParams,
+    {
+      query: {
+        queryKey: getListAppointmentsQueryKey(pendingPaymentParams),
+        refetchInterval: 5000,
+        refetchOnWindowFocus: true,
+      },
+    },
+  );
+
+  const pendingPaymentsOutsideAgenda = useMemo(
+    () =>
+      (pendingPaymentAppointments ?? []).filter(
+        (pending) => !(appointments ?? []).some((appointment) => appointment.id === pending.id),
+      ),
+    [appointments, pendingPaymentAppointments],
+  );
+
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
   const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
@@ -319,6 +342,7 @@ export default function Appointments() {
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey(rangeParams) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({ date: formDateStr }) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({}) });
+    queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey(pendingPaymentParams) });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
     queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
   };
@@ -980,6 +1004,79 @@ export default function Appointments() {
                   {s.cutsUsedThisMonth}/{s.maxAppointmentsPerMonth}
                 </span>
               </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingPaymentsOutsideAgenda.length > 0 && (
+        <div className="rounded-lg border border-violet-500/40 bg-violet-500/5 p-3 space-y-3">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="h-4 w-4 mt-0.5 text-violet-300 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-violet-200">
+                {pendingPaymentsOutsideAgenda.length === 1
+                  ? "Há 1 pagamento Pix aguardando confirmação"
+                  : `Há ${pendingPaymentsOutsideAgenda.length} pagamentos Pix aguardando confirmação`}
+              </p>
+              <p className="text-xs text-violet-200/70">
+                Eles estão em outra data e não aparecem na agenda selecionada.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2 pl-6">
+            {pendingPaymentsOutsideAgenda.map((apt) => (
+              <div
+                key={apt.id}
+                className="flex flex-col gap-2 rounded-md border border-violet-500/20 bg-violet-500/5 p-2.5 sm:flex-row sm:items-center sm:justify-between"
+                data-testid={`pending-payment-alert-${apt.id}`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{apt.clientName} · {apt.serviceName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(apt.scheduledAt), "dd/MM/yyyy", { locale: ptBR })} às {format(new Date(apt.scheduledAt), "HH:mm")}
+                    {" · "}
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(apt.servicePrice))}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const day = new Date(apt.scheduledAt);
+                      day.setHours(0, 0, 0, 0);
+                      setDateStart(day);
+                      setDateEnd(day);
+                    }}
+                    data-testid={`button-view-pending-payment-day-${apt.id}`}
+                  >
+                    Ver dia
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                    onClick={() => approvePendingPayment(apt)}
+                    disabled={approvePayment.isPending || rejectPayment.isPending}
+                    data-testid={`button-approve-pending-payment-alert-${apt.id}`}
+                  >
+                    <ShieldCheck className="mr-1 h-4 w-4" />
+                    Aprovar Pix
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => rejectPendingPayment(apt)}
+                    disabled={approvePayment.isPending || rejectPayment.isPending}
+                    data-testid={`button-reject-pending-payment-alert-${apt.id}`}
+                  >
+                    <Ban className="mr-1 h-4 w-4" />
+                    Recusar
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
