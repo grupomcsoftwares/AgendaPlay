@@ -1592,6 +1592,12 @@ components:
         loyaltyPointsRedeemed:
           type: integer
           description: Points redeemed for a discount on this booking
+        overrideLimitConfirmed:
+          type: boolean
+          description: >
+            Barber explicitly confirmed booking past the subscriber's monthly
+            appointment limit. When absent or false the server rejects the
+            request with 422 SUBSCRIPTION_MONTHLY_LIMIT_REACHED.
 
     AppointmentUpdate:
       type: object

@@ -136,6 +136,21 @@ export default function Appointments() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
+  const [limitOverrideConfirmed, setLimitOverrideConfirmed] = useState(false);
+
+  // Resolve the phone for the client currently selected in the create form
+  const selectedClientPhone = useMemo(() => {
+    if (formData.clientId !== "new") {
+      return clients?.find(c => c.id.toString() === formData.clientId)?.phone?.replace(/\D/g, "") ?? null;
+    }
+    return formData.clientPhone.trim().replace(/\D/g, "") || null;
+  }, [formData.clientId, formData.clientPhone, clients]);
+
+  // Whether the selected client is a subscriber who has hit their monthly cut limit
+  const selectedClientAtLimit = useMemo(() => {
+    if (!selectedClientPhone) return null;
+    return subscribersAtLimit.find(s => s.clientPhone === selectedClientPhone) ?? null;
+  }, [selectedClientPhone, subscribersAtLimit]);
 
   // Client search state
   const [clientSearch, setClientSearch] = useState("");
@@ -422,6 +437,7 @@ export default function Appointments() {
   useEffect(() => {
     if (!isCreateOpen) {
       setFormData(INITIAL_FORM);
+      setLimitOverrideConfirmed(false);
     } else {
       const today = new Date();
       const firstOpenDay = agendaDayOptions.find((day) => sameDay(day, today));
@@ -467,6 +483,7 @@ export default function Appointments() {
         ...(formData.clientId === "new" && formData.clientPhone.trim()
           ? { notes: `Tel: ${formData.clientPhone.trim()}.` }
           : {}),
+        ...(limitOverrideConfirmed ? { overrideLimitConfirmed: true } : {}),
       }},
       {
         onSuccess: () => {
@@ -912,6 +929,30 @@ export default function Appointments() {
                   )}
                 </div>
               </div>
+              {/* Monthly limit warning — shown when the selected subscriber has used all cuts */}
+              {selectedClientAtLimit && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      <span className="font-semibold">{selectedClientAtLimit.clientName}</span> já usou{" "}
+                      {selectedClientAtLimit.cutsUsedThisMonth} de{" "}
+                      {selectedClientAtLimit.maxAppointmentsPerMonth} corte(s) do mês no plano{" "}
+                      <span className="font-semibold">{selectedClientAtLimit.planName ?? "Assinatura"}</span>.
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-amber-700 dark:text-amber-300">
+                    <input
+                      type="checkbox"
+                      checked={limitOverrideConfirmed}
+                      onChange={e => setLimitOverrideConfirmed(e.target.checked)}
+                      className="accent-amber-500 w-4 h-4"
+                      data-testid="checkbox-limit-override"
+                    />
+                    Entendido — agendar mesmo assim
+                  </label>
+                </div>
+              )}
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
                 <Button
@@ -921,7 +962,8 @@ export default function Appointments() {
                     (!formData.clientName && formData.clientId === "new") ||
                     formData.serviceIds.length === 0 ||
                     !formData.time ||
-                    createAppointment.isPending
+                    createAppointment.isPending ||
+                    (!!selectedClientAtLimit && !limitOverrideConfirmed)
                   }
                 >
                   {createAppointment.isPending ? "Salvando…" : "Confirmar Agendamento"}

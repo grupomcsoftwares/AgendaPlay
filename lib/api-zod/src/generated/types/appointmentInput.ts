@@ -27,4 +27,10 @@ export interface AppointmentInput {
   notes?: string;
   /** Points redeemed for a discount on this booking */
   loyaltyPointsRedeemed?: number;
+  /**
+   * Barber explicitly confirmed booking past the subscriber's monthly
+   * appointment limit. When absent or false the server rejects with
+   * 422 SUBSCRIPTION_MONTHLY_LIMIT_REACHED.
+   */
+  overrideLimitConfirmed?: boolean;
 }

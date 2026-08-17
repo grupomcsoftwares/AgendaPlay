@@ -800,6 +800,79 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const finalServicePrice = Math.max(0, authoritative.servicePrice - loyaltyDiscount);
   // ─────────────────────────────────────────────────────────────────────────
 
+  // ── Monthly appointment limit validation ─────────────────────────────────
+  // Resolve the client phone: prefer notes (existing flow), fall back to clientId lookup.
+  let resolvedPhone: string | null = loyaltyPhone;
+  if (!resolvedPhone && parsed.data.clientId) {
+    const [clientRow] = await db
+      .select({ phone: clientsTable.phone })
+      .from(clientsTable)
+      .where(and(eq(clientsTable.id, parsed.data.clientId), eq(clientsTable.userId, shopId)))
+      .limit(1);
+    resolvedPhone = clientRow?.phone ?? null;
+  }
+
+  if (resolvedPhone) {
+    const [activeSub] = await db
+      .select({
+        maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
+        startDate: clientSubscriptionsTable.startDate,
+      })
+      .from(clientSubscriptionsTable)
+      .innerJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, clientSubscriptionsTable.planId))
+      .where(and(
+        eq(clientSubscriptionsTable.userId, shopId),
+        eq(clientSubscriptionsTable.clientPhone, resolvedPhone),
+        eq(clientSubscriptionsTable.status, "active"),
+        sql`${subscriptionPlansTable.maxAppointmentsPerMonth} IS NOT NULL`,
+      ))
+      .limit(1);
+
+    const monthlyMax = activeSub?.maxAppointmentsPerMonth ?? null;
+    if (monthlyMax != null) {
+      const now = new Date();
+      const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+      // Count covered appointments for this phone this calendar month via clients table.
+      // Reservation model: pending and in-progress bookings consume the monthly allowance
+      // just like completed ones — consistent with GET /subscriptions/monthly-usage.
+      // This prevents simultaneous overbooking (two bookings created at the same time
+      // would both see a count below the limit unless reservations are counted).
+      const [usageRow] = await db
+        .select({ count: sql<number>`COUNT(${appointmentsTable.id})` })
+        .from(appointmentsTable)
+        .innerJoin(
+          clientsTable,
+          and(
+            eq(clientsTable.id, appointmentsTable.clientId),
+            eq(clientsTable.userId, shopId),
+          ),
+        )
+        .where(and(
+          eq(appointmentsTable.userId, shopId),
+          eq(clientsTable.phone, resolvedPhone),
+          eq(appointmentsTable.coveredByPlan, true),
+          sql`${appointmentsTable.status} != 'cancelled'`,
+          gte(appointmentsTable.scheduledAt, monthStart),
+        ));
+
+      const cutsUsed = Number(usageRow?.count ?? 0);
+      if (cutsUsed >= monthlyMax) {
+        const overrideConfirmed = parsed.data.overrideLimitConfirmed === true;
+        if (!overrideConfirmed) {
+          res.status(422).json({
+            code: "SUBSCRIPTION_MONTHLY_LIMIT_REACHED",
+            error: `Este assinante já usou ${cutsUsed} de ${monthlyMax} corte(s) deste mês. Confirme para agendar mesmo assim.`,
+            cutsUsed,
+            monthlyMax,
+          });
+          return;
+        }
+      }
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   // ── Subscription credits validation ─────────────────────────────────────
   const coveredByPlan = parsed.data.coveredByPlan ?? false;
   let subscriptionCreditCost = 0;

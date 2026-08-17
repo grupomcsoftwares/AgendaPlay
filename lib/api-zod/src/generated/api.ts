@@ -280,7 +280,8 @@ export const CreateAppointmentBody = zod.object({
   "paymentMethod": zod.enum(['now', 'on_site']).optional(),
   "coveredByPlan": zod.boolean().optional().describe('True when the client chose to use their active subscription plan for this booking'),
   "notes": zod.string().optional(),
-  "loyaltyPointsRedeemed": zod.number().optional().describe('Points redeemed for a discount on this booking')
+  "loyaltyPointsRedeemed": zod.number().optional().describe('Points redeemed for a discount on this booking'),
+  "overrideLimitConfirmed": zod.boolean().optional().describe('Barber explicitly confirmed booking past the monthly subscription limit')
 })
 
 
