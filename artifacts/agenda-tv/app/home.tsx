@@ -72,7 +72,11 @@ export default function HomeScreen() {
   const topPad = isWeb ? 67 : insets.top;
   const botPad = isWeb ? 34 : insets.bottom;
 
-  const visibleModes = isTV ? MODES.filter((m) => m.id === "queue") : MODES;
+  // The live queue is a TV-only display. Phones and tablets should open only
+  // the management area and must not expose a queue entry point.
+  const visibleModes = isTV
+    ? MODES.filter((m) => m.id === "queue")
+    : MODES.filter((m) => m.id === "management");
 
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);

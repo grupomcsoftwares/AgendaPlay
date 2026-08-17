@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Scissors, Clock, Plus, Play, Trash2, ArrowLeft } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -152,7 +152,7 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
   );
 }
 
-export default function Queue() {
+function QueueContent() {
   const hideAddButton =
     typeof window !== "undefined" &&
     (!!(window as any).__AGENDAPLAY_MOBILE__ ||
@@ -876,4 +876,24 @@ export default function Queue() {
       </Dialog>
     </div>
   );
+}
+
+function isTVView() {
+  if (typeof window === "undefined") return false;
+  return Boolean(
+    (window as Window & { __AGENDAPLAY_TV__?: boolean }).__AGENDAPLAY_TV__ ||
+      new URLSearchParams(window.location.search).get("tv") === "1",
+  );
+}
+
+export default function Queue() {
+  const [, setLocation] = useLocation();
+  const tvView = isTVView();
+
+  useEffect(() => {
+    if (!tvView) setLocation("/dashboard");
+  }, [setLocation, tvView]);
+
+  if (!tvView) return null;
+  return <QueueContent />;
 }

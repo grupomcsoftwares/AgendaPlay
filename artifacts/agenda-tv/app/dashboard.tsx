@@ -35,6 +35,7 @@ const MENU_ITEMS = [
 ];
 
 const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings");
+const APP_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "queue");
 
 function getMobileRoute(url: string) {
   const nextUrl = new URL(url);
@@ -114,7 +115,7 @@ export default function DashboardScreen() {
   const webViewReadyRef = useRef(false);
   const pendingMobileRouteRef = useRef<string | null>(null);
 
-  const activeMenu = isTV ? TV_MENU_ITEMS : MENU_ITEMS;
+  const activeMenu = isTV ? TV_MENU_ITEMS : APP_MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
@@ -366,11 +367,12 @@ export default function DashboardScreen() {
                 const initialItem = isPhone ? activeMenu[0] : selectedItem;
                 const u = new URL(initialItem.url);
                 u.searchParams.set("view", "mobile");
+                if (isTV) u.searchParams.set("tv", "1");
                 return u.toString();
               })(),
             }}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded={"window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = false;"}
+            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
              sharedCookiesEnabled
