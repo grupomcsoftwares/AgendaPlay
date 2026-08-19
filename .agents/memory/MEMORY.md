@@ -31,3 +31,4 @@
 - [Barber notification sounds](barber-notification-sounds.md) — notification categories need distinct web audio and Android channels; pending Pix repeats on the server while status remains pending.
 - [Waitlist offer safety](waitlist-offer-safety.md) — waitlist offers must be claimed atomically, revalidate the normal booking path, and expire/release in sequence.
 - [OpenAPI query parameter codegen](openapi-query-parameter-codegen.md) — path endpoints with query inputs can create an Orval Zod export-name collision; regenerate and typecheck the barrel.
+- [Development schema push conflicts](dev-schema-push-conflict.md) — drizzle push can require an interactive named-schema confirmation; apply isolated additive changes without forcing unrelated drift.
