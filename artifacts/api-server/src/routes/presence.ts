@@ -2,7 +2,6 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { gte, sql } from "drizzle-orm";
 import { db, onlinePresenceTable, usersTable } from "@workspace/db";
 import {
-  AdminAccountSummary,
   GetAdminOnlineUsersResponse,
   RecordPresenceHeartbeatResponse,
 } from "@workspace/api-zod";
@@ -68,16 +67,16 @@ router.get(
 
     const accountSummaries = accounts.map((account) => {
       const status = getAccountStatus(account);
-      const billingStatus = status.hasActiveSubscription
+      const billingStatus: "paid" | "trial" | "expired" = status.hasActiveSubscription
         ? "paid"
         : status.trialExpired
           ? "expired"
           : "trial";
-      return AdminAccountSummary.parse({
+      return {
         email: account.email,
         barbershopName: account.barbershopName,
         billingStatus,
-      });
+      };
     });
     const paidAccounts = accountSummaries.filter((account) => account.billingStatus === "paid").length;
     const trialAccounts = accountSummaries.filter((account) => account.billingStatus === "trial").length;
