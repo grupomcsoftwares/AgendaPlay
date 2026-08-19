@@ -9,10 +9,9 @@ import {
   Dimensions,
   useWindowDimensions,
   Linking,
-  Share,
   Alert,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
@@ -137,16 +136,46 @@ export default function DashboardScreen() {
     ? `https://agendaplay.net/b/${user.slug}`
     : null;
 
-  const handleShare = useCallback(async () => {
-    if (!bookingUrl) return;
+  const shareMessage = useCallback(() => {
+    if (!bookingUrl) return null;
     const shopName = user?.barbershopName || "minha barbearia";
-    const message = `Agende seu horário na ${shopName}:\n${bookingUrl}`;
-    try {
-      await Share.share({ message });
-    } catch {
-      // user cancelled or share not available
-    }
+    return `Agende seu horário na ${shopName}:\n${bookingUrl}`;
   }, [bookingUrl, user?.barbershopName]);
+
+  const handleWhatsApp = useCallback(async () => {
+    const message = shareMessage();
+    if (!message) return;
+    try {
+      await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`);
+    } catch {
+      // WhatsApp is not installed or the user cancelled the handoff.
+    }
+  }, [shareMessage]);
+
+  const handleSMS = useCallback(async () => {
+    const message = shareMessage();
+    if (!message) return;
+    try {
+      const bodySeparator = Platform.OS === "ios" ? "&" : "?";
+      await Linking.openURL(`sms:${bodySeparator}body=${encodeURIComponent(message)}`);
+    } catch {
+      // No messaging app is available on this device.
+    }
+  }, [shareMessage]);
+
+  const handleEmail = useCallback(async () => {
+    const message = shareMessage();
+    if (!message) return;
+    const shopName = user?.barbershopName || "minha barbearia";
+    const subject = `Agendamento na ${shopName}`;
+    try {
+      await Linking.openURL(
+        `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`,
+      );
+    } catch {
+      // No email app is available on this device.
+    }
+  }, [shareMessage, user?.barbershopName]);
 
   const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string; url?: string } }) => {
     if (event.nativeEvent.url && !isAllowedAppUrl(event.nativeEvent.url)) return;
@@ -316,22 +345,50 @@ export default function DashboardScreen() {
                 );
               })}
 
-              {bookingUrl && !isTV && !isPhone && (
+              {bookingUrl && !isTV && (
                 <>
                   <View style={styles.menuDivider} />
-                  <Pressable
+                  <View
                     style={[
-                      styles.menuItem,
-                      styles.shareButton,
-                      !menuOpen && styles.menuItemCollapsed,
+                      styles.shareCard,
+                      !menuOpen && styles.shareCardCollapsed,
                     ]}
-                    onPress={handleShare}
                   >
-                    <Feather name="share-2" size={18} color="#c9a84c" />
                     {menuOpen && (
                       <Text style={styles.shareLabel}>Compartilhar link</Text>
                     )}
-                  </Pressable>
+                    <View
+                      style={[
+                        styles.shareChannels,
+                        !menuOpen && styles.shareChannelsCollapsed,
+                      ]}
+                    >
+                      <Pressable
+                        accessibilityLabel="Compartilhar link via WhatsApp"
+                        testID="share-whatsapp"
+                        style={styles.channelButton}
+                        onPress={handleWhatsApp}
+                      >
+                        <FontAwesome name="whatsapp" size={20} color="#25D366" />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Compartilhar link via SMS"
+                        testID="share-sms"
+                        style={styles.channelButton}
+                        onPress={handleSMS}
+                      >
+                        <Feather name="message-square" size={19} color="#4c9eff" />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Compartilhar link via e-mail"
+                        testID="share-email"
+                        style={styles.channelButton}
+                        onPress={handleEmail}
+                      >
+                        <Feather name="mail" size={19} color="#d88cff" />
+                      </Pressable>
+                    </View>
+                  </View>
                 </>
               )}
             </View>
@@ -587,14 +644,38 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginVertical: 6,
   },
-  shareButton: {
+  shareCard: {
     borderColor: "#2a2a1a",
     borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    gap: 8,
+  },
+  shareCardCollapsed: {
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  shareChannels: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 4,
+  },
+  shareChannelsCollapsed: {
+    flexDirection: "column",
+    gap: 8,
+  },
+  channelButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 8,
+    backgroundColor: "#1a1a1a",
   },
   shareLabel: {
     fontSize: 13,
     color: "#c9a84c",
     fontWeight: "600",
-    flex: 1,
   },
 });
