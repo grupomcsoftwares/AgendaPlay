@@ -508,7 +508,7 @@ router.post("/stripe/customer-portal", requireAuth, async (req: Request, res: Re
     const stripe = await getUncachableStripeClient();
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${PUBLIC_APP_BASE}/settings`,
+      return_url: `${PUBLIC_APP_BASE}/settings?portal_return=1`,
     });
 
     res.json({ url: session.url });

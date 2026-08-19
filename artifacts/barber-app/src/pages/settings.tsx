@@ -130,6 +130,7 @@ function resizeImageToDataUrl(file: File, max = 256): Promise<string> {
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function validateSlug(value: string): string | null {
   if (value.length < 3) return "Mínimo de 3 caracteres";
@@ -146,6 +147,10 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, refresh, logout } = useAuth();
+  const subscriptionReturnParams = new URLSearchParams(window.location.search);
+  const justSubscribed = subscriptionReturnParams.get("subscribed") === "1";
+  const checkoutSessionId = subscriptionReturnParams.get("session_id");
+  const returnedFromCustomerPortal = subscriptionReturnParams.get("portal_return") === "1";
   const [copied, setCopied] = useState(false);
 
   const { data: combos } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
@@ -213,6 +218,9 @@ export default function Settings() {
   // Subscription management
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [subscriptionSyncing, setSubscriptionSyncing] = useState(
+    justSubscribed || returnedFromCustomerPortal,
+  );
 
   const { data: subscriptionStatus } = useQuery<{
     hasActiveSubscription: boolean;
@@ -236,6 +244,55 @@ export default function Settings() {
     refetchOnWindowFocus: true,
   });
 
+  useEffect(() => {
+    if (!justSubscribed && !returnedFromCustomerPortal) return;
+
+    let cancelled = false;
+    setSubscriptionSyncing(true);
+
+    const syncSubscription = async () => {
+      const deadline = Date.now() + (justSubscribed ? 30_000 : 10_000);
+      const pollIntervalMs = 2_500;
+
+      while (!cancelled && Date.now() <= deadline) {
+        let syncResult: { hasSubscription?: boolean; pending?: boolean } = {};
+        try {
+          const res = await fetch(`${BASE}/api/stripe/sync-subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ sessionId: checkoutSessionId || undefined }),
+          });
+          syncResult = await res.json().catch(() => ({})) as typeof syncResult;
+        } catch {
+          // Retry while Stripe finishes the checkout or the network recovers.
+        }
+
+        if (cancelled) return;
+
+        await Promise.all([
+          refresh(),
+          queryClient.invalidateQueries({ queryKey: ["stripe-subscription-status"] }),
+        ]);
+
+        // A portal return only needs one fresh read. Checkout redirects can
+        // arrive before Stripe has made the subscription visible, so retry.
+        if (returnedFromCustomerPortal || syncResult.hasSubscription === true) break;
+
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) break;
+        await new Promise((resolve) => window.setTimeout(resolve, Math.min(pollIntervalMs, remainingMs)));
+      }
+
+      if (!cancelled) setSubscriptionSyncing(false);
+    };
+
+    void syncSubscription();
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutSessionId, justSubscribed, queryClient, refresh, returnedFromCustomerPortal]);
+
   const { data: stripeePlans } = useQuery<{
     data: Array<{ price_id: string; product_name: string; unit_amount: number; currency: string; maxBarbers: number | null }>;
   }>({
@@ -249,10 +306,11 @@ export default function Settings() {
     enabled: !!subscriptionStatus?.hasActiveSubscription,
   });
 
+  const displayedSubscriptionStatus = subscriptionSyncing ? undefined : subscriptionStatus;
   const currentPlan = stripeePlans?.data?.find(
-    (p) => p.price_id === subscriptionStatus?.stripePriceId
+    (p) => p.price_id === displayedSubscriptionStatus?.stripePriceId
   );
-  const paymentFailed = subscriptionStatus?.pastDue ?? user?.pastDue ?? false;
+  const paymentFailed = !subscriptionSyncing && (subscriptionStatus?.pastDue ?? user?.pastDue ?? false);
 
   const openCustomerPortal = async () => {
     setPortalLoading(true);
@@ -1753,7 +1811,7 @@ export default function Settings() {
             {/* Status badge */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
-                {subscriptionStatus?.hasActiveSubscription ? (
+                {displayedSubscriptionStatus?.hasActiveSubscription ? (
                   <>
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-500/15 text-green-500 border border-green-500/30">
@@ -1764,21 +1822,21 @@ export default function Settings() {
                           {currentPlan.product_name}
                         </span>
                       )}
-                      {subscriptionStatus.maxBarbers != null && (
+                      {displayedSubscriptionStatus.maxBarbers != null && (
                         <span className="text-xs text-muted-foreground">
-                          · Até {subscriptionStatus.maxBarbers} {subscriptionStatus.maxBarbers === 1 ? "profissional" : "profissionais"}
+                          · Até {displayedSubscriptionStatus.maxBarbers} {displayedSubscriptionStatus.maxBarbers === 1 ? "profissional" : "profissionais"}
                         </span>
                       )}
                     </div>
-                    {subscriptionStatus.subscriptionDueDate && (
+                    {displayedSubscriptionStatus.subscriptionDueDate && (
                       <p className="text-xs text-muted-foreground">
                         Próxima cobrança:{" "}
                         <span className="font-medium text-foreground">
-                          {new Date(subscriptionStatus.subscriptionDueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                          {new Date(displayedSubscriptionStatus.subscriptionDueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
                         </span>
-                        {subscriptionStatus.subscriptionDaysLeft != null && (
+                        {displayedSubscriptionStatus.subscriptionDaysLeft != null && (
                           <span className="ml-1 text-muted-foreground">
-                            ({subscriptionStatus.subscriptionDaysLeft} {subscriptionStatus.subscriptionDaysLeft === 1 ? "dia" : "dias"})
+                            ({displayedSubscriptionStatus.subscriptionDaysLeft} {displayedSubscriptionStatus.subscriptionDaysLeft === 1 ? "dia" : "dias"})
                           </span>
                         )}
                       </p>
@@ -1789,7 +1847,7 @@ export default function Settings() {
                       </p>
                     )}
                   </>
-                ) : subscriptionStatus && !subscriptionStatus.trialExpired ? (
+                ) : displayedSubscriptionStatus && !displayedSubscriptionStatus.trialExpired ? (
                   <>
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30">
@@ -1797,12 +1855,12 @@ export default function Settings() {
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {subscriptionStatus.trialDaysLeft === 1
+                      {displayedSubscriptionStatus.trialDaysLeft === 1
                         ? "Último dia de período grátis"
-                        : `${subscriptionStatus.trialDaysLeft} dias restantes no período grátis`}
+                        : `${displayedSubscriptionStatus.trialDaysLeft} dias restantes no período grátis`}
                     </p>
                   </>
-                ) : subscriptionStatus?.trialExpired && !subscriptionStatus.hasActiveSubscription ? (
+                ) : displayedSubscriptionStatus?.trialExpired && !displayedSubscriptionStatus.hasActiveSubscription ? (
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive border border-destructive/30">
                       Sem plano ativo
@@ -1811,7 +1869,9 @@ export default function Settings() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Carregando...</span>
+                    <span className="text-sm text-muted-foreground">
+                      {subscriptionSyncing ? "Atualizando assinatura..." : "Carregando..."}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1819,7 +1879,7 @@ export default function Settings() {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2 pt-1">
-              {subscriptionStatus?.hasActiveSubscription ? (
+              {subscriptionSyncing ? null : displayedSubscriptionStatus?.hasActiveSubscription ? (
                 <>
                   <Button
                     variant="outline"
@@ -1855,7 +1915,7 @@ export default function Settings() {
                     Cancelar assinatura
                   </Button>
                 </>
-              ) : !subscriptionStatus?.trialExpired ? (
+              ) : !displayedSubscriptionStatus?.trialExpired ? (
                 <Button
                   variant="outline"
                   size="sm"
