@@ -432,6 +432,7 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
   const usedAppointments = await db
     .select({
       creditsUsed: appointmentsTable.creditsUsed,
+      subscriberPhone: appointmentsTable.subscriberPhone,
       clientPhone: clientsTable.phone,
       notes: appointmentsTable.notes,
     })
@@ -450,7 +451,8 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
     ));
   const totalUsed = usedAppointments.reduce((sum, appointment) => {
     const phoneFromNotes = appointment.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
-    const appointmentPhone = normalizePhone(appointment.clientPhone || phoneFromNotes);
+    // Priority: subscriberPhone (most reliable) → clientsTable join → notes fallback
+    const appointmentPhone = normalizePhone(appointment.subscriberPhone || appointment.clientPhone || phoneFromNotes);
     return appointmentPhone === phone ? sum + (appointment.creditsUsed ?? 0) : sum;
   }, 0);
   res.json({
@@ -508,10 +510,12 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
     return;
   }
 
-  // Count this-month coveredByPlan appointments by phone. Older appointments
-  // may not have clientId linked, so fall back to the phone stored in notes.
+  // Count this-month coveredByPlan appointments by phone.
+  // subscriberPhone is the most reliable source (set at booking time regardless of clientId).
+  // Fall back to the clients table join and then notes for older rows that pre-date the column.
   const monthlyUsage = await db
     .select({
+      subscriberPhone: appointmentsTable.subscriberPhone,
       clientPhone: clientsTable.phone,
       notes: appointmentsTable.notes,
     })
@@ -529,13 +533,13 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
       sql`${appointmentsTable.status} != 'cancelled'`,
       gte(appointmentsTable.scheduledAt, monthStart),
       lt(appointmentsTable.scheduledAt, monthEnd),
-    ))
-    ;
+    ));
 
   const usageByPhone = new Map<string, number>();
   for (const row of monthlyUsage) {
     const phoneFromNotes = row.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
-    const phone = normalizePhone(row.clientPhone || phoneFromNotes);
+    // Priority: subscriberPhone (most reliable) → clientsTable join → notes fallback
+    const phone = normalizePhone(row.subscriberPhone || row.clientPhone || phoneFromNotes);
     if (phone) usageByPhone.set(phone, (usageByPhone.get(phone) ?? 0) + 1);
   }
 

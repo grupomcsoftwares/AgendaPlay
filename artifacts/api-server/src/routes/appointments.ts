@@ -833,15 +833,17 @@ router.post("/appointments", async (req, res): Promise<void> => {
       const now = new Date();
       const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-      // Count covered appointments for this phone this calendar month via clients table.
+      // Count covered appointments for this phone this calendar month.
       // Reservation model: pending and in-progress bookings consume the monthly allowance
       // just like completed ones — consistent with GET /subscriptions/monthly-usage.
       // This prevents simultaneous overbooking (two bookings created at the same time
       // would both see a count below the limit unless reservations are counted).
+      // Use subscriberPhone as the primary match (reliable even when clientId is null),
+      // and fall back to the clientsTable join for older rows that pre-date the column.
       const [usageRow] = await db
         .select({ count: sql<number>`COUNT(${appointmentsTable.id})` })
         .from(appointmentsTable)
-        .innerJoin(
+        .leftJoin(
           clientsTable,
           and(
             eq(clientsTable.id, appointmentsTable.clientId),
@@ -850,10 +852,10 @@ router.post("/appointments", async (req, res): Promise<void> => {
         )
         .where(and(
           eq(appointmentsTable.userId, shopId),
-          eq(clientsTable.phone, resolvedPhone),
           eq(appointmentsTable.coveredByPlan, true),
           sql`${appointmentsTable.status} != 'cancelled'`,
           gte(appointmentsTable.scheduledAt, monthStart),
+          sql`(${appointmentsTable.subscriberPhone} = ${resolvedPhone} OR ${clientsTable.phone} = ${resolvedPhone})`,
         ));
 
       const cutsUsed = Number(usageRow?.count ?? 0);
@@ -1000,6 +1002,8 @@ router.post("/appointments", async (req, res): Promise<void> => {
       pendingCreditsUsed: awaitingPayment ? (coveredByPlan ? subscriptionCreditCost : null) : null,
       pendingLoyaltyPointsRedeemed: awaitingPayment ? loyaltyPointsRedeemed : 0,
       pendingLoyaltyPointsEarned: 0,
+      // Store subscriber phone directly so cut counting works even when clientId is null.
+      subscriberPhone: coveredByPlan && loyaltyPhone ? loyaltyPhone : null,
     }).returning();
 
     // Atomic subscription credit deduction inside transaction

@@ -23,6 +23,7 @@ export const appointmentsTable = pgTable("appointments", {
   pendingCreditsUsed: integer("pending_credits_used"),
   pendingLoyaltyPointsRedeemed: integer("pending_loyalty_points_redeemed").notNull().default(0),
   pendingLoyaltyPointsEarned: integer("pending_loyalty_points_earned").notNull().default(0),
+  subscriberPhone: text("subscriber_phone"), // phone of the plan subscriber when coveredByPlan=true; set regardless of clientId to ensure reliable cut counting
   notes: text("notes"),
   cancelToken: text("cancel_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -126,6 +126,17 @@ sessionPool.query(SLUG_REDIRECTS_TABLE_SQL).catch((err: Error) => {
   logger.error({ err }, "Failed to create slug_redirects table");
 });
 
+// Add subscriber_phone to appointments if it doesn't exist yet (idempotent column migration).
+// This column stores the plan subscriber's phone at booking time so that cut counting is
+// reliable even when clientId is null (i.e. the client was not found in the clients table).
+const APPOINTMENTS_SUBSCRIBER_PHONE_SQL = `
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS subscriber_phone text;
+`;
+
+sessionPool.query(APPOINTMENTS_SUBSCRIBER_PHONE_SQL).catch((err: Error) => {
+  logger.error({ err }, "Failed to add subscriber_phone to appointments");
+});
+
 app.use(
   session({
     store: new PgSession({
