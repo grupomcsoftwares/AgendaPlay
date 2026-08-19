@@ -26,6 +26,7 @@ const userCols = {
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
   stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+  stripePaymentFailing: usersTable.stripePaymentFailing,
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
@@ -190,6 +191,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     canAccess: status.canAccess,
     subscriptionDueDate: status.subscriptionDueDate,
     subscriptionDaysLeft: status.subscriptionDaysLeft,
+    stripePaymentFailing: user.stripePaymentFailing,
   });
 });
 

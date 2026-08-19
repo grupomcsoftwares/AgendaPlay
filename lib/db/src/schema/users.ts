@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -19,6 +19,7 @@ export const usersTable = pgTable("users", {
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
   stripeCurrentPeriodEnd: timestamp("stripe_current_period_end", { withTimezone: true }),
+  stripePaymentFailing: boolean("stripe_payment_failing").notNull().default(false),
   subscriptionExpiresAt: timestamp("subscription_expires_at", { withTimezone: true }),
   maxBarbers: integer("max_barbers"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -32,6 +33,7 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   stripeSubscriptionId: true,
   stripePriceId: true,
   stripeCurrentPeriodEnd: true,
+  stripePaymentFailing: true,
   maxBarbers: true,
 });
 

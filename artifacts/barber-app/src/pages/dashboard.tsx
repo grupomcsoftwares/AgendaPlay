@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode } from "lucide-react";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode, AlertTriangle, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,22 @@ import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [paymentWarningDismissed, setPaymentWarningDismissed] = useState(false);
+
+  useEffect(() => {
+    setPaymentWarningDismissed(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, [refresh, user?.id]);
 
   const { data: summary, isLoading } = useGetDashboardSummary({
     query: {
@@ -92,6 +105,35 @@ export default function Dashboard() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8 space-y-5 md:space-y-8 bg-background">
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
+
+      {user?.stripePaymentFailing && !paymentWarningDismissed && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-100"
+        >
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="font-semibold">Não foi possível processar a cobrança da sua assinatura</p>
+            <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
+              Atualize seu cartão para evitar a interrupção do acesso à AgendaPlay.
+            </p>
+            <a
+              href="/settings"
+              className="inline-flex text-sm font-semibold underline underline-offset-4 hover:no-underline"
+            >
+              Atualizar forma de pagamento
+            </a>
+          </div>
+          <button
+            type="button"
+            aria-label="Dispensar aviso de pagamento"
+            className="rounded-md p-1 text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-200"
+            onClick={() => setPaymentWarningDismissed(true)}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {bookingUrl && (
         <Card className="bg-primary/5 border-primary/20">

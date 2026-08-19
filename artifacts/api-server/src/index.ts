@@ -1,5 +1,6 @@
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
+import { pool } from "@workspace/db";
 import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient.js";
 import { getUncachableStripeClient } from "./stripeClient.js";
@@ -22,6 +23,14 @@ const LIVE_PLANS = [
   { name: "BarberApp — 3 Profissionais", amount: 7490, maxBarbers: 3, description: "Para barbearias com até 3 profissionais." },
   { name: "BarberApp — Ilimitado", amount: 9990, maxBarbers: 0, description: "Para barbearias com 4 ou mais profissionais. Sem limites." },
 ] as const;
+
+async function ensureApplicationSchema() {
+  await pool.query(`
+    ALTER TABLE "users"
+    ADD COLUMN IF NOT EXISTS "stripe_payment_failing" boolean NOT NULL DEFAULT false;
+  `);
+  logger.info("Application schema ready");
+}
 
 async function ensureLiveSubscriptionPlans() {
   if (process.env.NODE_ENV !== "production") return;
@@ -98,6 +107,7 @@ async function initStripe() {
   }
 }
 
+await ensureApplicationSchema();
 await initStripe();
 runPushScheduler();
 startAppointmentScheduler();

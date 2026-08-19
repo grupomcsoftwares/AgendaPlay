@@ -18,6 +18,7 @@ export type AuthUser = {
   subscriptionDaysLeft?: number | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  stripePaymentFailing?: boolean;
   isSystemAdmin?: boolean;
 };
 

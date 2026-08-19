@@ -45,6 +45,7 @@ const userCols = {
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
   stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+  stripePaymentFailing: usersTable.stripePaymentFailing,
   subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
@@ -328,6 +329,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
+    stripePaymentFailing: user.stripePaymentFailing,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
@@ -422,6 +424,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
+    stripePaymentFailing: user.stripePaymentFailing,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   });

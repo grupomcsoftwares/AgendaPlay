@@ -10,7 +10,7 @@ type StripeSubscriptionEvent = {
   data: {
     object: {
       id: string;
-      customer: string;
+      customer?: string | { id: string };
       // subscription fields
       status?: string;
       current_period_end?: number;
@@ -66,9 +66,29 @@ export class WebhookHandlers {
 
     const { type, data } = event;
     const obj = data?.object;
-    const customerId = obj?.customer;
+    const customerId = typeof obj?.customer === 'string'
+      ? obj.customer
+      : obj?.customer?.id;
 
     if (!customerId || typeof customerId !== 'string') return;
+
+    if (type === 'invoice.payment_failed') {
+      await db
+        .update(usersTable)
+        .set({ stripePaymentFailing: true })
+        .where(eq(usersTable.stripeCustomerId, customerId));
+      logger.warn({ customerId, invoiceId: obj.id }, 'User subscription payment failed via webhook');
+      return;
+    }
+
+    if (type === 'invoice.payment_succeeded') {
+      await db
+        .update(usersTable)
+        .set({ stripePaymentFailing: false })
+        .where(eq(usersTable.stripeCustomerId, customerId));
+      logger.info({ customerId, invoiceId: obj.id }, 'User subscription payment recovered via webhook');
+      return;
+    }
 
     if (type === 'checkout.session.completed') {
       // Only act on subscription-mode sessions
