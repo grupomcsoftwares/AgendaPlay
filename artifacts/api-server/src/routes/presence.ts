@@ -55,18 +55,27 @@ router.get(
         .select({
           registered: sql<number>`COUNT(*)::int`,
           paid: sql<number>`COUNT(*) FILTER (
-            WHERE COALESCE(${usersTable.stripeCurrentPeriodEnd}, ${usersTable.subscriptionExpiresAt}) > NOW()
+            WHERE COALESCE(
+              ${usersTable.stripeCurrentPeriodEnd},
+              ${usersTable.subscriptionExpiresAt},
+              '-infinity'::timestamptz
+            ) > NOW()
           )::int`,
           trial: sql<number>`COUNT(*) FILTER (
-            WHERE ${usersTable.stripeSubscriptionId} IS NULL
+            WHERE COALESCE(
+              ${usersTable.stripeCurrentPeriodEnd},
+              ${usersTable.subscriptionExpiresAt},
+              '-infinity'::timestamptz
+            ) <= NOW()
               AND ${usersTable.trialStartedAt} > NOW() - INTERVAL '30 days'
           )::int`,
           expired: sql<number>`COUNT(*) FILTER (
-            WHERE COALESCE(${usersTable.stripeCurrentPeriodEnd}, ${usersTable.subscriptionExpiresAt}) <= NOW()
-              OR (
-                ${usersTable.stripeSubscriptionId} IS NULL
-                AND ${usersTable.trialStartedAt} <= NOW() - INTERVAL '30 days'
-              )
+            WHERE COALESCE(
+              ${usersTable.stripeCurrentPeriodEnd},
+              ${usersTable.subscriptionExpiresAt},
+              '-infinity'::timestamptz
+            ) <= NOW()
+              AND ${usersTable.trialStartedAt} <= NOW() - INTERVAL '30 days'
           )::int`,
         })
         .from(usersTable),
