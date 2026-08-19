@@ -1347,9 +1347,22 @@ components:
 
     AdminOnlineUsers:
       type: object
-      required: [onlineUsers, activeWindowSeconds, updatedAt]
+      required:
+        [onlineUsers, registeredAccounts, paidAccounts, trialAccounts, expiredAccounts, activeWindowSeconds, updatedAt]
       properties:
         onlineUsers:
+          type: integer
+          minimum: 0
+        registeredAccounts:
+          type: integer
+          minimum: 0
+        paidAccounts:
+          type: integer
+          minimum: 0
+        trialAccounts:
+          type: integer
+          minimum: 0
+        expiredAccounts:
           type: integer
           minimum: 0
         activeWindowSeconds:

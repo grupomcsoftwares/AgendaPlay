@@ -24,6 +24,14 @@ export interface PresenceHeartbeat {
 export interface AdminOnlineUsers {
   /** @minimum 0 */
   onlineUsers: number;
+  /** @minimum 0 */
+  registeredAccounts: number;
+  /** @minimum 0 */
+  paidAccounts: number;
+  /** @minimum 0 */
+  trialAccounts: number;
+  /** @minimum 0 */
+  expiredAccounts: number;
   /** @minimum 1 */
   activeWindowSeconds: number;
   updatedAt: string;

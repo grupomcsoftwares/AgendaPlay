@@ -892,11 +892,23 @@ export const RecordPresenceHeartbeatResponse = zod.object({
  */
 export const getAdminOnlineUsersResponseOnlineUsersMin = 0;
 
+export const getAdminOnlineUsersResponseRegisteredAccountsMin = 0;
+
+export const getAdminOnlineUsersResponsePaidAccountsMin = 0;
+
+export const getAdminOnlineUsersResponseTrialAccountsMin = 0;
+
+export const getAdminOnlineUsersResponseExpiredAccountsMin = 0;
+
 
 
 
 export const GetAdminOnlineUsersResponse = zod.object({
   "onlineUsers": zod.number().min(getAdminOnlineUsersResponseOnlineUsersMin),
+  "registeredAccounts": zod.number().min(getAdminOnlineUsersResponseRegisteredAccountsMin),
+  "paidAccounts": zod.number().min(getAdminOnlineUsersResponsePaidAccountsMin),
+  "trialAccounts": zod.number().min(getAdminOnlineUsersResponseTrialAccountsMin),
+  "expiredAccounts": zod.number().min(getAdminOnlineUsersResponseExpiredAccountsMin),
   "activeWindowSeconds": zod.number().min(1),
   "updatedAt": zod.coerce.date()
 })

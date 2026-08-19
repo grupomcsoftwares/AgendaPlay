@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { gte, sql } from "drizzle-orm";
-import { db, onlinePresenceTable } from "@workspace/db";
+import { db, onlinePresenceTable, usersTable } from "@workspace/db";
 import {
   GetAdminOnlineUsersResponse,
   RecordPresenceHeartbeatResponse,
@@ -46,14 +46,39 @@ router.get(
     const activeSince = new Date(
       updatedAt.getTime() - PRESENCE_WINDOW_SECONDS * 1000,
     );
-    const [result] = await db
-      .select({ count: sql<number>`COUNT(*)::int` })
-      .from(onlinePresenceTable)
-      .where(gte(onlinePresenceTable.lastSeenAt, activeSince));
+    const [onlineResult, registeredResult] = await Promise.all([
+      db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(onlinePresenceTable)
+        .where(gte(onlinePresenceTable.lastSeenAt, activeSince)),
+      db
+        .select({
+          registered: sql<number>`COUNT(*)::int`,
+          paid: sql<number>`COUNT(*) FILTER (
+            WHERE COALESCE(${usersTable.stripeCurrentPeriodEnd}, ${usersTable.subscriptionExpiresAt}) > NOW()
+          )::int`,
+          trial: sql<number>`COUNT(*) FILTER (
+            WHERE ${usersTable.stripeSubscriptionId} IS NULL
+              AND ${usersTable.trialStartedAt} > NOW() - INTERVAL '30 days'
+          )::int`,
+          expired: sql<number>`COUNT(*) FILTER (
+            WHERE COALESCE(${usersTable.stripeCurrentPeriodEnd}, ${usersTable.subscriptionExpiresAt}) <= NOW()
+              OR (
+                ${usersTable.stripeSubscriptionId} IS NULL
+                AND ${usersTable.trialStartedAt} <= NOW() - INTERVAL '30 days'
+              )
+          )::int`,
+        })
+        .from(usersTable),
+    ]);
 
     res.json(
       GetAdminOnlineUsersResponse.parse({
-        onlineUsers: Number(result?.count ?? 0),
+        onlineUsers: Number(onlineResult[0]?.count ?? 0),
+        registeredAccounts: Number(registeredResult[0]?.registered ?? 0),
+        paidAccounts: Number(registeredResult[0]?.paid ?? 0),
+        trialAccounts: Number(registeredResult[0]?.trial ?? 0),
+        expiredAccounts: Number(registeredResult[0]?.expired ?? 0),
         activeWindowSeconds: PRESENCE_WINDOW_SECONDS,
         updatedAt: updatedAt.toISOString(),
       }),
