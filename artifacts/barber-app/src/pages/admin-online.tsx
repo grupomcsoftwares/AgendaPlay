@@ -9,8 +9,10 @@ import {
   Activity,
   AlertTriangle,
   BadgeDollarSign,
+  Building2,
   Clock3,
   FlaskConical,
+  Mail,
   RefreshCw,
   ShieldCheck,
   Users,
@@ -201,6 +203,56 @@ export default function AdminOnline() {
                       {data?.expiredAccounts ?? 0}
                     </span>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  Contas cadastradas
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Controle das barbearias que possuem cadastro no AgendaPlay.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y rounded-md border">
+                  {data?.accounts.length ? (
+                    data.accounts.map((account) => (
+                      <div
+                        key={account.email}
+                        className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{account.barbershopName}</p>
+                          <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5 flex-shrink-0" />
+                            {account.email}
+                          </p>
+                        </div>
+                        <span
+                          className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                            account.billingStatus === "paid"
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : account.billingStatus === "trial"
+                                ? "bg-sky-500/10 text-sky-500"
+                                : "bg-amber-500/10 text-amber-500"
+                          }`}
+                        >
+                          {account.billingStatus === "paid"
+                            ? "Assinatura paga"
+                            : account.billingStatus === "trial"
+                              ? "Período de teste"
+                              : "Assinatura expirada"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="p-5 text-sm text-muted-foreground">
+                      Nenhuma conta cadastrada.
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

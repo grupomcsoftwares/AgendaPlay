@@ -5,6 +5,7 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminAccountSummary } from './adminAccountSummary';
 
 export interface AdminOnlineUsers {
   /** @minimum 0 */
@@ -17,6 +18,7 @@ export interface AdminOnlineUsers {
   trialAccounts: number;
   /** @minimum 0 */
   expiredAccounts: number;
+  accounts: AdminAccountSummary[];
   /** @minimum 1 */
   activeWindowSeconds: number;
   updatedAt: Date;

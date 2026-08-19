@@ -7,6 +7,8 @@
  */
 
 export * from './accountDeletion';
+export * from './adminAccountSummary';
+export * from './adminAccountSummaryBillingStatus';
 export * from './adminOnlineUsers';
 export * from './appointment';
 export * from './appointmentInput';

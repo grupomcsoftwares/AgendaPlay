@@ -909,6 +909,11 @@ export const GetAdminOnlineUsersResponse = zod.object({
   "paidAccounts": zod.number().min(getAdminOnlineUsersResponsePaidAccountsMin),
   "trialAccounts": zod.number().min(getAdminOnlineUsersResponseTrialAccountsMin),
   "expiredAccounts": zod.number().min(getAdminOnlineUsersResponseExpiredAccountsMin),
+  "accounts": zod.array(zod.object({
+  "email": zod.string().email(),
+  "barbershopName": zod.string(),
+  "billingStatus": zod.enum(['paid', 'trial', 'expired'])
+})),
   "activeWindowSeconds": zod.number().min(1),
   "updatedAt": zod.coerce.date()
 })

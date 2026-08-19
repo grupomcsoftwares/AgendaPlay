@@ -21,6 +21,21 @@ export interface PresenceHeartbeat {
   recordedAt: string;
 }
 
+export type AdminAccountSummaryBillingStatus = typeof AdminAccountSummaryBillingStatus[keyof typeof AdminAccountSummaryBillingStatus];
+
+
+export const AdminAccountSummaryBillingStatus = {
+  paid: 'paid',
+  trial: 'trial',
+  expired: 'expired',
+} as const;
+
+export interface AdminAccountSummary {
+  email: string;
+  barbershopName: string;
+  billingStatus: AdminAccountSummaryBillingStatus;
+}
+
 export interface AdminOnlineUsers {
   /** @minimum 0 */
   onlineUsers: number;
@@ -32,6 +47,7 @@ export interface AdminOnlineUsers {
   trialAccounts: number;
   /** @minimum 0 */
   expiredAccounts: number;
+  accounts: AdminAccountSummary[];
   /** @minimum 1 */
   activeWindowSeconds: number;
   updatedAt: string;

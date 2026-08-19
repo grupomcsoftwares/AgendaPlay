@@ -1348,7 +1348,7 @@ components:
     AdminOnlineUsers:
       type: object
       required:
-        [onlineUsers, registeredAccounts, paidAccounts, trialAccounts, expiredAccounts, activeWindowSeconds, updatedAt]
+        [onlineUsers, registeredAccounts, paidAccounts, trialAccounts, expiredAccounts, accounts, activeWindowSeconds, updatedAt]
       properties:
         onlineUsers:
           type: integer
@@ -1365,12 +1365,29 @@ components:
         expiredAccounts:
           type: integer
           minimum: 0
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminAccountSummary"
         activeWindowSeconds:
           type: integer
           minimum: 1
         updatedAt:
           type: string
           format: date-time
+
+    AdminAccountSummary:
+      type: object
+      required: [email, barbershopName, billingStatus]
+      properties:
+        email:
+          type: string
+          format: email
+        barbershopName:
+          type: string
+        billingStatus:
+          type: string
+          enum: [paid, trial, expired]
 
     Client:
       type: object

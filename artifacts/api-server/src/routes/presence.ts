@@ -2,10 +2,12 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { gte, sql } from "drizzle-orm";
 import { db, onlinePresenceTable, usersTable } from "@workspace/db";
 import {
+  AdminAccountSummary,
   GetAdminOnlineUsersResponse,
   RecordPresenceHeartbeatResponse,
 } from "@workspace/api-zod";
 import { requireSystemAdmin } from "../lib/systemAdmin.js";
+import { getAccountStatus } from "./accountStatus.js";
 
 const router: IRouter = Router();
 
@@ -46,48 +48,49 @@ router.get(
     const activeSince = new Date(
       updatedAt.getTime() - PRESENCE_WINDOW_SECONDS * 1000,
     );
-    const [onlineResult, registeredResult] = await Promise.all([
+    const [onlineResult, accounts] = await Promise.all([
       db
         .select({ count: sql<number>`COUNT(*)::int` })
         .from(onlinePresenceTable)
         .where(gte(onlinePresenceTable.lastSeenAt, activeSince)),
       db
         .select({
-          registered: sql<number>`COUNT(*)::int`,
-          paid: sql<number>`COUNT(*) FILTER (
-            WHERE COALESCE(
-              ${usersTable.stripeCurrentPeriodEnd},
-              ${usersTable.subscriptionExpiresAt},
-              '-infinity'::timestamptz
-            ) > NOW()
-          )::int`,
-          trial: sql<number>`COUNT(*) FILTER (
-            WHERE COALESCE(
-              ${usersTable.stripeCurrentPeriodEnd},
-              ${usersTable.subscriptionExpiresAt},
-              '-infinity'::timestamptz
-            ) <= NOW()
-              AND ${usersTable.trialStartedAt} > NOW() - INTERVAL '30 days'
-          )::int`,
-          expired: sql<number>`COUNT(*) FILTER (
-            WHERE COALESCE(
-              ${usersTable.stripeCurrentPeriodEnd},
-              ${usersTable.subscriptionExpiresAt},
-              '-infinity'::timestamptz
-            ) <= NOW()
-              AND ${usersTable.trialStartedAt} <= NOW() - INTERVAL '30 days'
-          )::int`,
+          email: usersTable.email,
+          barbershopName: usersTable.barbershopName,
+          trialStartedAt: usersTable.trialStartedAt,
+          stripeSubscriptionId: usersTable.stripeSubscriptionId,
+          stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+          subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
         })
-        .from(usersTable),
+        .from(usersTable)
+        .orderBy(usersTable.createdAt),
     ]);
+
+    const accountSummaries = accounts.map((account) => {
+      const status = getAccountStatus(account);
+      const billingStatus = status.hasActiveSubscription
+        ? "paid"
+        : status.trialExpired
+          ? "expired"
+          : "trial";
+      return AdminAccountSummary.parse({
+        email: account.email,
+        barbershopName: account.barbershopName,
+        billingStatus,
+      });
+    });
+    const paidAccounts = accountSummaries.filter((account) => account.billingStatus === "paid").length;
+    const trialAccounts = accountSummaries.filter((account) => account.billingStatus === "trial").length;
+    const expiredAccounts = accountSummaries.filter((account) => account.billingStatus === "expired").length;
 
     res.json(
       GetAdminOnlineUsersResponse.parse({
         onlineUsers: Number(onlineResult[0]?.count ?? 0),
-        registeredAccounts: Number(registeredResult[0]?.registered ?? 0),
-        paidAccounts: Number(registeredResult[0]?.paid ?? 0),
-        trialAccounts: Number(registeredResult[0]?.trial ?? 0),
-        expiredAccounts: Number(registeredResult[0]?.expired ?? 0),
+        registeredAccounts: accountSummaries.length,
+        paidAccounts,
+        trialAccounts,
+        expiredAccounts,
+        accounts: accountSummaries,
         activeWindowSeconds: PRESENCE_WINDOW_SECONDS,
         updatedAt: updatedAt.toISOString(),
       }),
