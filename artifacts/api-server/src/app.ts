@@ -7,6 +7,7 @@ import pg from "pg";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import { WebhookHandlers } from "./webhookHandlers.js";
+import { maybeRunExpiredAccountCleanup } from "./services/subscriptionCleanup.js";
 
 const app: Express = express();
 
@@ -155,6 +156,11 @@ app.use(
     },
   }),
 );
+
+app.use((_req, _res, next) => {
+  void maybeRunExpiredAccountCleanup();
+  next();
+});
 
 app.use("/api", router);
 

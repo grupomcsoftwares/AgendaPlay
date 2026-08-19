@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
@@ -10,6 +10,7 @@ import {
   getAuthorizedStripePrice,
   isAuthorizedStripeCatalogEntry,
 } from "../stripeCatalog.js";
+import { withAccountLifecycleLock } from "../services/accountLifecycleLock.js";
 
 const router: IRouter = Router();
 
@@ -23,6 +24,12 @@ const userCols = {
   ownerName: usersTable.ownerName,
   slug: usersTable.slug,
   trialStartedAt: usersTable.trialStartedAt,
+  trialEligible: usersTable.trialEligible,
+  hasEverPaid: usersTable.hasEverPaid,
+  firstPaidAt: usersTable.firstPaidAt,
+  firstMonthDiscountCheckoutSessionId: usersTable.firstMonthDiscountCheckoutSessionId,
+  firstMonthDiscountCheckoutPriceId: usersTable.firstMonthDiscountCheckoutPriceId,
+  firstMonthDiscountRedeemedAt: usersTable.firstMonthDiscountRedeemedAt,
   stripeCustomerId: usersTable.stripeCustomerId,
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
@@ -33,6 +40,37 @@ const userCols = {
 };
 
 const PUBLIC_APP_BASE = "https://agendaplay.net";
+const FIRST_MONTH_PROMOTION_KEY = "agendaplay_first_month_50_v1";
+
+class CheckoutRouteError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+async function getFirstMonthDiscountCoupon(stripe: Stripe): Promise<Stripe.Coupon> {
+  const coupons = await stripe.coupons.list({ limit: 100 });
+  const existing = coupons.data.find((coupon) =>
+    coupon.valid
+    && coupon.duration === "once"
+    && coupon.percent_off === 50
+    && coupon.metadata?.promotion === FIRST_MONTH_PROMOTION_KEY
+  );
+  if (existing) return existing;
+
+  return stripe.coupons.create(
+    {
+      duration: "once",
+      percent_off: 50,
+      name: "AgendaPlay — 50% no primeiro mês",
+      metadata: { promotion: FIRST_MONTH_PROMOTION_KEY },
+    },
+    { idempotencyKey: FIRST_MONTH_PROMOTION_KEY },
+  );
+}
 
 function requireAuth(req: Request, res: Response, next: () => void): void {
   if (!req.session?.userId) {
@@ -45,71 +83,160 @@ function requireAuth(req: Request, res: Response, next: () => void): void {
 router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.session.userId!;
-    const [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
-    if (!user) {
-      res.status(404).json({ error: "Usuário não encontrado." });
-      return;
-    }
-
     const { priceId } = req.body as { priceId?: string };
     if (!priceId) {
       res.status(400).json({ error: "priceId é obrigatório." });
       return;
     }
 
-    const stripe = await getUncachableStripeClient();
-    const authorizedPrice = await getAuthorizedStripePrice(stripe, priceId);
-    if (!authorizedPrice) {
-      res.status(400).json({ error: "Plano de assinatura inválido ou indisponível." });
+    const response = await withAccountLifecycleLock(userId, async () => {
+      let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, userId));
+      if (!user) {
+        throw new CheckoutRouteError(404, "Usuário não encontrado.");
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const authorizedPrice = await getAuthorizedStripePrice(stripe, priceId);
+      if (!authorizedPrice) {
+        throw new CheckoutRouteError(400, "Plano de assinatura inválido ou indisponível.");
+      }
+
+      const status = getAccountStatus(user);
+      if (status.hasActiveSubscription) {
+        throw new CheckoutRouteError(
+          409,
+          "Esta conta já possui uma assinatura ativa.",
+        );
+      }
+      const applyFirstMonthDiscount = status.firstMonthDiscountEligible;
+
+      const createCustomer = async (): Promise<string> => {
+        const customer = await stripe.customers.create({
+          email: user.email,
+          metadata: { userId },
+        });
+        await db
+          .update(usersTable)
+          .set({ stripeCustomerId: customer.id })
+          .where(eq(usersTable.id, userId));
+        user = { ...user, stripeCustomerId: customer.id };
+        return customer.id;
+      };
+
+      let customerId = user.stripeCustomerId ?? await createCustomer();
+      const priorCheckoutSessionId = user.firstMonthDiscountCheckoutSessionId;
+
+      if (priorCheckoutSessionId) {
+        try {
+          const existingSession = await stripe.checkout.sessions.retrieve(priorCheckoutSessionId);
+          const sessionHasExpectedPromotion =
+            (existingSession.metadata?.promotion === FIRST_MONTH_PROMOTION_KEY)
+            === applyFirstMonthDiscount;
+          if (
+            existingSession.status === "open"
+            && user.firstMonthDiscountCheckoutPriceId === authorizedPrice.id
+            && sessionHasExpectedPromotion
+            && existingSession.url
+          ) {
+            return {
+              url: existingSession.url,
+              firstMonthDiscountApplied: applyFirstMonthDiscount,
+            };
+          }
+          if (existingSession.status === "complete") {
+            throw new CheckoutRouteError(
+              409,
+              "Seu pagamento já foi concluído e está sendo confirmado.",
+            );
+          }
+          if (existingSession.status === "open") {
+            await stripe.checkout.sessions.expire(existingSession.id);
+          }
+        } catch (error) {
+          if (error instanceof CheckoutRouteError) throw error;
+          const stripeError = error as { code?: string };
+          if (stripeError.code !== "resource_missing") throw error;
+        }
+
+        await db
+          .update(usersTable)
+          .set({
+            firstMonthDiscountCheckoutSessionId: null,
+            firstMonthDiscountCheckoutPriceId: null,
+          })
+          .where(eq(usersTable.id, userId));
+      }
+
+      const coupon = applyFirstMonthDiscount
+        ? await getFirstMonthDiscountCoupon(stripe)
+        : null;
+      const promotionMetadata: Record<string, string> = applyFirstMonthDiscount
+        ? { promotion: FIRST_MONTH_PROMOTION_KEY }
+        : {};
+      const createCheckoutSession = (selectedCustomerId: string) =>
+        stripe.checkout.sessions.create(
+          {
+            customer: selectedCustomerId,
+            client_reference_id: userId,
+            metadata: { userId, ...promotionMetadata },
+            subscription_data: {
+              metadata: { userId, ...promotionMetadata },
+            },
+            payment_method_types: ["card"],
+            line_items: [{ price: authorizedPrice.id, quantity: 1 }],
+            mode: "subscription",
+            ...(coupon ? { discounts: [{ coupon: coupon.id }] } : {}),
+            success_url: `${PUBLIC_APP_BASE}/subscribe?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${PUBLIC_APP_BASE}/subscribe?canceled=1`,
+          },
+          applyFirstMonthDiscount
+            ? {
+                idempotencyKey: [
+                  FIRST_MONTH_PROMOTION_KEY,
+                  authorizedPrice.livemode ? "live" : "test",
+                  userId,
+                  authorizedPrice.id,
+                  priorCheckoutSessionId ?? "initial",
+                ].join(":"),
+              }
+            : undefined,
+        );
+
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await createCheckoutSession(customerId);
+      } catch (err: unknown) {
+        const stripeError = err as { code?: string; param?: string };
+        const missingCustomer =
+          stripeError.code === "resource_missing"
+          && stripeError.param === "customer"
+          && Boolean(user.stripeCustomerId);
+        if (!missingCustomer) throw err;
+
+        customerId = await createCustomer();
+        session = await createCheckoutSession(customerId);
+      }
+
+      await db
+        .update(usersTable)
+        .set({
+          firstMonthDiscountCheckoutSessionId: session.id,
+          firstMonthDiscountCheckoutPriceId: authorizedPrice.id,
+        })
+        .where(eq(usersTable.id, userId));
+
+      return {
+        url: session.url,
+        firstMonthDiscountApplied: applyFirstMonthDiscount,
+      };
+    });
+
+    res.json(response);
+  } catch (err: unknown) {
+    if (err instanceof CheckoutRouteError) {
+      res.status(err.statusCode).json({ error: err.message });
       return;
     }
-    const checkoutUrls = {
-      success_url: `${PUBLIC_APP_BASE}/subscribe?subscribed=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${PUBLIC_APP_BASE}/subscribe?canceled=1`,
-    };
-
-    const createCustomer = async (): Promise<string> => {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { userId },
-      });
-      await db.update(usersTable).set({ stripeCustomerId: customer.id }).where(eq(usersTable.id, userId));
-      return customer.id;
-    };
-
-    const createCheckoutSession = (customerId: string) =>
-      stripe.checkout.sessions.create({
-        customer: customerId,
-        client_reference_id: userId,
-        metadata: { userId },
-        payment_method_types: ["card"],
-         line_items: [{ price: authorizedPrice.id, quantity: 1 }],
-        mode: "subscription",
-        ...checkoutUrls,
-      });
-
-    let customerId = user.stripeCustomerId ?? await createCustomer();
-    let session: Stripe.Checkout.Session;
-
-    try {
-      session = await createCheckoutSession(customerId);
-    } catch (err: unknown) {
-      // A customer ID can become invalid when the Stripe environment/account
-      // changes. Replace it instead of exposing Stripe's raw error to the UI.
-      const stripeError = err as { code?: string; param?: string };
-      const missingCustomer =
-        stripeError.code === "resource_missing" &&
-        stripeError.param === "customer" &&
-        Boolean(user.stripeCustomerId);
-
-      if (!missingCustomer) throw err;
-
-      customerId = await createCustomer();
-      session = await createCheckoutSession(customerId);
-    }
-
-    res.json({ url: session.url });
-  } catch (err: unknown) {
     const stripeError = err as { message?: string; code?: string };
     console.error("Stripe checkout failed", {
       code: stripeError.code,
@@ -150,6 +277,8 @@ router.get("/stripe/plans", async (_req: Request, res: Response): Promise<void> 
         product_metadata: p.metadata,
         price_id: pr.id,
         unit_amount: pr.unit_amount,
+        first_month_unit_amount:
+          pr.unit_amount === null ? null : Math.round(pr.unit_amount * 0.5),
         currency: pr.currency,
         recurring: pr.recurring,
         maxBarbers,
@@ -217,6 +346,11 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     subscriptionDaysLeft: status.subscriptionDaysLeft,
     pastDue,
     stripePaymentFailing: pastDue,
+    trialEligible: status.trialEligible,
+    returningCustomer: status.returningCustomer,
+    firstMonthDiscountEligible: status.firstMonthDiscountEligible,
+    deletionScheduledAt: status.deletionScheduledAt,
+    deletionDaysLeft: status.deletionDaysLeft,
   });
 });
 
@@ -225,13 +359,14 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
     const stripe = await getUncachableStripeClient();
     const { sessionId } = (req.body ?? {}) as { sessionId?: string };
     let subscription: Stripe.Subscription | null = null;
+    let checkoutSession: Stripe.Checkout.Session | null = null;
     let customerId: string | null = null;
     let checkoutUserId: string | null = null;
 
     // Prefer the checkout session returned by Stripe. This avoids selecting an
     // older subscription when the customer has more than one billing record.
     if (sessionId) {
-      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
+      checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
         expand: ["subscription"],
       });
       customerId =
@@ -322,7 +457,24 @@ router.post("/stripe/sync-subscription", requireAuth, async (req: Request, res: 
       const isActive = sub.status === "active" || sub.status === "trialing";
       if (isActive) {
         await db.update(usersTable)
-          .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+          .set({
+            stripeSubscriptionId: sub.id,
+            stripePriceId,
+            maxBarbers,
+            stripeCurrentPeriodEnd: periodEnd,
+            ...(checkoutSession?.payment_status === "paid"
+              ? {
+                  hasEverPaid: true,
+                  firstPaidAt: sql`coalesce(${usersTable.firstPaidAt}, now())`,
+                }
+              : {}),
+            ...(checkoutSession?.metadata?.promotion === FIRST_MONTH_PROMOTION_KEY
+              ? {
+                  firstMonthDiscountRedeemedAt:
+                    sql`coalesce(${usersTable.firstMonthDiscountRedeemedAt}, now())`,
+                }
+              : {}),
+          })
           .where(eq(usersTable.id, user.id));
       }
       res.json({

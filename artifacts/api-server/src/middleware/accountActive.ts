@@ -21,6 +21,8 @@ export async function requireActiveAccount(req: Request, res: Response, next: Ne
   const [user] = await db
     .select({
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,

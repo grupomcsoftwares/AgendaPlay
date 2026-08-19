@@ -50,8 +50,8 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      await register(form);
-      setLocation("/dashboard");
+      const registeredUser = await register(form);
+      setLocation(registeredUser.returningCustomer ? "/subscribe?returning=1" : "/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao criar conta.");
     } finally {
@@ -79,7 +79,7 @@ export default function Register() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Crie sua barbearia</h1>
           <p className="text-sm" style={{ color: "hsl(0 0% 60%)" }}>
-            30 dias grátis, sem cartão de crédito
+            Novas contas recebem 30 dias grátis, sem cartão de crédito
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export default function Register() {
               />
             </div>
             <p className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>
-              O {form.documentType.toUpperCase()} identifica uma única conta e é liberado somente após a exclusão definitiva.
+              Após excluir a conta, o documento pode ser usado novamente, mas o período grátis não se repete.
             </p>
           </div>
 
@@ -243,7 +243,7 @@ export default function Register() {
               cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {loading ? "Criando conta..." : "Começar 30 dias grátis"}
+            {loading ? "Criando conta..." : "Criar minha conta"}
           </button>
 
           <p className="text-center text-sm pt-2" style={{ color: "hsl(0 0% 55%)" }}>

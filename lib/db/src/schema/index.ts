@@ -17,3 +17,4 @@ export * from "./native-push-subscriptions";
 export * from "./slug-redirects";
 export * from "./waitlist";
 export * from "./online-presence";
+export * from "./former-account-documents";

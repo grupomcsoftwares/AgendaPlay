@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
+import { formerAccountDocumentsTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import type Stripe from "stripe";
@@ -10,6 +10,8 @@ import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
+import { getAccountDocumentHash, normalizeAccountDocument } from "../lib/documentHistory.js";
+import { cleanupExpiredAccountByEmail } from "../services/subscriptionCleanup.js";
 
 const SESSION_COOKIE_NAME = "connect.sid";
 
@@ -42,6 +44,12 @@ const userCols = {
   phone: usersTable.phone,
   slug: usersTable.slug,
   trialStartedAt: usersTable.trialStartedAt,
+  trialEligible: usersTable.trialEligible,
+  hasEverPaid: usersTable.hasEverPaid,
+  firstPaidAt: usersTable.firstPaidAt,
+  firstMonthDiscountCheckoutSessionId: usersTable.firstMonthDiscountCheckoutSessionId,
+  firstMonthDiscountCheckoutPriceId: usersTable.firstMonthDiscountCheckoutPriceId,
+  firstMonthDiscountRedeemedAt: usersTable.firstMonthDiscountRedeemedAt,
   stripeCustomerId: usersTable.stripeCustomerId,
   stripeSubscriptionId: usersTable.stripeSubscriptionId,
   stripePriceId: usersTable.stripePriceId,
@@ -51,10 +59,6 @@ const userCols = {
   maxBarbers: usersTable.maxBarbers,
   createdAt: usersTable.createdAt,
 };
-
-function normalizeCpf(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\D/g, "") : "";
-}
 
 function normalizeDocumentType(value: unknown): "cpf" | "cnpj" | null {
   if (value === "cpf" || value === "cnpj") return value;
@@ -71,6 +75,7 @@ async function reconcileActiveSubscription(user: {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   stripePaymentFailing: boolean;
+  hasEverPaid: boolean;
 }): Promise<void> {
   try {
     const stripe = await getUncachableStripeClient();
@@ -214,7 +219,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   // `cpf` remains accepted for one compatibility window for older clients.
   const documentType = rawDocumentType === undefined ? "cpf" : normalizeDocumentType(rawDocumentType);
-  const normalizedDocument = normalizeCpf(documentNumber ?? cpf);
+  const normalizedDocument = normalizeAccountDocument(documentNumber ?? cpf);
   const normalizedPhone = normalizePhone(phone);
   const phoneDigits = normalizedPhone.replace(/\D/g, "");
 
@@ -241,6 +246,8 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  await cleanupExpiredAccountByEmail(normalizedEmail);
+
   const existing = await db
     .select({ id: usersTable.id })
     .from(usersTable)
@@ -250,15 +257,31 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const existingDocument = await db
-    .select({ id: usersTable.id })
+  let existingDocument = await db
+    .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
     .where(eq(documentType === "cpf" ? usersTable.cpf : usersTable.cnpj, normalizedDocument))
     .limit(1);
   if (existingDocument.length > 0) {
-    res.status(409).json({ error: `Este ${documentType.toUpperCase()} já está cadastrado em uma conta.` });
-    return;
+    await cleanupExpiredAccountByEmail(existingDocument[0]!.email);
+    existingDocument = await db
+      .select({ id: usersTable.id, email: usersTable.email })
+      .from(usersTable)
+      .where(eq(documentType === "cpf" ? usersTable.cpf : usersTable.cnpj, normalizedDocument))
+      .limit(1);
+    if (existingDocument.length > 0) {
+      res.status(409).json({ error: `Este ${documentType.toUpperCase()} já está cadastrado em uma conta.` });
+      return;
+    }
   }
+
+  const documentHash = getAccountDocumentHash(documentType, normalizedDocument);
+  const [formerDocument] = await db
+    .select({ id: formerAccountDocumentsTable.id })
+    .from(formerAccountDocumentsTable)
+    .where(eq(formerAccountDocumentsTable.documentHash, documentHash))
+    .limit(1);
+  const trialEligible = !formerDocument;
 
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
@@ -270,6 +293,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     barbershopName: barbershopName.trim(),
     ownerName: ownerName.trim(),
     phone: normalizedPhone,
+    trialEligible,
     // New accounts start without a public name-based link. The owner can
     // choose a custom slug later from Settings.
     slug: null,
@@ -308,7 +332,10 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, email.toLowerCase()));
+  const normalizedEmail = email.trim().toLowerCase();
+  await cleanupExpiredAccountByEmail(normalizedEmail);
+
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, normalizedEmail));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -381,6 +408,12 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
   if (!user) {
     req.session.destroy(() => {});
     res.status(401).json({ error: "Não autenticado." });
+    return;
+  }
+
+  if (await cleanupExpiredAccountByEmail(user.email)) {
+    req.session.destroy(() => {});
+    res.status(401).json({ error: "Conta removida após o período de inatividade." });
     return;
   }
 

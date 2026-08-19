@@ -32,3 +32,4 @@
 - [Waitlist offer safety](waitlist-offer-safety.md) — waitlist offers must be claimed atomically, revalidate the normal booking path, and expire/release in sequence.
 - [OpenAPI query parameter codegen](openapi-query-parameter-codegen.md) — path endpoints with query inputs can create an Orval Zod export-name collision; regenerate and typecheck the barrel.
 - [Development schema push conflicts](dev-schema-push-conflict.md) — drizzle push can require an interactive named-schema confirmation; apply isolated additive changes without forcing unrelated drift.
+- [Account lifecycle serialization](account-lifecycle-serialization.md) — Stripe Checkout and account deletion share a lock; cleanup revalidates Stripe and fails closed.

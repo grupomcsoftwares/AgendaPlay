@@ -1,7 +1,11 @@
 const TRIAL_DAYS = 30;
+const DELETION_GRACE_DAYS = 90;
 
 export type AccountBillingFields = {
   trialStartedAt: Date;
+  trialEligible?: boolean;
+  hasEverPaid?: boolean;
+  firstMonthDiscountRedeemedAt?: Date | null;
   stripeSubscriptionId: string | null;
   stripeCurrentPeriodEnd: Date | null;
   subscriptionExpiresAt?: Date | null;
@@ -17,10 +21,11 @@ export function getAccountStatus(user: AccountBillingFields) {
   const daysSinceTrial = validTrialStart
     ? Math.floor((now.getTime() - trialStartedMs) / msPerDay)
     : TRIAL_DAYS;
-  const trialDaysLeft = validTrialStart
+  const trialEligible = user.trialEligible !== false;
+  const trialDaysLeft = trialEligible && validTrialStart
     ? Math.min(TRIAL_DAYS, Math.max(0, TRIAL_DAYS - daysSinceTrial))
     : 0;
-  const trialExpired = !validTrialStart || trialDaysLeft === 0;
+  const trialExpired = !trialEligible || !validTrialStart || trialDaysLeft === 0;
 
   // Stripe's period end is authoritative. An ID without a future validity
   // date must not keep an expired account open.
@@ -36,8 +41,30 @@ export function getAccountStatus(user: AccountBillingFields) {
   const daysUntilPeriodEnd = Number.isFinite(periodEndMs)
     ? Math.max(0, Math.floor((periodEndMs - now.getTime()) / msPerDay))
     : null;
+  const hasEverPaid = user.hasEverPaid === true;
+  const firstMonthDiscountEligible =
+    trialExpired
+    && !hasActiveSubscription
+    && !hasEverPaid
+    && !user.firstMonthDiscountRedeemedAt;
+  const deletionBaseMs = validTrialStart
+    ? trialStartedMs + (trialEligible ? TRIAL_DAYS : 0) * msPerDay
+    : now.getTime();
+  const deletionAtMs = deletionBaseMs + DELETION_GRACE_DAYS * msPerDay;
+  const deletionScheduled =
+    !hasEverPaid
+    && !hasActiveSubscription;
+  const deletionScheduledAt = deletionScheduled
+    ? new Date(deletionAtMs).toISOString()
+    : null;
+  const deletionDaysLeft = deletionScheduled
+    ? Math.max(0, Math.ceil((deletionAtMs - now.getTime()) / msPerDay))
+    : null;
+  const deletionDue = deletionScheduled && deletionAtMs <= now.getTime();
 
   return {
+    trialEligible,
+    returningCustomer: !trialEligible,
     trialDaysLeft,
     trialExpired,
     hasActiveSubscription,
@@ -47,6 +74,10 @@ export function getAccountStatus(user: AccountBillingFields) {
     maxBarbers: hasActiveSubscription ? user.maxBarbers ?? null : null,
     subscriptionDueDate,
     subscriptionDaysLeft: daysUntilPeriodEnd,
+    firstMonthDiscountEligible,
+    deletionScheduledAt,
+    deletionDaysLeft,
+    deletionDue,
   };
 }
 

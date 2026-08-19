@@ -1,7 +1,7 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient.js';
 import { db } from '@workspace/db';
 import { usersTable } from '@workspace/db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { logger } from './lib/logger.js';
 import { getAuthorizedStripePrice } from './stripeCatalog.js';
 
@@ -25,6 +25,8 @@ type StripeSubscriptionEvent = {
       // checkout.session fields
       mode?: string;
       subscription?: string | null;
+      payment_status?: string;
+      metadata?: Record<string, string>;
     };
   };
 };
@@ -84,7 +86,11 @@ export class WebhookHandlers {
     if (type === 'invoice.payment_succeeded') {
       await db
         .update(usersTable)
-        .set({ stripePaymentFailing: false })
+        .set({
+          stripePaymentFailing: false,
+          hasEverPaid: true,
+          firstPaidAt: sql`coalesce(${usersTable.firstPaidAt}, now())`,
+        })
         .where(eq(usersTable.stripeCustomerId, customerId));
       logger.info({ customerId, invoiceId: obj.id }, 'User subscription payment recovered via webhook');
       return;
@@ -120,9 +126,28 @@ export class WebhookHandlers {
           : null;
 
         if (sub.status === 'active' || sub.status === 'trialing') {
+          const usedFirstMonthPromotion =
+            obj.metadata?.promotion === 'agendaplay_first_month_50_v1';
           await db
             .update(usersTable)
-            .set({ stripeSubscriptionId: sub.id, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+            .set({
+              stripeSubscriptionId: sub.id,
+              stripePriceId,
+              maxBarbers,
+              stripeCurrentPeriodEnd: periodEnd,
+              ...(obj.payment_status === 'paid'
+                ? {
+                    hasEverPaid: true,
+                    firstPaidAt: sql`coalesce(${usersTable.firstPaidAt}, now())`,
+                  }
+                : {}),
+              ...(usedFirstMonthPromotion
+                ? {
+                    firstMonthDiscountRedeemedAt:
+                      sql`coalesce(${usersTable.firstMonthDiscountRedeemedAt}, now())`,
+                  }
+                : {}),
+            })
             .where(eq(usersTable.stripeCustomerId, customerId));
           logger.info({ customerId, subscriptionId: sub.id, stripePriceId, maxBarbers, periodEnd }, 'User subscription activated via checkout.session.completed webhook');
         }

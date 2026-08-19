@@ -10,6 +10,7 @@ type Plan = {
   price_id: string;
   product_name: string;
   unit_amount: number;
+  first_month_unit_amount?: number | null;
   currency: string;
   recurring: { interval: string } | null;
   maxBarbers: number | null;
@@ -227,6 +228,7 @@ export default function Subscribe() {
   }
 
   const trialExpiredAndNoSub = user && user.trialExpired && !user.hasActiveSubscription;
+  const showFirstMonthDiscount = Boolean(user?.firstMonthDiscountEligible);
 
   return (
     <div
@@ -234,6 +236,31 @@ export default function Subscribe() {
       style={{ backgroundColor: "hsl(0 0% 4%)" }}
     >
       <div className="max-w-2xl w-full space-y-8">
+        {showFirstMonthDiscount && (
+          <div
+            className="rounded-2xl px-5 py-4 flex items-start gap-3"
+            style={{ backgroundColor: "hsl(145 55% 12%)", border: "1px solid hsl(145 55% 30%)" }}
+          >
+            <div className="text-2xl flex-shrink-0" aria-hidden="true">🏷️</div>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: "hsl(145 65% 70%)" }}>
+                50% de desconto no primeiro mês
+              </p>
+              <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 72%)" }}>
+                {user?.returningCustomer
+                  ? "Você já foi cliente antes. Faça o pagamento para continuar."
+                  : "Seu teste terminou. Escolha qualquer plano abaixo e pague metade no primeiro mês."}
+              </p>
+              {user?.deletionDaysLeft != null && (
+                <p className="text-xs mt-2" style={{ color: "hsl(0 0% 58%)" }}>
+                  Sem uma assinatura, os dados desta conta serão excluídos em{" "}
+                  {user.deletionDaysLeft} {user.deletionDaysLeft === 1 ? "dia" : "dias"}.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Expired trial banner */}
         {trialExpiredAndNoSub && (
           <div
@@ -243,11 +270,12 @@ export default function Subscribe() {
             <div className="text-2xl flex-shrink-0" aria-hidden="true">🔒</div>
             <div>
               <p className="font-semibold text-sm" style={{ color: "hsl(0 80% 70%)" }}>
-                Período de teste encerrado
+                {user.returningCustomer ? "Conta anterior identificada" : "Período de teste encerrado"}
               </p>
               <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
-                Seu acesso ao sistema foi bloqueado porque os 30 dias de teste gratuito expiraram.
-                Assine um plano abaixo para continuar gerenciando sua barbearia.
+                {user.returningCustomer
+                  ? "Este CPF/CNPJ já utilizou o período gratuito. Assine um plano para liberar a nova conta."
+                  : "Seu acesso foi bloqueado porque os 30 dias de teste expiraram. Assine para continuar."}
               </p>
             </div>
           </div>
@@ -265,8 +293,10 @@ export default function Subscribe() {
             <Clock className="w-4 h-4" />
             {!user
               ? "Faça login para assinar"
-              : user.trialExpired
-                ? "Período de teste encerrado"
+              : user.returningCustomer
+                ? "Cliente retornando"
+                : user.trialExpired
+                  ? "Período de teste encerrado"
                 : `${user.trialDaysLeft} ${user.trialDaysLeft === 1 ? "dia" : "dias"} restante${user.trialDaysLeft === 1 ? "" : "s"} no teste`}
           </div>
           <h1 className="text-2xl font-bold">Escolha seu plano</h1>
@@ -301,6 +331,8 @@ export default function Subscribe() {
               ? "Profissionais ilimitados"
               : `Até ${plan.maxBarbers} ${plan.maxBarbers === 1 ? "profissional" : "profissionais"}`;
             const desc = PLAN_DESCRIPTIONS[plan.unit_amount] ?? "";
+            const firstMonthAmount =
+              plan.first_month_unit_amount ?? Math.round(plan.unit_amount * 0.5);
 
             return (
               <div
@@ -329,10 +361,26 @@ export default function Subscribe() {
                       {barberLabel}
                     </span>
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-bold">{formatPrice(plan.unit_amount, plan.currency)}</span>
-                    <span className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>/mês</span>
-                  </div>
+                  {showFirstMonthDiscount ? (
+                    <div className="space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm line-through" style={{ color: "hsl(0 0% 48%)" }}>
+                          {formatPrice(plan.unit_amount, plan.currency)}
+                        </span>
+                        <span className="text-2xl font-bold" style={{ color: "hsl(145 65% 65%)" }}>
+                          {formatPrice(firstMonthAmount, plan.currency)}
+                        </span>
+                      </div>
+                      <p className="text-xs" style={{ color: "hsl(145 55% 62%)" }}>
+                        no primeiro mês; depois {formatPrice(plan.unit_amount, plan.currency)}/mês
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold">{formatPrice(plan.unit_amount, plan.currency)}</span>
+                      <span className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>/mês</span>
+                    </div>
+                  )}
                   {desc && (
                     <p className="text-xs mt-1" style={{ color: "hsl(0 0% 50%)" }}>{desc}</p>
                   )}

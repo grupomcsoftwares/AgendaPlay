@@ -7,6 +7,7 @@ import { getUncachableStripeClient } from "./stripeClient.js";
 import { runPushScheduler } from "./routes/push.js";
 import { startAppointmentScheduler } from "./routes/appointments.js";
 import { cleanupWaitlist } from "./waitlistService.js";
+import { maybeRunExpiredAccountCleanup } from "./services/subscriptionCleanup.js";
 
 const rawPort = process.env["PORT"];
 if (!rawPort) {
@@ -28,6 +29,18 @@ async function ensureApplicationSchema() {
   await pool.query(`
     ALTER TABLE "users"
     ADD COLUMN IF NOT EXISTS "stripe_payment_failing" boolean NOT NULL DEFAULT false;
+  `);
+  await pool.query(`
+    UPDATE "users"
+    SET
+      "has_ever_paid" = true,
+      "first_paid_at" = COALESCE("first_paid_at", "created_at")
+    WHERE "has_ever_paid" = false
+      AND (
+        "stripe_subscription_id" IS NOT NULL
+        OR "stripe_current_period_end" IS NOT NULL
+        OR "subscription_expires_at" IS NOT NULL
+      );
   `);
   logger.info("Application schema ready");
 }
@@ -109,6 +122,7 @@ async function initStripe() {
 
 await ensureApplicationSchema();
 await initStripe();
+void maybeRunExpiredAccountCleanup();
 runPushScheduler();
 startAppointmentScheduler();
 setInterval(() => cleanupWaitlist().catch(() => {}), 60_000);

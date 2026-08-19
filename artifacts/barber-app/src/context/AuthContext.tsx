@@ -10,6 +10,8 @@ export type AuthUser = {
   phone?: string | null;
   slug?: string | null;
   trialStartedAt: string;
+  trialEligible: boolean;
+  returningCustomer: boolean;
   trialDaysLeft: number;
   trialExpired: boolean;
   hasActiveSubscription: boolean;
@@ -21,13 +23,16 @@ export type AuthUser = {
   stripePaymentFailing?: boolean;
   pastDue?: boolean;
   isSystemAdmin?: boolean;
+  firstMonthDiscountEligible: boolean;
+  deletionScheduledAt?: string | null;
+  deletionDaysLeft?: number | null;
 };
 
 type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; documentType: "cpf" | "cnpj"; documentNumber: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<void>;
+  register: (data: { email: string; documentType: "cpf" | "cnpj"; documentNumber: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<AuthUser | null>;
 };
@@ -129,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const user = await res.json();
     setUser(user);
+    return user as AuthUser;
   }, [clearAccountCache]);
 
   const logout = useCallback(async () => {
