@@ -36,6 +36,8 @@ export default function Subscribe() {
   const [error, setError] = useState("");
   const [plans, setPlans] = useState<Plan[]>([]);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [subscriptionCheckTimedOut, setSubscriptionCheckTimedOut] = useState(false);
+  const [subscriptionCheckAttempt, setSubscriptionCheckAttempt] = useState(0);
 
   const params = new URLSearchParams(window.location.search);
   const justSubscribed = params.get("subscribed") === "1";
@@ -46,39 +48,69 @@ export default function Subscribe() {
     (params.get("view") === "mobile" && window.innerWidth >= 900);
 
   useEffect(() => {
-    if (justSubscribed) {
-      setCheckingSubscription(true);
-      const syncAndCheck = async () => {
-        // Stripe can redirect before the webhook reaches our server. Retry
-        // briefly so a successful payment never falls back to the plans page.
-        for (let attempt = 0; attempt < 12; attempt += 1) {
-          try {
-            await fetch(`${BASE}/api/stripe/sync-subscription`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ sessionId: checkoutSessionId || undefined }),
-            });
-          } catch {
-            // Keep retrying while Stripe finishes the checkout.
-          }
-          const refreshedUser = await refresh();
-          if (refreshedUser?.hasActiveSubscription) break;
-          if (attempt < 11) {
-            await new Promise((resolve) => window.setTimeout(resolve, 1000));
-          }
+    if (!justSubscribed) return;
+
+    let cancelled = false;
+    setCheckingSubscription(true);
+    setSubscriptionCheckTimedOut(false);
+
+    const syncAndCheck = async () => {
+      const pollIntervalMs = 2500;
+      const timeoutMs = 30_000;
+      const deadline = Date.now() + timeoutMs;
+
+      // Stripe can redirect before the webhook reaches our server. Keep
+      // syncing until the subscription is visible or the payment check times
+      // out, so a successful payment never falls back to the plans page.
+      while (!cancelled && Date.now() <= deadline) {
+        try {
+          await fetch(`${BASE}/api/stripe/sync-subscription`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ sessionId: checkoutSessionId || undefined }),
+          });
+        } catch {
+          // Keep polling while Stripe finishes the checkout or the network
+          // temporarily fails.
         }
+
+        if (cancelled) return;
+
+        const refreshedUser = await refresh();
+        if (cancelled) return;
+        if (refreshedUser?.hasActiveSubscription) {
+          setCheckingSubscription(false);
+          return;
+        }
+
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) break;
+        await new Promise((resolve) => window.setTimeout(resolve, Math.min(pollIntervalMs, remainingMs)));
+      }
+
+      if (!cancelled) {
         setCheckingSubscription(false);
-      };
-      syncAndCheck();
-    }
-  }, [justSubscribed, checkoutSessionId, refresh]);
+        setSubscriptionCheckTimedOut(true);
+      }
+    };
+
+    void syncAndCheck();
+    return () => {
+      cancelled = true;
+    };
+  }, [justSubscribed, checkoutSessionId, refresh, subscriptionCheckAttempt]);
 
   useEffect(() => {
     if (user?.hasActiveSubscription && !checkingSubscription) {
       setLocation("/dashboard");
     }
   }, [user, checkingSubscription, setLocation]);
+
+  const retrySubscriptionCheck = () => {
+    setSubscriptionCheckTimedOut(false);
+    setSubscriptionCheckAttempt((attempt) => attempt + 1);
+  };
 
   useEffect(() => {
     fetch(`${BASE}/api/stripe/plans`)
@@ -143,6 +175,35 @@ export default function Subscribe() {
             style={{ borderColor: "hsl(var(--sidebar-primary))", borderTopColor: "transparent" }}
           />
           <p style={{ color: "hsl(0 0% 60%)" }}>Confirmando assinatura...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (subscriptionCheckTimedOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ backgroundColor: "hsl(0 0% 4%)" }}>
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-4xl" aria-hidden="true">⏳</div>
+          <h1 className="text-xl font-semibold">Verificando pagamento...</h1>
+          <p className="text-sm" style={{ color: "hsl(0 0% 60%)" }}>
+            O pagamento foi recebido, mas a confirmação da assinatura ainda está demorando.
+            Atualize o status para tentar novamente.
+          </p>
+          <button
+            type="button"
+            onClick={retrySubscriptionCheck}
+            className="rounded-xl px-5 font-semibold transition-opacity hover:opacity-90"
+            style={{
+              height: 42,
+              backgroundColor: "hsl(var(--sidebar-primary))",
+              color: "hsl(var(--sidebar-primary-foreground))",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Atualizar status
+          </button>
         </div>
       </div>
     );
