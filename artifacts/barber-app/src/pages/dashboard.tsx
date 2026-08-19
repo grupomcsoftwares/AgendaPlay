@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode, AlertTriangle, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Users, DollarSign, CalendarCheck, Clock, Scissors, Link, Copy, Check, Share2, QrCode, AlertTriangle, ExternalLink, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const { user, refresh } = useAuth();
+  const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [paymentWarningDismissed, setPaymentWarningDismissed] = useState(false);
-
-  useEffect(() => {
-    setPaymentWarningDismissed(false);
-  }, [user?.id]);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -25,6 +24,21 @@ export default function Dashboard() {
     }, 30_000);
     return () => window.clearInterval(interval);
   }, [refresh, user?.id]);
+
+  const { data: subscriptionStatus } = useQuery<{ pastDue: boolean }>({
+    queryKey: ["stripe-subscription-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/subscription-status", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch subscription status");
+      return res.json();
+    },
+    enabled: Boolean(user),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+
+  const paymentFailed = subscriptionStatus?.pastDue ?? user?.pastDue ?? false;
 
   const { data: summary, isLoading } = useGetDashboardSummary({
     query: {
@@ -74,6 +88,27 @@ export default function Dashboard() {
     }
   };
 
+  const openCustomerPortal = async () => {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/customer-portal", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        toast({ title: data.error ?? "Não foi possível abrir o portal de assinatura.", variant: "destructive" });
+        return;
+      }
+      const { url } = await res.json() as { url: string };
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      toast({ title: "Não foi possível abrir o portal. Tente novamente.", variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const fallbackCopy = (text: string) => {
     const el = document.createElement("textarea");
     el.value = text;
@@ -106,7 +141,7 @@ export default function Dashboard() {
     <div className="flex-1 overflow-auto p-4 md:p-8 space-y-5 md:space-y-8 bg-background">
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
 
-      {user?.stripePaymentFailing && !paymentWarningDismissed && (
+      {paymentFailed && (
         <div
           role="alert"
           className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-100"
@@ -117,21 +152,18 @@ export default function Dashboard() {
             <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
               Atualize seu cartão para evitar a interrupção do acesso à AgendaPlay.
             </p>
-            <a
-              href="/settings"
-              className="inline-flex text-sm font-semibold underline underline-offset-4 hover:no-underline"
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2 gap-1.5 border-amber-600/40 bg-background/60 text-amber-950 hover:bg-amber-500/15 dark:text-amber-100"
+              onClick={openCustomerPortal}
+              disabled={portalLoading}
             >
-              Atualizar forma de pagamento
-            </a>
+              {portalLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5" />}
+              Atualizar cartão
+            </Button>
           </div>
-          <button
-            type="button"
-            aria-label="Dispensar aviso de pagamento"
-            className="rounded-md p-1 text-amber-700 transition-colors hover:bg-amber-500/20 dark:text-amber-200"
-            onClick={() => setPaymentWarningDismissed(true)}
-          >
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 

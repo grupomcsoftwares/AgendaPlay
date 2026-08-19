@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
+import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
 import {
   getAuthorizedStripePrice,
   isAuthorizedStripeCatalogEntry,
@@ -181,6 +182,29 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     return;
   }
   const status = getAccountStatus(user);
+  let pastDue = user.stripePaymentFailing;
+
+  if (user.stripeCustomerId || user.stripeSubscriptionId) {
+    try {
+      const stripe = await getUncachableStripeClient();
+      const livePastDue = await getStripePaymentFailureStatus(stripe, user);
+      if (livePastDue !== null) {
+        pastDue = livePastDue;
+        if (livePastDue !== user.stripePaymentFailing) {
+          await db
+            .update(usersTable)
+            .set({ stripePaymentFailing: livePastDue })
+            .where(eq(usersTable.id, user.id));
+        }
+      }
+    } catch (error) {
+      req.log.warn(
+        { err: error, userId },
+        "Unable to refresh Stripe payment status; using webhook state",
+      );
+    }
+  }
+
   res.json({
     hasActiveSubscription: status.hasActiveSubscription,
     subscriptionId: user.stripeSubscriptionId,
@@ -191,7 +215,8 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
     canAccess: status.canAccess,
     subscriptionDueDate: status.subscriptionDueDate,
     subscriptionDaysLeft: status.subscriptionDaysLeft,
-    stripePaymentFailing: user.stripePaymentFailing,
+    pastDue,
+    stripePaymentFailing: pastDue,
   });
 });
 

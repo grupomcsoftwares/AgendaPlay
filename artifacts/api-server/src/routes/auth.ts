@@ -9,6 +9,7 @@ import { createHmac } from "node:crypto";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 import { isSystemAdminEmail } from "../lib/systemAdmin.js";
+import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
 
 const SESSION_COOKIE_NAME = "connect.sid";
 
@@ -68,6 +69,8 @@ async function reconcileActiveSubscription(user: {
   id: string;
   email: string;
   stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  stripePaymentFailing: boolean;
 }): Promise<void> {
   try {
     const stripe = await getUncachableStripeClient();
@@ -106,7 +109,16 @@ async function reconcileActiveSubscription(user: {
         // Ignore stale customer IDs and continue with email-matched customers.
       }
     }
-    if (!subscription || !matchedCustomerId) return;
+    if (!subscription || !matchedCustomerId) {
+      const pastDue = await getStripePaymentFailureStatus(stripe, user);
+      if (pastDue !== null && pastDue !== user.stripePaymentFailing) {
+        await db
+          .update(usersTable)
+          .set({ stripePaymentFailing: pastDue })
+          .where(eq(usersTable.id, user.id));
+      }
+      return;
+    }
 
     const priceItem = subscription.items.data[0];
     const stripePriceId = priceItem?.price?.id ?? null;
@@ -140,6 +152,7 @@ async function reconcileActiveSubscription(user: {
         stripePriceId,
         maxBarbers,
         stripeCurrentPeriodEnd: currentPeriodEnd,
+        stripePaymentFailing: false,
       })
       .where(eq(usersTable.id, user.id));
 
@@ -330,6 +343,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripePaymentFailing: user.stripePaymentFailing,
+    pastDue: user.stripePaymentFailing,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
@@ -425,6 +439,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripePaymentFailing: user.stripePaymentFailing,
+    pastDue: user.stripePaymentFailing,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   });

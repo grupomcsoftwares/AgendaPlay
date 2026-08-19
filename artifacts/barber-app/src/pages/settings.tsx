@@ -224,6 +224,7 @@ export default function Settings() {
     canAccess: boolean;
     subscriptionDueDate: string | null;
     subscriptionDaysLeft: number | null;
+    pastDue: boolean;
   }>({
     queryKey: ["stripe-subscription-status"],
     queryFn: async () => {
@@ -251,6 +252,7 @@ export default function Settings() {
   const currentPlan = stripeePlans?.data?.find(
     (p) => p.price_id === subscriptionStatus?.stripePriceId
   );
+  const paymentFailed = subscriptionStatus?.pastDue ?? user?.pastDue ?? false;
 
   const openCustomerPortal = async () => {
     setPortalLoading(true);
@@ -1719,6 +1721,35 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {paymentFailed && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-100"
+              >
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="font-semibold">Não foi possível processar a cobrança da sua assinatura</p>
+                  <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
+                    Atualize seu cartão agora para evitar a interrupção do acesso à AgendaPlay.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="mt-2 gap-1.5 border-amber-600/40 bg-background/60 text-amber-950 hover:bg-amber-500/15 dark:text-amber-100"
+                    onClick={openCustomerPortal}
+                    disabled={portalLoading}
+                  >
+                    {portalLoading ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    )}
+                    Atualizar cartão
+                  </Button>
+                </div>
+              </div>
+            )}
             {/* Status badge */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">

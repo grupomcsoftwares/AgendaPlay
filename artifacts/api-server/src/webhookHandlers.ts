@@ -156,7 +156,13 @@ export class WebhookHandlers {
 
         await db
           .update(usersTable)
-          .set({ stripeSubscriptionId: subscriptionId, stripePriceId, maxBarbers, stripeCurrentPeriodEnd: periodEnd })
+          .set({
+            stripeSubscriptionId: subscriptionId,
+            stripePriceId,
+            maxBarbers,
+            stripeCurrentPeriodEnd: periodEnd,
+            stripePaymentFailing: false,
+          })
           .where(eq(usersTable.stripeCustomerId, customerId));
         logger.info({ customerId, subscriptionId, stripePriceId, maxBarbers, periodEnd, type }, 'User subscription activated via webhook');
       } else if (status === 'canceled' || status === 'unpaid' || status === 'past_due') {
