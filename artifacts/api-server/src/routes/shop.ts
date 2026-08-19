@@ -316,12 +316,32 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
   const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
   const SCAN_DURATION = 30;
 
+  const barberIdRaw = req.query.barberId;
+  const barberId = typeof barberIdRaw === "string" && /^\d+$/.test(barberIdRaw)
+    ? Number.parseInt(barberIdRaw, 10)
+    : null;
+
+  let weekly = shopWeekly;
+  let scopedBarberId: number | null = null;
+  if (barberId !== null) {
+    const [barber] = await db
+      .select({ id: barbersTable.id, weeklySchedule: barbersTable.weeklySchedule })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.id, barberId), eq(barbersTable.userId, shopId)))
+      .limit(1);
+
+    if (barber) {
+      scopedBarberId = barber.id;
+      weekly = (barber.weeklySchedule ?? shopWeekly) as WeeklySchedule | null;
+    }
+  }
+
   const now = new Date();
   const today = localYMD(now);
   const dayKey = localDayKey(now);
 
   const defaults: DaySchedule = { closed: false, open: "09:00", close: "18:00", lunchStart: "12:00", lunchEnd: "13:00" };
-  const day: DaySchedule = shopWeekly?.[dayKey] ?? defaults;
+  const day: DaySchedule = weekly?.[dayKey] ?? defaults;
 
   if (day.closed) {
     res.json({ dayClosed: true, totalSlots: 0, bookedSlots: 0, ratio: 0, level: "closed" as const });
@@ -338,14 +358,19 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
   const dStart = new Date(`${today}T00:00:00Z`);
   const before = new Date(dStart.getTime() - 24 * 3600 * 1000);
   const after = new Date(dStart.getTime() + 48 * 3600 * 1000);
+  const appointmentConditions = [
+    eq(appointmentsTable.userId, shopId),
+    gte(appointmentsTable.scheduledAt, before),
+    lt(appointmentsTable.scheduledAt, after),
+  ];
+  if (scopedBarberId !== null) {
+    appointmentConditions.push(eq(appointmentsTable.barberId, scopedBarberId));
+  }
+
   const appts = await db
     .select()
     .from(appointmentsTable)
-    .where(and(
-      eq(appointmentsTable.userId, shopId),
-      gte(appointmentsTable.scheduledAt, before),
-      lt(appointmentsTable.scheduledAt, after),
-    ));
+    .where(and(...appointmentConditions));
 
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {

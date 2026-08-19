@@ -28,6 +28,11 @@ type BookingDaySchedule = {
   close?: string;
 };
 
+type BarberBusyness = {
+  dayClosed: boolean;
+  level: "closed" | "low" | "moderate" | "high" | "critical";
+};
+
 function parseBookingTime(value: string | undefined, fallback: number): number {
   if (!value || !/^\d{1,2}:\d{2}$/.test(value)) return fallback;
   const [hours, minutes] = value.split(":").map(Number);
@@ -888,6 +893,34 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   // Backend already filters to active barbers via activeOnly=true.
   const activeBarbers = barbers ?? [];
   const needsBarberStep = activeBarbers.length >= 2;
+  const barberBusynessQueries = useQueries({
+    queries: activeBarbers.map((barber) => ({
+      queryKey: ["public-barber-busyness", slugProp, barber.id],
+      queryFn: async (): Promise<BarberBusyness> => {
+        if (!slugProp) {
+          throw new Error("Slug da barbearia não informado");
+        }
+        const params = new URLSearchParams({ barberId: barber.id.toString() });
+        const response = await fetch(
+          `${BASE}/api/b/${encodeURIComponent(slugProp)}/busyness?${params.toString()}`,
+        );
+        if (!response.ok) {
+          throw new Error("Não foi possível consultar a disponibilidade");
+        }
+        return response.json() as Promise<BarberBusyness>;
+      },
+      enabled: Boolean(slugProp) && needsBarberStep,
+      staleTime: 30_000,
+    })),
+  });
+  const barberBusynessById = React.useMemo(() => {
+    const result = new Map<number, BarberBusyness>();
+    activeBarbers.forEach((barber, index) => {
+      const data = barberBusynessQueries[index]?.data;
+      if (data) result.set(barber.id, data);
+    });
+    return result;
+  }, [activeBarbers, barberBusynessQueries]);
   const bookingWeekly = (selectedBarber?.weeklySchedule ?? settings?.weeklySchedule) as
     | Partial<Record<typeof WEEKDAY_KEYS[number], BookingDaySchedule>>
     | null
@@ -1415,6 +1448,13 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   .slice(0, 2)
                   .map((n) => n.charAt(0).toUpperCase())
                   .join("");
+                const busyness = barberBusynessById.get(b.id);
+                const hasFewSlots = busyness?.dayClosed ||
+                  busyness?.level === "high" ||
+                  busyness?.level === "critical";
+                const availabilityLabel = busyness
+                  ? hasFewSlots ? "Poucas vagas" : "Bastante disponível"
+                  : "Verificando disponibilidade";
                 return (
                   <button
                     key={b.id}
@@ -1447,6 +1487,19 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-base">{b.name}</p>
                       {b.bio && <p className="text-xs text-muted-foreground mt-0.5 truncate">{b.bio}</p>}
+                      <span
+                        className="inline-flex mt-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{
+                          backgroundColor: hasFewSlots
+                            ? "hsl(38 88% 55% / 0.15)"
+                            : "hsl(142 70% 45% / 0.15)",
+                          color: hasFewSlots
+                            ? "hsl(38 88% 65%)"
+                            : "hsl(142 70% 60%)",
+                        }}
+                      >
+                        {availabilityLabel}
+                      </span>
                     </div>
                     <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(0 0% 40%)" }} />
                   </button>
