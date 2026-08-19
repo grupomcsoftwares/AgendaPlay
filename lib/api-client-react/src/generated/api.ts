@@ -42,6 +42,7 @@ import type {
   GetAvailabilityParams,
   GetFinancialSummaryParams,
   GetLoyaltyBalanceParams,
+  GetNextAvailableParams,
   GetSettingsParams,
   HealthStatus,
   ListAppointmentsParams,
@@ -2289,20 +2290,29 @@ export const useDeclineWaitlistOffer = <TError = ErrorType<unknown>,
       return useMutation(getDeclineWaitlistOfferMutationOptions(options));
     }
 
-export const getGetNextAvailableUrl = (slug: string,) => {
+export const getGetNextAvailableUrl = (slug: string,
+    params?: GetNextAvailableParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/b/${slug}/next-available`
+  return stringifiedParams.length > 0 ? `/api/b/${slug}/next-available?${stringifiedParams}` : `/api/b/${slug}/next-available`
 }
 
 /**
  * @summary Get next available slot for a public shop (no auth required)
  */
-export const getNextAvailable = async (slug: string, options?: RequestInit): Promise<NextAvailableResult> => {
+export const getNextAvailable = async (slug: string,
+    params?: GetNextAvailableParams, options?: RequestInit): Promise<NextAvailableResult> => {
 
-  return customFetch<NextAvailableResult>(getGetNextAvailableUrl(slug),
+  return customFetch<NextAvailableResult>(getGetNextAvailableUrl(slug,params),
   {
     ...options,
     method: 'GET'
@@ -2315,23 +2325,25 @@ export const getNextAvailable = async (slug: string, options?: RequestInit): Pro
 
 
 
-export const getGetNextAvailableQueryKey = (slug: string,) => {
+export const getGetNextAvailableQueryKey = (slug: string,
+    params?: GetNextAvailableParams,) => {
     return [
-    `/api/b/${slug}/next-available`
+    `/api/b/${slug}/next-available`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetNextAvailableQueryOptions = <TData = Awaited<ReturnType<typeof getNextAvailable>>, TError = ErrorType<void>>(slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetNextAvailableQueryOptions = <TData = Awaited<ReturnType<typeof getNextAvailable>>, TError = ErrorType<void>>(slug: string,
+    params?: GetNextAvailableParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetNextAvailableQueryKey(slug);
+  const queryKey =  queryOptions?.queryKey ?? getGetNextAvailableQueryKey(slug,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNextAvailable>>> = ({ signal }) => getNextAvailable(slug, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNextAvailable>>> = ({ signal }) => getNextAvailable(slug,params, { signal, ...requestOptions });
 
 
 
@@ -2349,11 +2361,12 @@ export type GetNextAvailableQueryError = ErrorType<void>
  */
 
 export function useGetNextAvailable<TData = Awaited<ReturnType<typeof getNextAvailable>>, TError = ErrorType<void>>(
- slug: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ slug: string,
+    params?: GetNextAvailableParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextAvailable>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetNextAvailableQueryOptions(slug,options)
+  const queryOptions = getGetNextAvailableQueryOptions(slug,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -726,6 +726,13 @@ export const GetNextAvailableParams = zod.object({
   "slug": zod.coerce.string()
 })
 
+
+
+
+export const GetNextAvailableQueryParams = zod.object({
+  "duration": zod.coerce.number().min(1).optional().describe('Combined selected-service duration in minutes. Defaults to 30 when omitted.')
+})
+
 export const GetNextAvailableResponse = zod.object({
   "nextDate": zod.string().nullable().describe('YYYY-MM-DD of next available slot, or null if none found'),
   "nextTime": zod.string().nullable().describe('HH:MM of next available slot, or null if none found')

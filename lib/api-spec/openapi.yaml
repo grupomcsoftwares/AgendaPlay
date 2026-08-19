@@ -633,6 +633,12 @@ paths:
           required: true
           schema:
             type: string
+        - name: duration
+          in: query
+          description: Combined selected-service duration in minutes. Defaults to 30 when omitted.
+          schema:
+            type: integer
+            minimum: 1
       responses:
         "200":
           description: Next available slot

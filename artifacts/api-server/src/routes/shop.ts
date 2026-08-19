@@ -127,6 +127,8 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
   const barberFilter: number | null = barberIdRaw && !Number.isNaN(parseInt(String(barberIdRaw), 10))
     ? parseInt(String(barberIdRaw), 10)
     : null;
+  const durationRaw = req.query.duration;
+  const requestedDuration = typeof durationRaw === "string" ? Number(durationRaw) : Number.NaN;
 
   const [user] = await db
     .select({
@@ -171,7 +173,9 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
   const maxBookingDays = settings?.maxBookingDays ?? 30;
   const minAdvanceMinutes = settings?.minAdvanceMinutes ?? 0;
   const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
-  const SCAN_DURATION = 30;
+  const SCAN_DURATION = Number.isFinite(requestedDuration) && requestedDuration > 0
+    ? Math.floor(requestedDuration)
+    : 30;
   const BUFFER = 0;
 
   // If a barber is requested, validate they belong to this shop and load their schedule.

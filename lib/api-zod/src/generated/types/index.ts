@@ -38,6 +38,7 @@ export * from './financialSummary';
 export * from './getAvailabilityParams';
 export * from './getFinancialSummaryParams';
 export * from './getLoyaltyBalanceParams';
+export * from './getNextAvailableParams';
 export * from './getSettingsParams';
 export * from './healthStatus';
 export * from './listAppointmentsParams';

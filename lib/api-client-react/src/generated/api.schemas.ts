@@ -851,6 +851,14 @@ dateEnd?: string;
 status?: string;
 };
 
+export type GetNextAvailableParams = {
+/**
+ * Combined selected-service duration in minutes. Defaults to 30 when omitted.
+ * @minimum 1
+ */
+duration?: number;
+};
+
 export type GetAvailabilityParams = {
 /**
  * Shop owner user ID (required for public booking page)
