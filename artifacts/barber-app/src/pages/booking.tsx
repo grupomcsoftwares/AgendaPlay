@@ -21,6 +21,7 @@ const STEP_LABELS_BASE = ["Seus dados", "Serviço", "Data e hora", "Pagamento"] 
 const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Serviço", "Data e hora", "Pagamento"] as const;
 const DEFAULT_OPEN_MINUTES = 9 * 60;
 const DEFAULT_CLOSE_MINUTES = 18 * 60;
+const BUSYNESS_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 
 type BookingDaySchedule = {
   closed?: boolean;
@@ -911,6 +912,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       },
       enabled: Boolean(slugProp) && needsBarberStep,
       staleTime: 30_000,
+      refetchInterval: BUSYNESS_REFRESH_INTERVAL_MS,
+      refetchIntervalInBackground: true,
     })),
   });
   const barberBusynessById = React.useMemo(() => {
