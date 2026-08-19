@@ -14,8 +14,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/hooks/useAuth";
 import * as Notifications from "expo-notifications";
+import { setBaseUrl } from "@workspace/api-client-react";
+import { PROD_BASE } from "@/lib/webviewSecurity";
 
 SplashScreen.preventAutoHideAsync();
+setBaseUrl(PROD_BASE);
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,

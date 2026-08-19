@@ -35,6 +35,10 @@ tags:
     description: Subscription plan operations
   - name: subscriptions
     description: Client subscription operations
+  - name: presence
+    description: Authenticated user presence operations
+  - name: admin
+    description: Restricted system administration operations
 
 paths:
   /healthz:
@@ -762,6 +766,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  /presence/heartbeat:
+    post:
+      operationId: recordPresenceHeartbeat
+      tags: [presence]
+      summary: Record activity for the authenticated user
+      responses:
+        "200":
+          description: Presence recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresenceHeartbeat"
+        "401":
+          description: Not authenticated
+
+  /admin/online-users:
+    get:
+      operationId: getAdminOnlineUsers
+      tags: [admin]
+      summary: Get the global number of online authenticated users
+      responses:
+        "200":
+          description: Current global online user count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOnlineUsers"
+        "401":
+          description: Not authenticated
+        "403":
+          description: System administrator access required
+
   /financial/summary:
     get:
       operationId: getFinancialSummary
@@ -1292,6 +1328,30 @@ components:
           type: string
       required:
         - status
+
+    PresenceHeartbeat:
+      type: object
+      required: [online, recordedAt]
+      properties:
+        online:
+          type: boolean
+        recordedAt:
+          type: string
+          format: date-time
+
+    AdminOnlineUsers:
+      type: object
+      required: [onlineUsers, activeWindowSeconds, updatedAt]
+      properties:
+        onlineUsers:
+          type: integer
+          minimum: 0
+        activeWindowSeconds:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
 
     Client:
       type: object

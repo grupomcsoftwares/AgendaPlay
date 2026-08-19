@@ -8,6 +8,7 @@ import type Stripe from "stripe";
 import { createHmac } from "node:crypto";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
+import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 
 const SESSION_COOKIE_NAME = "connect.sid";
 
@@ -271,6 +272,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
+    isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
 
@@ -326,6 +328,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
+    isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
 
@@ -419,6 +422,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     trialStartedAt: user.trialStartedAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
+    isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   });
 });

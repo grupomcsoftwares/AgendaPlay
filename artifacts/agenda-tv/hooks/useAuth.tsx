@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState } from "react-native";
+import { recordPresenceHeartbeat } from "@workspace/api-client-react";
 import { PROD_BASE } from "@/lib/webviewSecurity";
 
 const API_BASE = `${PROD_BASE}/api`;
@@ -26,6 +28,7 @@ export type AuthUser = {
   trialExpired: boolean;
   hasActiveSubscription: boolean;
   canAccess: boolean;
+  isSystemAdmin?: boolean;
 };
 
 type AuthState = {
@@ -135,6 +138,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 60_000);
     return () => clearInterval(timer);
   }, [refresh, user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let currentState = AppState.currentState;
+    const heartbeat = async () => {
+      if (currentState !== "active") return;
+      const cookie = await AsyncStorage.getItem(COOKIE_KEY);
+      if (!cookie) return;
+      await recordPresenceHeartbeat({
+        headers: { Cookie: cookie },
+      }).catch(() => {
+        // Presence is best-effort and will recover on the next heartbeat.
+      });
+    };
+
+    void heartbeat();
+    const timer = setInterval(() => {
+      void heartbeat();
+    }, 20_000);
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      currentState = nextState;
+      if (nextState === "active") void heartbeat();
+    });
+
+    return () => {
+      clearInterval(timer);
+      subscription.remove();
+    };
+  }, [user?.id]);
 
   const logout = useCallback(async () => {
     const cookie = await AsyncStorage.getItem(COOKIE_KEY);

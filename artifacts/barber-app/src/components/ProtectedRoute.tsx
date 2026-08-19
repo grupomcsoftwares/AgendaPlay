@@ -35,7 +35,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       setLocation(tvView ? "/subscribe?tv=1" : "/login");
-    } else if (!loading && user && !user.canAccess && !tvView) {
+    } else if (
+      !loading &&
+      user &&
+      !user.canAccess &&
+      !user.isSystemAdmin &&
+      !tvView
+    ) {
       setLocation("/subscribe");
     }
   }, [loading, user, setLocation, tvView]);
@@ -62,7 +68,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  if (!user.canAccess) {
+  if (!user.canAccess && !user.isSystemAdmin) {
     return tvView ? <TVSubscriptionExpired /> : null;
   }
 

@@ -17,6 +17,7 @@ import stripeRouter from "./stripe.js";
 import shopRouter from "./shop.js";
 import pushRouter from "./push.js";
 import waitlistRouter from "./waitlist.js";
+import presenceRouter from "./presence.js";
 import { requireActiveAccount } from "../middleware/accountActive.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -36,6 +37,7 @@ router.use(waitlistRouter);
 router.use(stripeRouter);
 router.use(healthRouter);
 router.use(shopRouter);
+router.use(presenceRouter);
 
 // services and appointments contain both public and admin routes;
 // requireAuth is applied at individual route level inside those files.

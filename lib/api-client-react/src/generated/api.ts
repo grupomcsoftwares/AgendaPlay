@@ -21,6 +21,7 @@ import type {
 
 import type {
   AccountDeletion,
+  AdminOnlineUsers,
   Appointment,
   AppointmentInput,
   AppointmentUpdate,
@@ -52,6 +53,7 @@ import type {
   LoyaltyBalance,
   LoyaltyClientBalance,
   NextAvailableResult,
+  PresenceHeartbeat,
   QueueEntry,
   QueueInput,
   RescheduleByTokenInput,
@@ -2801,6 +2803,153 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRecordPresenceHeartbeatUrl = () => {
+
+
+
+
+  return `/api/presence/heartbeat`
+}
+
+/**
+ * @summary Record activity for the authenticated user
+ */
+export const recordPresenceHeartbeat = async ( options?: RequestInit): Promise<PresenceHeartbeat> => {
+
+  return customFetch<PresenceHeartbeat>(getRecordPresenceHeartbeatUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRecordPresenceHeartbeatMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPresenceHeartbeat>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordPresenceHeartbeat>>, TError,void, TContext> => {
+
+const mutationKey = ['recordPresenceHeartbeat'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordPresenceHeartbeat>>, void> = () => {
+
+
+          return  recordPresenceHeartbeat(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordPresenceHeartbeatMutationResult = NonNullable<Awaited<ReturnType<typeof recordPresenceHeartbeat>>>
+
+    export type RecordPresenceHeartbeatMutationError = ErrorType<void>
+
+    /**
+ * @summary Record activity for the authenticated user
+ */
+export const useRecordPresenceHeartbeat = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPresenceHeartbeat>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordPresenceHeartbeat>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRecordPresenceHeartbeatMutationOptions(options));
+    }
+
+export const getGetAdminOnlineUsersUrl = () => {
+
+
+
+
+  return `/api/admin/online-users`
+}
+
+/**
+ * @summary Get the global number of online authenticated users
+ */
+export const getAdminOnlineUsers = async ( options?: RequestInit): Promise<AdminOnlineUsers> => {
+
+  return customFetch<AdminOnlineUsers>(getGetAdminOnlineUsersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminOnlineUsersQueryKey = () => {
+    return [
+    `/api/admin/online-users`
+    ] as const;
+    }
+
+
+export const getGetAdminOnlineUsersQueryOptions = <TData = Awaited<ReturnType<typeof getAdminOnlineUsers>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminOnlineUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminOnlineUsersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminOnlineUsers>>> = ({ signal }) => getAdminOnlineUsers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminOnlineUsers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminOnlineUsersQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminOnlineUsers>>>
+export type GetAdminOnlineUsersQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get the global number of online authenticated users
+ */
+
+export function useGetAdminOnlineUsers<TData = Awaited<ReturnType<typeof getAdminOnlineUsers>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminOnlineUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminOnlineUsersQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

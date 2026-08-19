@@ -23,6 +23,7 @@ import Landing from "./pages/landing";
 import Login from "./pages/login";
 import Register from "./pages/register";
 import Subscribe from "./pages/subscribe";
+import AdminOnline from "./pages/admin-online";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -141,6 +142,11 @@ function Router() {
       <Route path="/settings">
         <ProtectedRoute>
           <Sidebar><Settings /></Sidebar>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin">
+        <ProtectedRoute>
+          <Sidebar><AdminOnline /></Sidebar>
         </ProtectedRoute>
       </Route>
       <Route path="/queue">

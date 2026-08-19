@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { recordPresenceHeartbeat } from "@workspace/api-client-react";
 
 export type AuthUser = {
   id: string;
@@ -17,6 +18,7 @@ export type AuthUser = {
   subscriptionDaysLeft?: number | null;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
+  isSystemAdmin?: boolean;
 };
 
 type AuthState = {
@@ -72,6 +74,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const heartbeat = () => {
+      if (document.visibilityState !== "visible") return;
+      void recordPresenceHeartbeat({ credentials: "include" }).catch(() => {
+        // Presence is best-effort and will recover on the next heartbeat.
+      });
+    };
+
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 20_000);
+    document.addEventListener("visibilitychange", heartbeat);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", heartbeat);
+    };
+  }, [user?.id]);
 
   const login = useCallback(async (email: string, password: string) => {
     // Never let data from the previous account remain visible while logging in.

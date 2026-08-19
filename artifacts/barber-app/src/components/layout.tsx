@@ -16,6 +16,7 @@ import {
   RefreshCw,
   MessageCircle,
   Instagram,
+  ShieldCheck,
 } from "lucide-react";
 import { useGetSettings } from "@workspace/api-client-react";
 import { useAuth } from "../context/AuthContext";
@@ -39,8 +40,18 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "Configurações", icon: SettingsIcon },
 ];
 
+const ADMIN_NAV_ITEM: NavItem = {
+  href: "/admin",
+  label: "Administração",
+  icon: ShieldCheck,
+};
+
 function NavLinks({ location, onNavigate }: { location: string; onNavigate?: () => void }) {
+  const { user } = useAuth();
   const itemClass = "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors w-full";
+  const navItems = user?.isSystemAdmin
+    ? [...NAV_ITEMS, ADMIN_NAV_ITEM]
+    : NAV_ITEMS;
 
   const hoverOn = (e: React.MouseEvent) => {
     (e.currentTarget as HTMLElement).style.backgroundColor = "hsl(var(--sidebar-accent))";
@@ -55,7 +66,7 @@ function NavLinks({ location, onNavigate }: { location: string; onNavigate?: () 
 
   return (
     <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-      {NAV_ITEMS.map((item) => {
+      {navItems.map((item) => {
         const href = item.href;
         const isActive = !item.external && (
           location === item.href ||

@@ -7,6 +7,7 @@
  */
 
 export * from './accountDeletion';
+export * from './adminOnlineUsers';
 export * from './appointment';
 export * from './appointmentInput';
 export * from './appointmentInputPaymentMethod';
@@ -53,6 +54,7 @@ export * from './loyaltyConfig';
 export * from './loyaltyConfigExpirationDays';
 export * from './loyaltyConfigExpirationWarningDays';
 export * from './nextAvailableResult';
+export * from './presenceHeartbeat';
 export * from './queueEntry';
 export * from './queueInput';
 export * from './rescheduleByTokenInput';

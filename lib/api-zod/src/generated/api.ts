@@ -281,7 +281,7 @@ export const CreateAppointmentBody = zod.object({
   "coveredByPlan": zod.boolean().optional().describe('True when the client chose to use their active subscription plan for this booking'),
   "notes": zod.string().optional(),
   "loyaltyPointsRedeemed": zod.number().optional().describe('Points redeemed for a discount on this booking'),
-  "overrideLimitConfirmed": zod.boolean().optional().describe('Barber explicitly confirmed booking past the monthly subscription limit')
+  "overrideLimitConfirmed": zod.boolean().optional().describe('Barber explicitly confirmed booking past the subscriber\'s monthly appointment limit. When absent or false the server rejects the request with 422 SUBSCRIPTION_MONTHLY_LIMIT_REACHED.\n')
 })
 
 
@@ -868,6 +868,30 @@ export const GetDashboardSummaryResponse = zod.object({
   "cancelToken": zod.string().nullish(),
   "createdAt": zod.string().optional()
 }).nullable()
+})
+
+
+/**
+ * @summary Record activity for the authenticated user
+ */
+export const RecordPresenceHeartbeatResponse = zod.object({
+  "online": zod.boolean(),
+  "recordedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get the global number of online authenticated users
+ */
+export const getAdminOnlineUsersResponseOnlineUsersMin = 0;
+
+
+
+
+export const GetAdminOnlineUsersResponse = zod.object({
+  "onlineUsers": zod.number().min(getAdminOnlineUsersResponseOnlineUsersMin),
+  "activeWindowSeconds": zod.number().min(1),
+  "updatedAt": zod.coerce.date()
 })
 
 
