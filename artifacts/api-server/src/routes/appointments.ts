@@ -636,7 +636,9 @@ router.get("/availability", async (req, res): Promise<void> => {
   const blockingAppointmentCount = blocked.length;
   const adaptiveSmartStep = blockingAppointmentCount === 0
     ? duration
-    : blockingAppointmentCount <= 5
+    : blockingAppointmentCount <= 2
+      ? duration
+      : blockingAppointmentCount <= 6
       ? 30
       : blockingAppointmentCount <= 10
         ? 20
