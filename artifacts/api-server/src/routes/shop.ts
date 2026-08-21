@@ -60,6 +60,8 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
       barbershopName: usersTable.barbershopName,
       slug: usersTable.slug,
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
@@ -134,6 +136,8 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
     .select({
       id: usersTable.id,
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
@@ -277,6 +281,8 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
     .select({
       id: usersTable.id,
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,

@@ -163,8 +163,11 @@ router.post("/barbers", requireActiveAuth, async (req, res): Promise<void> => {
   const [currentUser] = await db.select({
     maxBarbers: usersTable.maxBarbers,
     trialStartedAt: usersTable.trialStartedAt,
+    trialEligible: usersTable.trialEligible,
+    hasEverPaid: usersTable.hasEverPaid,
     stripeSubscriptionId: usersTable.stripeSubscriptionId,
     stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+    subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
   })
     .from(usersTable)
     .where(eq(usersTable.id, userId));

@@ -57,6 +57,8 @@ router.get(
           email: usersTable.email,
           barbershopName: usersTable.barbershopName,
           trialStartedAt: usersTable.trialStartedAt,
+          trialEligible: usersTable.trialEligible,
+          hasEverPaid: usersTable.hasEverPaid,
           stripeSubscriptionId: usersTable.stripeSubscriptionId,
           stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
           subscriptionExpiresAt: usersTable.subscriptionExpiresAt,

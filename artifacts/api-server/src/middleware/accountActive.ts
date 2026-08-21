@@ -1,43 +1,55 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
-import { accountCanAccess } from "../routes/accountStatus.js";
+import { getAccountStatus } from "../routes/accountStatus.js";
 
-export async function requireActiveAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+/**
+ * Requires an authenticated account with either an active trial or a current
+ * paid subscription. Keep this check server-side so an expired session cannot
+ * bypass the app's subscription screen by calling data endpoints directly.
+ */
+export async function requireAccess(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.session?.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
   }
-  await requireActiveAccount(req, res, next);
-}
 
-export async function requireActiveAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const userId = req.session?.userId;
-  if (!userId) {
-    res.status(401).json({ error: "Não autenticado." });
+  try {
+    const [user] = await db
+      .select({
+        trialStartedAt: usersTable.trialStartedAt,
+        trialEligible: usersTable.trialEligible,
+        hasEverPaid: usersTable.hasEverPaid,
+        stripeSubscriptionId: usersTable.stripeSubscriptionId,
+        stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
+        subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
+        maxBarbers: usersTable.maxBarbers,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, req.session.userId))
+      .limit(1);
+
+    if (!user) {
+      res.status(401).json({ error: "Não autenticado." });
+      return;
+    }
+
+    if (!getAccountStatus(user).canAccess) {
+      res.status(403).json({
+        code: "SUBSCRIPTION_EXPIRED",
+        error: "A assinatura ou o período de teste expirou. Reative sua assinatura para continuar.",
+      });
+      return;
+    }
+  } catch (error) {
+    next(error);
     return;
   }
 
-  const [user] = await db
-    .select({
-      trialStartedAt: usersTable.trialStartedAt,
-      trialEligible: usersTable.trialEligible,
-      hasEverPaid: usersTable.hasEverPaid,
-      stripeSubscriptionId: usersTable.stripeSubscriptionId,
-      stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
-      subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
-      maxBarbers: usersTable.maxBarbers,
-    })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-
-  if (!user || !accountCanAccess(user)) {
-    res.status(403).json({
-      code: "SUBSCRIPTION_EXPIRED",
-      error: "A assinatura ou o período de teste expirou.",
-    });
-    return;
-  }
   next();
 }
+
+// Compatibility names for the existing route modules. Both enforce the same
+// authenticated, active-account contract.
+export const requireActiveAuth = requireAccess;
+export const requireActiveAccount = requireAccess;

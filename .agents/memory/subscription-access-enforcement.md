@@ -9,6 +9,12 @@ An expired account must be denied by the server for both new public bookings and
 
 **How to apply:** Keep the access decision centralized, enforce it before public shop data/appointment creation and queue endpoints, and have clients revalidate periodically so an already-open TV screen also becomes unavailable.
 
+Every database projection passed to `getAccountStatus` or `accountCanAccess` must include `trialEligible`, even when the trial start date is recent.
+
+**Why:** The billing field is optional for backward compatibility, so an omitted database field is interpreted as a valid first trial. That can accidentally restore access for a returning account that explicitly has no trial eligibility.
+
+**How to apply:** Reuse a complete billing-field projection whenever a route makes an access decision outside the shared middleware; test a recent `trialStartedAt` with `trialEligible=false` alongside normal trial and active-subscription cases.
+
 The shared Expo app must keep the expired-subscription payment action on phone screens but show only the expiration notice on TV screens.
 
 **Why:** A TV is a display endpoint, not the place where the shop owner should complete billing; exposing checkout controls there creates the wrong interaction path.

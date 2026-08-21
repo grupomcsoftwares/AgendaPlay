@@ -18,7 +18,7 @@ import shopRouter from "./shop.js";
 import pushRouter from "./push.js";
 import waitlistRouter from "./waitlist.js";
 import presenceRouter from "./presence.js";
-import { requireActiveAccount } from "../middleware/accountActive.js";
+import { requireAccess } from "../middleware/accountActive.js";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
@@ -53,7 +53,7 @@ router.use(subscriptionsRouter);
 
 // Purely admin routers — always require auth
 const adminRouter = Router();
-adminRouter.use(requireActiveAccount);
+adminRouter.use(requireAccess);
 adminRouter.use(clientsRouter);
 adminRouter.use(dashboardRouter);
 adminRouter.use(financialRouter);
@@ -63,7 +63,7 @@ router.use(adminRouter);
 // Queue access is separately guarded because the TV app consumes these
 // endpoints directly and must stop working as soon as billing expires.
 const activeQueueRouter = Router();
-activeQueueRouter.use(requireActiveAccount);
+activeQueueRouter.use(requireAccess);
 activeQueueRouter.use(queueRouter);
 router.use(activeQueueRouter);
 

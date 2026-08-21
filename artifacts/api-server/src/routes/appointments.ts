@@ -400,6 +400,8 @@ export async function canShopAutoAdvance(userId: string): Promise<boolean> {
   const [account] = await db
     .select({
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
@@ -667,6 +669,8 @@ router.post("/appointments", async (req, res): Promise<void> => {
   const [account] = await db
     .select({
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
@@ -1756,6 +1760,8 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   const [accountForValidation] = await db
     .select({
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,

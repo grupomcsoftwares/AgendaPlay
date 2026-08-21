@@ -195,6 +195,8 @@ router.post("/subscriptions", async (req, res): Promise<void> => {
   const [account] = await db
     .select({
       trialStartedAt: usersTable.trialStartedAt,
+      trialEligible: usersTable.trialEligible,
+      hasEverPaid: usersTable.hasEverPaid,
       stripeSubscriptionId: usersTable.stripeSubscriptionId,
       stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
       subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
