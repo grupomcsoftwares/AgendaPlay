@@ -634,13 +634,11 @@ router.get("/availability", async (req, res): Promise<void> => {
   // The duration check in the loop below still guarantees that no slot runs
   // past closing time.
   const blockingAppointmentCount = blocked.length;
-  const adaptiveSmartStep = blockingAppointmentCount === 0
+  const adaptiveSmartStep = blockingAppointmentCount <= 3
     ? duration
-    : blockingAppointmentCount <= 2
-      ? duration
-      : blockingAppointmentCount <= 6
+    : blockingAppointmentCount <= 6
       ? 30
-      : blockingAppointmentCount <= 10
+      : blockingAppointmentCount <= 9
         ? 20
         : 10;
   const step = smartSlots
