@@ -896,13 +896,13 @@ export default function Appointments() {
                     </p>
                   ) : loadingSlots && !availability ? (
                     <p className="text-sm text-muted-foreground py-3">Carregando horários…</p>
-                  ) : availability && availability.slots.length === 0 ? (
+                  ) : availability && availability.slots.filter((slot) => slot.available).length === 0 ? (
                     <p className="text-sm text-muted-foreground py-3">
-                      Nenhum horário disponível neste dia.
+                      Nenhum horário livre neste dia.
                     </p>
                   ) : (
                     <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
-                      {(availability?.slots ?? []).map(({ time: value, available }) => {
+                      {(availability?.slots ?? []).filter((slot) => slot.available).map(({ time: value, available }) => {
                         const isSelected = formData.time === value;
                         return (
                           <button
@@ -1473,11 +1473,14 @@ export default function Appointments() {
                 <p className="text-sm text-muted-foreground py-3">Fechado neste dia. Escolha outra data.</p>
               ) : editLoadingSlots && !editAvailability ? (
                 <p className="text-sm text-muted-foreground py-3">Carregando horários…</p>
-              ) : editAvailability && editAvailability.slots.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-3">Nenhum horário disponível neste dia.</p>
+                ) : editAvailability && editAvailability.slots.filter((slot) => slot.available).length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-3">Nenhum horário livre neste dia.</p>
               ) : (
                 <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
-                  {(editAvailability?.slots ?? []).map(({ time: value, available }) => {
+                  {(editAvailability?.slots ?? []).filter(({ time: value, available }) => {
+                    const isCurrent = editTarget ? format(new Date(editTarget.scheduledAt), "HH:mm") === value && sameDay(editDate, new Date(editTarget.scheduledAt)) : false;
+                    return available || isCurrent;
+                  }).map(({ time: value, available }) => {
                     const isSelected = editTime === value;
                     const isCurrent = editTarget ? format(new Date(editTarget.scheduledAt), "HH:mm") === value && sameDay(editDate, new Date(editTarget.scheduledAt)) : false;
                     const isAvail = available || isCurrent;
