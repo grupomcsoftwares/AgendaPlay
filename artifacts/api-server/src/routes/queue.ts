@@ -1,10 +1,11 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, sql, and } from "drizzle-orm";
-import { db, queueTable, appointmentsTable } from "@workspace/db";
+import { db, queueTable, appointmentsTable, barbersTable } from "@workspace/db";
 import {
   AddToQueueBody,
   RemoveFromQueueParams,
   StartQueueEntryParams,
+  StartQueueEntryBody,
 } from "@workspace/api-zod";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 
@@ -73,9 +74,13 @@ router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void
 function formatEntry(
   e: typeof queueTable.$inferSelect,
   scheduledAt: Date | null = null,
+  barberId: number | null = e.barberId,
+  barberName: string | null = null,
 ) {
   return {
     ...e,
+    barberId,
+    barberName,
     servicePrice: parseFloat(e.servicePrice),
     startedAt: e.startedAt ? e.startedAt.toISOString() : null,
     scheduledAt: scheduledAt ? scheduledAt.toISOString() : null,
@@ -121,40 +126,42 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
     }
   }
 
-  const stillInProgress = await tx
-    .select({ id: queueTable.id })
+  const active = await tx
+    .select({ barberId: queueTable.barberId })
     .from(queueTable)
     .where(and(eq(queueTable.userId, userId), eq(queueTable.status, "in_progress")))
-    .limit(1);
-  if (stillInProgress.length > 0) return;
+  const activeBarberIds = new Set(active.flatMap((row) => row.barberId == null ? [] : [row.barberId]));
+  const availableBarbers = await tx
+    .select({ id: barbersTable.id })
+    .from(barbersTable)
+    .where(and(eq(barbersTable.userId, userId), eq(barbersTable.active, true)));
+  const available = availableBarbers.filter((barber) => !activeBarberIds.has(barber.id));
+  if (available.length === 0) return;
 
   const candidates = await tx
-    .select({
-      id: queueTable.id,
-      position: queueTable.position,
-      appointmentId: queueTable.appointmentId,
-      scheduledAt: appointmentsTable.scheduledAt,
-    })
+    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
     .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'waiting'`))
     // Same ordering as GET /queue: by scheduled time, walk-ins last by position
     .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
 
-  const next = candidates.find(
-    (c) => c.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now),
-  );
-  if (!next) return;
-
-  await tx
-    .update(queueTable)
-    .set({ status: "in_progress", startedAt: new Date() })
-    .where(eq(queueTable.id, next.id));
-  if (next.appointmentId !== null) {
+  for (const barber of available) {
+    const next = candidates.find(
+      (c) => c.queue.barberId === barber.id &&
+        (c.queue.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now)),
+    );
+    if (!next) continue;
     await tx
-      .update(appointmentsTable)
-      .set({ status: "in_progress" })
-      .where(eq(appointmentsTable.id, next.appointmentId));
+      .update(queueTable)
+      .set({ status: "in_progress", startedAt: new Date() })
+      .where(and(eq(queueTable.id, next.queue.id), eq(queueTable.status, "waiting")));
+    if (next.queue.appointmentId !== null) {
+      await tx
+        .update(appointmentsTable)
+        .set({ status: "in_progress" })
+        .where(eq(appointmentsTable.id, next.queue.appointmentId));
+    }
   }
 }
 
@@ -163,9 +170,16 @@ router.get("/queue", requireActiveAuth, async (req, res): Promise<void> => {
   // Reading the queue must never change its state. In particular, opening the
   // TV must not start the next client or reset a startedAt timestamp.
   const rows = await db
-    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
+    .select({
+      queue: queueTable,
+      scheduledAt: appointmentsTable.scheduledAt,
+      appointmentBarberId: appointmentsTable.barberId,
+      appointmentBarberName: appointmentsTable.barberName,
+      barberName: barbersTable.name,
+    })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
+    .leftJoin(barbersTable, eq(queueTable.barberId, barbersTable.id))
     .where(and(
       eq(queueTable.userId, userId),
       sql`${queueTable.status} != 'completed'`,
@@ -174,7 +188,12 @@ router.get("/queue", requireActiveAuth, async (req, res): Promise<void> => {
       sql`(${queueTable.appointmentId} IS NULL OR ${appointmentsTable.status} NOT IN ('completed', 'cancelled'))`,
     ))
     .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
-  res.json(rows.map((r) => formatEntry(r.queue, r.scheduledAt)));
+  res.json(rows.map((r) => formatEntry(
+    r.queue,
+    r.scheduledAt,
+    r.queue.barberId ?? r.appointmentBarberId,
+    r.barberName ?? r.appointmentBarberName,
+  )));
 });
 
 router.post("/queue", requireActiveAuth, async (req, res): Promise<void> => {
@@ -184,6 +203,16 @@ router.post("/queue", requireActiveAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = req.session.userId!;
+  if (parsed.data.barberId != null) {
+    const [barber] = await db.select({ id: barbersTable.id })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.id, parsed.data.barberId), eq(barbersTable.userId, userId), eq(barbersTable.active, true)))
+      .limit(1);
+    if (!barber) {
+      res.status(400).json({ error: "Barbeiro inválido ou inativo." });
+      return;
+    }
+  }
   const entry = await db.transaction(async (tx) => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
     const [maxResult] = await tx
@@ -202,7 +231,7 @@ router.post("/queue", requireActiveAuth, async (req, res): Promise<void> => {
     await autoAdvanceInTx(tx, userId);
     return created;
   });
-  res.status(201).json(formatEntry(entry));
+  res.status(201).json(formatEntry(entry, null, entry.barberId, null));
 });
 
 router.delete("/queue/:id", requireActiveAuth, async (req, res): Promise<void> => {
@@ -248,14 +277,25 @@ router.post("/queue/:id/start", requireActiveAuth, async (req, res): Promise<voi
     return;
   }
   const userId = req.session.userId!;
+  const body = StartQueueEntryBody.safeParse(req.body ?? {});
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
   const entry = await db.transaction(async (tx) => {
     // Serialize starts and only allow an entry that is still waiting to start.
     // A stale TV/panel request must not restart an in-progress or completed row.
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742002")})`);
 
     const [candidate] = await tx
-      .select({ id: queueTable.id })
+      .select({
+        id: queueTable.id,
+        barberId: queueTable.barberId,
+        appointmentId: queueTable.appointmentId,
+        appointmentBarberId: appointmentsTable.barberId,
+      })
       .from(queueTable)
+      .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
       .where(and(
         eq(queueTable.id, params.data.id),
         eq(queueTable.userId, userId),
@@ -263,25 +303,28 @@ router.post("/queue/:id/start", requireActiveAuth, async (req, res): Promise<voi
       ))
       .limit(1);
     if (!candidate) return null;
-
-    const previouslyActive = await tx
-      .update(queueTable)
-      .set({ status: "completed" })
-      .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'in_progress'`))
-      .returning({ appointmentId: queueTable.appointmentId });
-    const linkedIds = previouslyActive
-      .map((r) => r.appointmentId)
-      .filter((v): v is number => v != null);
-    if (linkedIds.length > 0) {
-      await tx
-        .update(appointmentsTable)
-        .set({ status: "completed" })
-        .where(sql`${appointmentsTable.id} IN (${sql.join(linkedIds, sql`, `)})`);
+    const assignedBarberId = candidate.barberId ?? candidate.appointmentBarberId;
+    if (assignedBarberId != null && body.data.barberId != null && body.data.barberId !== assignedBarberId) {
+      return null;
     }
+    const targetBarberId = body.data.barberId != null
+      ? body.data.barberId
+      : assignedBarberId;
+    if (targetBarberId == null) return null;
+    const [barber] = await tx.select({ id: barbersTable.id })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.id, targetBarberId), eq(barbersTable.userId, userId), eq(barbersTable.active, true)))
+      .limit(1);
+    if (!barber) return null;
+    const [busy] = await tx.select({ id: queueTable.id })
+      .from(queueTable)
+      .where(and(eq(queueTable.userId, userId), eq(queueTable.barberId, targetBarberId), eq(queueTable.status, "in_progress")))
+      .limit(1);
+    if (busy) return null;
 
     const [started] = await tx
       .update(queueTable)
-      .set({ status: "in_progress", startedAt: new Date() })
+      .set({ barberId: targetBarberId, status: "in_progress", startedAt: new Date() })
       .where(and(
         eq(queueTable.id, params.data.id),
         eq(queueTable.userId, userId),

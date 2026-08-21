@@ -64,6 +64,7 @@ import type {
   Settings,
   SettingsUpdate,
   SlugUpdate,
+  StartQueueEntryBody,
   SubscriptionCheckResult,
   SubscriptionPlan,
   SubscriptionPlanInput,
@@ -2692,14 +2693,16 @@ export const getStartQueueEntryUrl = (id: number,) => {
 /**
  * @summary Start serving a queue entry
  */
-export const startQueueEntry = async (id: number, options?: RequestInit): Promise<QueueEntry> => {
+export const startQueueEntry = async (id: number,
+    startQueueEntryBody?: StartQueueEntryBody, options?: RequestInit): Promise<QueueEntry> => {
 
   return customFetch<QueueEntry>(getStartQueueEntryUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      startQueueEntryBody,)
   }
 );}
 
@@ -2707,8 +2710,8 @@ export const startQueueEntry = async (id: number, options?: RequestInit): Promis
 
 
 export const getStartQueueEntryMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number;data?: BodyType<StartQueueEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number;data?: BodyType<StartQueueEntryBody>}, TContext> => {
 
 const mutationKey = ['startQueueEntry'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -2720,10 +2723,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startQueueEntry>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startQueueEntry>>, {id: number;data?: BodyType<StartQueueEntryBody>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  startQueueEntry(id,requestOptions)
+          return  startQueueEntry(id,data,requestOptions)
         }
 
 
@@ -2734,18 +2737,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type StartQueueEntryMutationResult = NonNullable<Awaited<ReturnType<typeof startQueueEntry>>>
-
+    export type StartQueueEntryMutationBody = BodyType<StartQueueEntryBody> | undefined
     export type StartQueueEntryMutationError = ErrorType<unknown>
 
     /**
  * @summary Start serving a queue entry
  */
 export const useStartQueueEntry = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startQueueEntry>>, TError,{id: number;data?: BodyType<StartQueueEntryBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof startQueueEntry>>,
         TError,
-        {id: number},
+        {id: number;data?: BodyType<StartQueueEntryBody>},
         TContext
       > => {
       return useMutation(getStartQueueEntryMutationOptions(options));

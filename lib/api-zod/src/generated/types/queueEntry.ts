@@ -10,6 +10,10 @@ export interface QueueEntry {
   id: number;
   /** @nullable */
   appointmentId?: number | null;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
   clientName: string;
   serviceName: string;
   servicePrice: number;

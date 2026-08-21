@@ -751,6 +751,16 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                barberId:
+                  type: integer
+                  minimum: 1
       responses:
         "200":
           description: Started
@@ -1820,6 +1830,10 @@ components:
           type: integer
         appointmentId:
           type: ["integer", "null"]
+        barberId:
+          type: ["integer", "null"]
+        barberName:
+          type: ["string", "null"]
         clientName:
           type: string
         serviceName:
@@ -1855,6 +1869,9 @@ components:
           type: integer
         notes:
           type: string
+        barberId:
+          type: integer
+          minimum: 1
 
     DashboardSummary:
       type: object

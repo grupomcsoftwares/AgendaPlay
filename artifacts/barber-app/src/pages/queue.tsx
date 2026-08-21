@@ -8,6 +8,8 @@ import {
   getListQueueQueryKey,
   useListServices,
   getListServicesQueryKey,
+  useListBarbers,
+  getListBarbersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Scissors, Clock, Plus, Play, Trash2, ArrowLeft } from "lucide-react";
@@ -167,6 +169,7 @@ function QueueContent() {
     },
   });
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
+  const { data: barbers } = useListBarbers({ activeOnly: true }, { query: { queryKey: getListBarbersQueryKey({ activeOnly: true }) } });
   const addToQueue = useAddToQueue();
   const removeFromQueue = useRemoveFromQueue();
   const startQueueEntry = useStartQueueEntry();
@@ -174,12 +177,14 @@ function QueueContent() {
   const { toast } = useToast();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [formData, setFormData] = useState({ clientName: "", serviceId: "" });
+  const [formData, setFormData] = useState({ clientName: "", serviceId: "", barberId: "" });
+  const [selectedBarberByEntry, setSelectedBarberByEntry] = useState<Record<number, string>>({});
 
-  const currentEntry = queue?.find((q) => q.status === "in_progress") ?? null;
+  const activeEntries = queue?.filter((q) => q.status === "in_progress") ?? [];
+  const currentEntry = activeEntries[0] ?? null;
   const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
 
-  const prevEntryId = useRef<number | null>(null);
+  const prevEntryId = useRef("");
 
   // ── Real-time queue updates via SSE ──────────────────────────────────
   useEffect(() => {
@@ -296,16 +301,16 @@ function QueueContent() {
 
   // Sounds: play when service starts or ends
   useEffect(() => {
-    const newId = currentEntry?.id ?? null;
-    if (prevEntryId.current !== newId) {
-      if (newId !== null && prevEntryId.current === null) {
+    const newIds = activeEntries.map((entry) => entry.id).sort((a, b) => a - b).join(",");
+    if (prevEntryId.current !== newIds) {
+      if (activeEntries.length > 0 && prevEntryId.current === "") {
         playServiceStart();
-      } else if (newId === null && prevEntryId.current !== null) {
+      } else if (activeEntries.length === 0 && prevEntryId.current !== "") {
         playServiceEnd();
       }
-      prevEntryId.current = newId;
+      prevEntryId.current = newIds;
     }
-  }, [currentEntry?.id]);
+  }, [activeEntries]);
 
   // Alert: play sound when next appointment is ~15 min away
   useEffect(() => {
@@ -334,22 +339,23 @@ function QueueContent() {
           serviceName: service.name,
           servicePrice: service.price,
           serviceDuration: service.durationMinutes,
+          ...(formData.barberId ? { barberId: Number(formData.barberId) } : {}),
         },
       },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
           setIsAddOpen(false);
-          setFormData({ clientName: "", serviceId: "" });
+          setFormData({ clientName: "", serviceId: "", barberId: "" });
           toast({ title: "Cliente adicionado à fila" });
         },
       }
     );
   };
 
-  const handleStart = (id: number) => {
+  const handleStart = (id: number, barberId?: number | null) => {
     startQueueEntry.mutate(
-      { id },
+      { id, ...(barberId ? { data: { barberId } } : {}) },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
@@ -439,11 +445,65 @@ function QueueContent() {
       >
         {/* Left column */}
         <div className="flex flex-col overflow-hidden" style={{ flex: "1 1 65%", gap: "0.75em", minHeight: 0 }}>
+          <div
+            className="grid min-h-0 flex-1 gap-3"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", overflowY: "auto" }}
+            data-testid="queue-barber-grid"
+          >
+            {(barbers ?? []).map((barber) => {
+              const entry = activeEntries.find((candidate) => candidate.barberId === barber.id);
+              return (
+                <div
+                  key={barber.id}
+                  className="relative flex min-h-[190px] flex-col justify-between overflow-hidden rounded-xl p-4"
+                  style={{
+                    border: entry ? "2px solid hsl(var(--sidebar-primary))" : "1px solid hsl(0 0% 14%)",
+                    backgroundColor: "hsl(0 0% 6%)",
+                  }}
+                  data-testid={`barber-card-${barber.id}`}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest">
+                    <span style={{ color: "hsl(var(--sidebar-primary))" }}>{barber.name}</span>
+                    <span style={{ color: entry ? "hsl(var(--sidebar-primary))" : "hsl(0 0% 38%)" }}>
+                      {entry ? "Atendendo" : "Livre"}
+                    </span>
+                  </div>
+                  {entry ? (
+                    <>
+                      <div className="min-w-0">
+                        <p className="truncate text-2xl font-black uppercase">{entry.clientName}</p>
+                        <p className="truncate text-sm" style={{ color: "hsl(0 0% 55%)" }}>{entry.serviceName}</p>
+                      </div>
+                      {entry.startedAt && <ServiceProgress startedAt={entry.startedAt} durationMinutes={entry.serviceDuration} />}
+                      <button
+                        onClick={() => handleRemove(entry.id)}
+                        className="rounded-md border px-3 py-2 text-xs font-semibold"
+                        style={{ borderColor: "hsl(0 0% 25%)", color: "hsl(0 0% 70%)" }}
+                        data-testid={`button-complete-barber-${barber.id}`}
+                      >
+                        Finalizar atendimento
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center">
+                      <Scissors style={{ width: "2em", height: "2em", color: "hsl(0 0% 28%)" }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {barbers?.length === 0 && (
+              <div className="rounded-xl p-6 text-sm" style={{ color: "hsl(0 0% 48%)" }}>
+                Cadastre barbeiros ativos para exibir as cadeiras.
+              </div>
+            )}
+          </div>
 
           {/* Cadeira atual */}
           <div
             className="relative flex flex-col items-center justify-center overflow-hidden"
-            style={{
+             style={{
+               display: "none",
               flex: "1 1 0%",
               minHeight: 0,
               borderRadius: "0.6em",
@@ -628,7 +688,7 @@ function QueueContent() {
                 </div>
                 <div className="flex items-center" style={{ gap: "0.6em" }}>
                   {nextEntry.scheduledAt && <DigitalTime scheduledAt={nextEntry.scheduledAt} />}
-                  {!currentEntry && (
+                  {!activeEntries.length && (
                     <button
                       onClick={() => handleStart(nextEntry.id)}
                       data-testid={`button-start-${nextEntry.id}`}
@@ -748,9 +808,25 @@ function QueueContent() {
                       <div>
                         <p style={{ fontWeight: 600, fontSize: "0.73em" }}>{entry.clientName}</p>
                         <p style={{ color: "hsl(0 0% 40%)", fontSize: "0.62em" }}>{entry.serviceName}</p>
+                        <p style={{ color: "hsl(var(--sidebar-primary))", fontSize: "0.58em" }}>
+                          {entry.barberName ? `Barbeiro: ${entry.barberName}` : "Sem barbeiro atribuído"}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center" style={{ gap: "0.3em" }}>
+                      <div className="flex items-center" style={{ gap: "0.3em" }}>
+                        {!entry.barberId && (
+                          <select
+                            value={selectedBarberByEntry[entry.id] ?? ""}
+                            onChange={(event) => setSelectedBarberByEntry((previous) => ({ ...previous, [entry.id]: event.target.value }))}
+                            aria-label={`Barbeiro para ${entry.clientName}`}
+                            style={{ maxWidth: "8em", background: "hsl(0 0% 12%)", color: "inherit", border: "1px solid hsl(0 0% 25%)", borderRadius: "0.25em", fontSize: "0.58em", padding: "0.25em" }}
+                          >
+                            <option value="">Atribuir</option>
+                            {barbers?.map((barber) => (
+                              <option key={barber.id} value={barber.id}>{barber.name}</option>
+                            ))}
+                          </select>
+                        )}
                       {entry.scheduledAt && (() => {
                         const sd = new Date(entry.scheduledAt);
                         const { label, isToday } = dayLabel(sd);
@@ -783,7 +859,7 @@ function QueueContent() {
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.35")}
                       >
                         <button
-                          onClick={() => handleStart(entry.id)}
+                          onClick={() => handleStart(entry.id, entry.barberId ?? Number(selectedBarberByEntry[entry.id]))}
                           data-testid={`button-start-list-${entry.id}`}
                           data-tvfocus
                           tabIndex={0}
@@ -859,6 +935,19 @@ function QueueContent() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Barbeiro (opcional)</Label>
+              <Select value={formData.barberId} onValueChange={(v) => setFormData({ ...formData, barberId: v })}>
+                <SelectTrigger data-testid="select-queue-barber">
+                  <SelectValue placeholder="Atribuir depois" />
+                </SelectTrigger>
+                <SelectContent>
+                  {barbers?.map((barber) => (
+                    <SelectItem key={barber.id} value={barber.id.toString()}>{barber.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -887,13 +976,5 @@ function isTVView() {
 }
 
 export default function Queue() {
-  const [, setLocation] = useLocation();
-  const tvView = isTVView();
-
-  useEffect(() => {
-    if (!tvView) setLocation("/dashboard");
-  }, [setLocation, tvView]);
-
-  if (!tvView) return null;
   return <QueueContent />;
 }

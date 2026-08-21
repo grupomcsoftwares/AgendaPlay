@@ -339,30 +339,19 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
         .where(inArray(appointmentsTable.id, completedAppointmentIds));
     }
 
-    // Do not automatically start another appointment while a walk-in or
-    // another appointment is still being served.
     const activeQueue = await tx
-      .select({ id: queueTable.id })
+      .select({ barberId: queueTable.barberId })
       .from(queueTable)
       .where(and(
         eq(queueTable.userId, userId),
         eq(queueTable.status, "in_progress"),
-      ))
-      .limit(1);
-    const activeAppointment = await tx
-      .select({ id: appointmentsTable.id })
-      .from(appointmentsTable)
-      .where(and(
-        eq(appointmentsTable.userId, userId),
-        eq(appointmentsTable.status, "in_progress"),
-      ))
-      .limit(1);
-
-    if (activeQueue.length > 0 || activeAppointment.length > 0) return;
-
-    // Start only the earliest appointment that is due. This avoids starting
-    // several delayed appointments at the same time after the server wakes up.
-    const [nextDue] = await tx
+      ));
+    const activeBarberIds = new Set(activeQueue.flatMap((row) => row.barberId == null ? [] : [row.barberId]));
+    const availableBarbers = await tx
+      .select({ id: barbersTable.id })
+      .from(barbersTable)
+      .where(and(eq(barbersTable.userId, userId), eq(barbersTable.active, true)));
+    const dueAppointments = await tx
       .select({ id: appointmentsTable.id })
       .from(appointmentsTable)
       .where(and(
@@ -371,29 +360,34 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
         lt(appointmentsTable.scheduledAt, now),
       ))
       .orderBy(appointmentsTable.scheduledAt)
-      .limit(1);
+      .limit(availableBarbers.length);
 
-    if (!nextDue) return;
-
-    const started = await tx
-      .update(appointmentsTable)
-      .set({ status: "in_progress" })
-      .where(
-        and(
-          eq(appointmentsTable.id, nextDue.id),
+    for (const due of dueAppointments) {
+      const [appointment] = await tx
+        .select({ barberId: appointmentsTable.barberId })
+        .from(appointmentsTable)
+        .where(eq(appointmentsTable.id, due.id))
+        .limit(1);
+      const targetBarberId = appointment?.barberId;
+      if (targetBarberId == null || activeBarberIds.has(targetBarberId)) continue;
+      if (!availableBarbers.some((barber) => barber.id === targetBarberId)) continue;
+      const started = await tx
+        .update(appointmentsTable)
+        .set({ status: "in_progress" })
+        .where(and(
+          eq(appointmentsTable.id, due.id),
           eq(appointmentsTable.userId, userId),
           eq(appointmentsTable.status, "pending"),
-        ),
-      )
-      .returning({ id: appointmentsTable.id });
-
-    if (started.length > 0) {
+        ))
+        .returning({ id: appointmentsTable.id });
+      if (started.length === 0) continue;
+      activeBarberIds.add(targetBarberId);
       queueChanged = true;
       await tx
         .update(queueTable)
-        .set({ status: "in_progress", startedAt: now })
+        .set({ barberId: targetBarberId, status: "in_progress", startedAt: now })
         .where(and(
-          inArray(queueTable.appointmentId, started.map((appointment) => appointment.id)),
+          eq(queueTable.appointmentId, due.id),
           sql`${queueTable.status} = 'waiting'`,
         ));
     }
@@ -1039,6 +1033,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
       await tx.insert(queueTable).values({
         userId: shopId,
         appointmentId: created.id,
+        barberId: created.barberId,
         clientName: created.clientName,
         serviceName: created.serviceName,
         servicePrice: created.servicePrice,
@@ -1498,6 +1493,7 @@ router.post("/appointments/:id/approve-payment", requireActiveAuth, async (req, 
     await tx.insert(queueTable).values({
       userId,
       appointmentId: existing.id,
+      barberId: existing.barberId,
       clientName: existing.clientName,
       serviceName: existing.serviceName,
       servicePrice: existing.servicePrice,

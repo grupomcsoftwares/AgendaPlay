@@ -358,6 +358,10 @@ export interface QueueEntry {
   id: number;
   /** @nullable */
   appointmentId?: number | null;
+  /** @nullable */
+  barberId?: number | null;
+  /** @nullable */
+  barberName?: string | null;
   clientName: string;
   serviceName: string;
   servicePrice: number;
@@ -379,6 +383,8 @@ export interface QueueInput {
   servicePrice: number;
   serviceDuration: number;
   notes?: string;
+  /** @minimum 1 */
+  barberId?: number;
 }
 
 export interface DashboardSummary {
@@ -905,6 +911,11 @@ barberId?: number;
  * Public cancel token of the appointment being rescheduled. Only that appointment is excluded from conflicts.
  */
 excludeAppointmentToken?: string;
+};
+
+export type StartQueueEntryBody = {
+  /** @minimum 1 */
+  barberId?: number;
 };
 
 export type GetFinancialSummaryParams = {

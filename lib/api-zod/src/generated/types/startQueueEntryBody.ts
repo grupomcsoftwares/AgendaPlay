@@ -6,12 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface QueueInput {
-  clientName: string;
-  serviceName: string;
-  servicePrice: number;
-  serviceDuration: number;
-  notes?: string;
+export type StartQueueEntryBody = {
   /** @minimum 1 */
   barberId?: number;
-}
+};

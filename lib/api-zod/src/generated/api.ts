@@ -768,6 +768,8 @@ export const GetAvailabilityResponse = zod.object({
 export const ListQueueResponseItem = zod.object({
   "id": zod.number(),
   "appointmentId": zod.number().nullish(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "clientName": zod.string(),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),
@@ -785,12 +787,16 @@ export const ListQueueResponse = zod.array(ListQueueResponseItem)
 /**
  * @summary Add client to queue
  */
+
+
+
 export const AddToQueueBody = zod.object({
   "clientName": zod.string(),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),
   "serviceDuration": zod.number(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "barberId": zod.number().min(1).optional()
 })
 
 
@@ -809,9 +815,18 @@ export const StartQueueEntryParams = zod.object({
   "id": zod.coerce.number()
 })
 
+
+
+
+export const StartQueueEntryBody = zod.object({
+  "barberId": zod.number().min(1).optional()
+})
+
 export const StartQueueEntryResponse = zod.object({
   "id": zod.number(),
   "appointmentId": zod.number().nullish(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
   "clientName": zod.string(),
   "serviceName": zod.string(),
   "servicePrice": zod.number(),

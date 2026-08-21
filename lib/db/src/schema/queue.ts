@@ -11,6 +11,7 @@ export const queueTable = pgTable(
     appointmentId: integer("appointment_id").references(() => appointmentsTable.id, {
       onDelete: "set null",
     }),
+    barberId: integer("barber_id"),
     clientName: text("client_name").notNull(),
     serviceName: text("service_name").notNull(),
     servicePrice: numeric("service_price", { precision: 10, scale: 2 }).notNull(),

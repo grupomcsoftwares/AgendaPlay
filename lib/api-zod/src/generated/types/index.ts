@@ -74,6 +74,7 @@ export * from './settingsUpdate';
 export * from './settingsUpdateReceiptPrinterSize';
 export * from './settingsUpdateServiceExclusionsItem';
 export * from './slugUpdate';
+export * from './startQueueEntryBody';
 export * from './subscriptionCheckResult';
 export * from './subscriptionPlan';
 export * from './subscriptionPlanInput';
