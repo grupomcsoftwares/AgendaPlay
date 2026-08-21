@@ -642,7 +642,9 @@ router.get("/availability", async (req, res): Promise<void> => {
         ? 20
         : 10;
   const step = smartSlots
-    ? Math.max(5, adaptiveSmartStep)
+    // Very short services should not flood the booking screen with nearly
+    // identical options. Keep at least 20 minutes between suggested starts.
+    ? Math.max(20, adaptiveSmartStep)
     : Math.max(5, slotIntervalMinutes);
   const firstSlotMin = smartSlots && nowMin >= 0
     ? Math.max(openMin, Math.ceil((nowMin + minAdvanceMinutes) / 5) * 5)
