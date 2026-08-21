@@ -628,11 +628,22 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
-  // Smart slots use the service duration as the step, but today's first slot
-  // must be based on the current time rather than anchored to opening time.
-  // Otherwise a shop opened at 08:00 with an 18-minute service could show
-  // 13:42 as the first option at 13:29 even though 13:30 is free.
-  const step = smartSlots ? Math.max(5, duration) : Math.max(5, slotIntervalMinutes);
+  // Smart Slots adapts its granularity to the day's demand. On an empty day
+  // the service duration avoids an unnecessarily long list; as the schedule
+  // fills up, smaller increments expose useful gaps between appointments.
+  // The duration check in the loop below still guarantees that no slot runs
+  // past closing time.
+  const blockingAppointmentCount = blocked.length;
+  const adaptiveSmartStep = blockingAppointmentCount === 0
+    ? duration
+    : blockingAppointmentCount <= 5
+      ? 30
+      : blockingAppointmentCount <= 10
+        ? 20
+        : 10;
+  const step = smartSlots
+    ? Math.max(5, adaptiveSmartStep)
+    : Math.max(5, slotIntervalMinutes);
   const firstSlotMin = smartSlots && nowMin >= 0
     ? Math.max(openMin, Math.ceil((nowMin + minAdvanceMinutes) / 5) * 5)
     : openMin;
