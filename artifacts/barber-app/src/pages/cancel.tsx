@@ -259,6 +259,7 @@ export default function CancelBooking() {
   const paymentRejected = appointment.status === "payment_rejected";
   const cancelled = appointment.status === "cancelled" || paymentRejected;
   const locked = appointment.status === "in_progress" || appointment.status === "completed";
+  const paidInAdvance = appointment.paymentMethod === "now";
   const paymentPending = appointment.status === "pending_payment";
 
   // Show notification gate for active appointments the user hasn't interacted with yet
@@ -563,6 +564,20 @@ export default function CancelBooking() {
               )}
             </div>
           </div>
+        ) : paidInAdvance ? (
+          <div className="space-y-3">
+            <p className="text-sm text-center text-muted-foreground">
+              Este agendamento foi pago antecipadamente e não pode ser cancelado pelo link. Você pode mudar o horário e manter seu pagamento.
+            </p>
+            <Button
+              className="w-full"
+              data-testid="button-reschedule-paid-booking"
+              onClick={openReschedule}
+            >
+              <CalendarClock className="mr-2 h-4 w-4" />
+              Mudar horário
+            </Button>
+          </div>
         ) : locked ? (
           <div className="space-y-3">
             <p className="text-sm text-center text-muted-foreground">
@@ -734,20 +749,22 @@ export default function CancelBooking() {
                 <CalendarClock className="w-4 h-4" />
                 Mudar horário
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirming(true)}
-                data-testid="button-cancel"
-                className="rounded-xl py-3 text-sm font-semibold"
-                style={{
-                  backgroundColor: "hsl(0 0% 9%)",
-                  border: "1px solid hsl(0 62% 50% / 0.4)",
-                  color: "hsl(0 70% 65%)",
-                  cursor: "pointer",
-                }}
-              >
-                Cancelar
-              </button>
+              {!paidInAdvance && (
+                <button
+                  type="button"
+                  onClick={() => setConfirming(true)}
+                  data-testid="button-cancel"
+                  className="rounded-xl py-3 text-sm font-semibold"
+                  style={{
+                    backgroundColor: "hsl(0 0% 9%)",
+                    border: "1px solid hsl(0 62% 50% / 0.4)",
+                    color: "hsl(0 70% 65%)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
           </div>
         )}

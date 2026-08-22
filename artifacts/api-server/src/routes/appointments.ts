@@ -1671,6 +1671,7 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
       .where(eq(appointmentsTable.cancelToken, token));
     if (!existing) return { error: "notfound" as const };
     if (existing.status === "cancelled") return { appointment: existing };
+    if (existing.paymentMethod === "now") return { error: "prepaid" as const };
     if (existing.status === "completed" || existing.status === "in_progress") {
       return { error: "locked" as const };
     }
@@ -1704,6 +1705,10 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
   }
   if (result.error === "locked") {
     res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído e não pode ser cancelado." });
+    return;
+  }
+  if (result.error === "prepaid") {
+    res.status(409).json({ error: "Agendamentos pagos antecipadamente não podem ser cancelados. Escolha outro horário." });
     return;
   }
   if (result.appointment) {
