@@ -1685,25 +1685,15 @@ router.post("/appointments/by-token/:token/cancel", async (req, res): Promise<vo
     if (!updated) return { error: "locked" as const };
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, existing.id));
 
-    // Reverse loyalty points: return redeemed pts, subtract earned pts.
+    // A client-initiated cancellation from the public link forfeits the
+    // client's entire accumulated loyalty balance.
     const phoneMatch = existing.notes?.match(/Tel:\s*([^.]+)/);
     const loyaltyPhone = phoneMatch ? (phoneMatch[1] ?? "").replace(/\D/g, "") || null : null;
-    const netChange = existing.loyaltyPointsRedeemed - existing.loyaltyPointsEarned;
-    if (loyaltyPhone && netChange !== 0) {
-      if (netChange > 0) {
-        await tx
-          .insert(loyaltyPointsTable)
-          .values({ userId: existing.userId, clientPhone: loyaltyPhone, points: netChange })
-          .onConflictDoUpdate({
-            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-            set: { points: sql`${loyaltyPointsTable.points} + ${netChange}`, updatedAt: new Date() },
-          });
-      } else {
-        await tx
-          .update(loyaltyPointsTable)
-          .set({ points: sql`GREATEST(0, ${loyaltyPointsTable.points} + ${netChange})`, updatedAt: new Date() })
-          .where(and(eq(loyaltyPointsTable.userId, existing.userId), eq(loyaltyPointsTable.clientPhone, loyaltyPhone)));
-      }
+    if (loyaltyPhone) {
+      await tx
+        .update(loyaltyPointsTable)
+        .set({ points: 0, updatedAt: new Date() })
+        .where(and(eq(loyaltyPointsTable.userId, existing.userId), eq(loyaltyPointsTable.clientPhone, loyaltyPhone)));
     }
 
     return { appointment: updated };

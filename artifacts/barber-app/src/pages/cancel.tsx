@@ -565,7 +565,20 @@ export default function CancelBooking() {
           </div>
         ) : confirming ? (
           <div className="space-y-3">
-            <p className="text-sm text-center text-muted-foreground">Tem certeza? Esta ação não pode ser desfeita.</p>
+            <div
+              className="rounded-xl p-4 flex items-start gap-3"
+              style={{ backgroundColor: "hsl(0 62% 50% / 0.12)", border: "1px solid hsl(0 62% 50% / 0.4)" }}
+            >
+              <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: "hsl(0 70% 65%)" }} />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold" style={{ color: "hsl(0 70% 75%)" }}>
+                  Atenção: seus pontos acumulados serão zerados.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Se você continuar com o cancelamento, perderá todo o saldo de pontos da barbearia. Esta ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={() => setConfirming(false)} disabled={cancelMut.isPending}>
                 Voltar
