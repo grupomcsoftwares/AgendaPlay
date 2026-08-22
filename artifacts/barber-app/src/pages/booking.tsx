@@ -107,6 +107,46 @@ type PendingAppointmentSummary = {
   status: string;
 };
 
+type StoredClientInfo = {
+  name?: string;
+  lastName?: string;
+  phone?: string;
+};
+
+function readClientInfo(key: string): StoredClientInfo | null {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved) as StoredClientInfo;
+  } catch {
+    // Safari private browsing can reject localStorage access.
+  }
+
+  try {
+    const cookie = document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith(`${encodeURIComponent(key)}=`));
+    if (!cookie) return null;
+    return JSON.parse(decodeURIComponent(cookie.slice(cookie.indexOf("=") + 1))) as StoredClientInfo;
+  } catch {
+    return null;
+  }
+}
+
+function saveClientInfo(key: string, info: StoredClientInfo): void {
+  const value = JSON.stringify(info);
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Continue with the cookie fallback below.
+  }
+
+  try {
+    document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; Max-Age=31536000; Path=/; SameSite=Lax`;
+  } catch {
+    // The booking itself must not fail if browser storage is unavailable.
+  }
+}
+
 type PublicWaitlistStatus = {
   desiredDate: string;
   serviceName: string;
@@ -521,14 +561,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   }>(() => {
     // Child booking via "Agendar outro corte" — use URL-provided name, inherit parent phone
     if (urlChildName) {
-      let parentPhone = "";
-      try {
-        const saved = localStorage.getItem(`barber_client_info_${shopId ?? "public"}`);
-        if (saved) {
-          const parsed = JSON.parse(saved) as { phone?: string };
-          parentPhone = parsed.phone ?? "";
-        }
-      } catch { /* ignore */ }
+      const parentPhone = readClientInfo(`barber_client_info_${shopId ?? "public"}`)?.phone ?? "";
       return {
         serviceIds: [],
         barberId: "",
@@ -542,24 +575,21 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         usePlan: false,
       };
     }
-    try {
-      const saved = localStorage.getItem(clientInfoKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as { name?: string; lastName?: string; phone?: string };
-        return {
-          serviceIds: [],
-          barberId: "",
-          date: new Date(),
-          time: "",
-          name: parsed.name ?? "",
-          lastName: parsed.lastName ?? "",
-          phone: parsed.phone ?? "",
-          notes: "",
-          paymentMethod: "on_site",
-          usePlan: false,
-        };
-      }
-    } catch { /* ignore */ }
+    const saved = readClientInfo(clientInfoKey);
+    if (saved) {
+      return {
+        serviceIds: [],
+        barberId: "",
+        date: new Date(),
+        time: "",
+        name: saved.name ?? "",
+        lastName: saved.lastName ?? "",
+        phone: saved.phone ?? "",
+        notes: "",
+        paymentMethod: "on_site",
+        usePlan: false,
+      };
+    }
     return {
       serviceIds: [],
       barberId: "",
@@ -596,18 +626,25 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           if (prev.name === first && prev.lastName === last) return prev;
           return { ...prev, name: first, lastName: last };
         });
-        try {
-          const key = `barber_client_info_${sid}`;
-          const saved = localStorage.getItem(key);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            localStorage.setItem(key, JSON.stringify({ ...parsed, name: first, lastName: last }));
-          }
-        } catch { /* ignore */ }
+        const key = `barber_client_info_${sid}`;
+        const saved = readClientInfo(key);
+        if (saved) saveClientInfo(key, { ...saved, name: first, lastName: last });
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBookingForAnotherPerson]);
+
+  // Save while the client fills the first step, not only after booking succeeds.
+  // This protects the form data when Safari suspends or reloads the page during
+  // the transition to the confirmation screen.
+  useEffect(() => {
+    if (isBookingForAnotherPerson || !formData.name.trim() || !formData.phone.trim()) return;
+    saveClientInfo(clientInfoKey, {
+      name: formData.name,
+      lastName: formData.lastName,
+      phone: formData.phone,
+    });
+  }, [clientInfoKey, formData.name, formData.lastName, formData.phone, isBookingForAnotherPerson]);
 
   const handleBook = () => {
     if (selectedServices.length === 0) return;
