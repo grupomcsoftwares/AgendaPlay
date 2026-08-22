@@ -1101,6 +1101,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const paymentEnableNow = settings?.paymentEnableNow ?? false;
   const paymentEnableOnSite = settings?.paymentEnableOnSite ?? true;
   const pixKey = settings?.pixKey ?? null;
+  const prepaymentBonusPoints = settings?.loyaltyConfig?.prepaymentBonusPoints ?? 0;
   const enabledPayments = ([
     paymentEnableNow ? ("now" as const) : null,
     paymentEnableOnSite ? ("on_site" as const) : null,
@@ -1486,6 +1487,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     </div>
                     <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(0 0% 40%)" }} />
                   </button>
+                    {value === "now" && settings?.loyaltyConfig?.enabled && prepaymentBonusPoints > 0 && (
+                      <p className="mt-2 text-xs font-medium" style={{ color: AMBER }}>
+                        Ganhe mais {prepaymentBonusPoints.toLocaleString("pt-BR")} pontos após a aprovação do Pix
+                      </p>
+                    )}
                 );
               })}
             </div>

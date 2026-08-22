@@ -22,6 +22,7 @@ function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyal
   if (!config) return config;
   return {
     ...config,
+      prepaymentBonusPoints: Math.max(0, Math.floor(config.prepaymentBonusPoints ?? 0)),
     expirationDays: config.expirationDays ?? 0,
     expirationWarningDays: config.expirationWarningDays ?? 7,
   };
@@ -106,6 +107,7 @@ router.patch("/settings", requireActiveAuth, async (req, res): Promise<void> => 
     loyaltyConfig: parsed.data.loyaltyConfig
       ? {
           ...parsed.data.loyaltyConfig,
+          prepaymentBonusPoints: parsed.data.loyaltyConfig.prepaymentBonusPoints ?? 0,
           expirationDays: parsed.data.loyaltyConfig.expirationDays ?? 0,
           expirationWarningDays: parsed.data.loyaltyConfig.expirationWarningDays ?? 7,
         }

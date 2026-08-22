@@ -13,6 +13,7 @@ export type LoyaltyConfig = {
   enabled: boolean;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
+  prepaymentBonusPoints?: number;
   expirationDays?: 0 | 30 | 60 | 90;
   expirationWarningDays?: 7 | 15 | 30;
 };

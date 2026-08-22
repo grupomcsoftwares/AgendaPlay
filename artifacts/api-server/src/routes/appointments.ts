@@ -1091,6 +1091,9 @@ router.post("/appointments", async (req, res): Promise<void> => {
     let pointsEarned = 0;
     if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
       pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
+      if (awaitingPayment && loyaltyPointsRedeemed === 0) {
+        pointsEarned += Math.max(0, Math.floor(loyaltyConfig.prepaymentBonusPoints ?? 0));
+      }
       if (pointsEarned > 0 && !awaitingPayment) {
         await tx
           .insert(loyaltyPointsTable)

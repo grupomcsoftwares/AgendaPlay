@@ -353,6 +353,7 @@ export default function Settings() {
     loyaltyEnabled: boolean;
     loyaltyPointsPerReal: number;
     loyaltyPointsPerRedemptionUnit: number;
+    loyaltyPrepaymentBonusPoints: number;
     loyaltyPointsExpirationDays: 0 | 30 | 60 | 90;
     loyaltyPointsExpirationWarningDays: 7 | 15 | 30;
     clientReengagementEnabled: boolean;
@@ -383,6 +384,7 @@ export default function Settings() {
     loyaltyEnabled: false,
     loyaltyPointsPerReal: 10,
     loyaltyPointsPerRedemptionUnit: 100,
+    loyaltyPrepaymentBonusPoints: 0,
     loyaltyPointsExpirationDays: 0 as LoyaltyExpirationDays,
     loyaltyPointsExpirationWarningDays: 7 as LoyaltyExpirationWarningDays,
     clientReengagementEnabled: false,
@@ -406,7 +408,7 @@ export default function Settings() {
           if (incoming[key]) merged[key] = { ...merged[key], ...incoming[key] };
         }
       }
-      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; expirationDays?: number; expirationWarningDays?: number } | null | undefined;
+      const lc = settings.loyaltyConfig as { enabled?: boolean; pointsPerReal?: number; pointsPerRedemptionUnit?: number; prepaymentBonusPoints?: number; expirationDays?: number; expirationWarningDays?: number } | null | undefined;
       const rc = (settings as any).clientReengagementConfig as { enabled?: boolean; inactiveDays?: number; message?: string } | null | undefined;
       setFormData({
         barbershopName: settings.barbershopName || "",
@@ -428,6 +430,7 @@ export default function Settings() {
         loyaltyEnabled: lc?.enabled ?? false,
         loyaltyPointsPerReal: lc?.pointsPerReal ?? 10,
         loyaltyPointsPerRedemptionUnit: lc?.pointsPerRedemptionUnit ?? 100,
+        loyaltyPrepaymentBonusPoints: lc?.prepaymentBonusPoints ?? 0,
         loyaltyPointsExpirationDays: normalizeLoyaltyExpirationDays(lc?.expirationDays),
         loyaltyPointsExpirationWarningDays: normalizeLoyaltyExpirationWarningDays(lc?.expirationWarningDays),
         clientReengagementEnabled: rc?.enabled ?? false,
@@ -460,6 +463,7 @@ export default function Settings() {
       enabled: fd.loyaltyEnabled,
       pointsPerReal: fd.loyaltyPointsPerReal,
       pointsPerRedemptionUnit: fd.loyaltyPointsPerRedemptionUnit,
+      prepaymentBonusPoints: fd.loyaltyPrepaymentBonusPoints,
       expirationDays: fd.loyaltyPointsExpirationDays,
       expirationWarningDays: fd.loyaltyPointsExpirationWarningDays,
     },
@@ -1621,6 +1625,18 @@ export default function Settings() {
                     className="h-9"
                   />
                   <p className="text-xs text-muted-foreground">Ex: 100 → 100 pts = R$1 de desconto</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pontos extras ao pagar antecipadamente</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.loyaltyPrepaymentBonusPoints}
+                    onChange={(e) => setFormData({ ...formData, loyaltyPrepaymentBonusPoints: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground">Bônus concedido somente após a aprovação do Pix. Use 0 para desativar.</p>
                 </div>
               </div>
               <div className="space-y-1.5 max-w-sm">
