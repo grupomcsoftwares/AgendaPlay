@@ -1223,7 +1223,10 @@ export default function Appointments() {
                         </>
                       )}
                       {apt.status === 'in_progress' && (
-                        <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                        <>
+                          <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Cancelar por falta do cliente" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-no-show-${apt.id}`}><X className="h-4 w-4" /></Button>
+                        </>
                       )}
                       {apt.status === 'completed' && (
                         <Button variant="ghost" size="icon" title="Comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}><Printer className="h-4 w-4" /></Button>
@@ -1328,7 +1331,10 @@ export default function Appointments() {
                             </>
                           )}
                           {apt.status === 'in_progress' && (
-                            <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                            <>
+                              <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Cancelar por falta do cliente" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-no-show-${apt.id}`}><X className="h-4 w-4" /></Button>
+                            </>
                           )}
                           {apt.status === 'completed' && (
                             <Button variant="ghost" size="icon" title="Imprimir comprovante" className="text-amber-500 hover:text-amber-400 hover:bg-amber-500/10" onClick={() => setReceiptApt(apt)}><Printer className="h-4 w-4" /></Button>

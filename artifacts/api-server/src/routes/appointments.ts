@@ -1936,7 +1936,7 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)));
     if (!existing) return { error: "notfound" as const };
     if (existing.status === "cancelled") return { error: "already_cancelled" as const };
-    if (!["pending", "confirmed", "pending_payment"].includes(existing.status)) {
+    if (!["pending", "confirmed", "pending_payment", "in_progress"].includes(existing.status)) {
       return { error: "locked" as const };
     }
     const [a] = await tx
@@ -1945,7 +1945,7 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       .where(and(
         eq(appointmentsTable.id, params.data.id),
         eq(appointmentsTable.userId, userId),
-        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment')`,
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment', 'in_progress')`,
       ))
       .returning();
     if (!a) return { error: "locked" as const };
@@ -1983,7 +1983,7 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
     return;
   }
   if ("error" in appointment && appointment.error === "locked") {
-    res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído e não pode ser cancelado." });
+    res.status(409).json({ error: "Este agendamento já foi concluído e não pode ser cancelado." });
     return;
   }
   const cancelledAppointment = appointment.appointment;
