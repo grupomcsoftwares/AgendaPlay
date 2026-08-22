@@ -1934,13 +1934,21 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       .select()
       .from(appointmentsTable)
       .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)));
-    if (!existing) return null;
+    if (!existing) return { error: "notfound" as const };
+    if (existing.status === "cancelled") return { error: "already_cancelled" as const };
+    if (!["pending", "confirmed", "pending_payment"].includes(existing.status)) {
+      return { error: "locked" as const };
+    }
     const [a] = await tx
       .update(appointmentsTable)
       .set({ status: "cancelled" })
-      .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
+      .where(and(
+        eq(appointmentsTable.id, params.data.id),
+        eq(appointmentsTable.userId, userId),
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment')`,
+      ))
       .returning();
-    if (!a) return null;
+    if (!a) return { error: "locked" as const };
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
 
     // Reverse loyalty points: return redeemed pts, subtract earned pts.
@@ -1964,36 +1972,45 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       }
     }
 
-    return a;
+    return { appointment: a };
   });
-  if (!appointment) {
+  if ("error" in appointment && appointment.error === "notfound") {
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+  if ("error" in appointment && appointment.error === "already_cancelled") {
+    res.status(409).json({ error: "Este agendamento já foi cancelado." });
+    return;
+  }
+  if ("error" in appointment && appointment.error === "locked") {
+    res.status(409).json({ error: "Este agendamento já foi iniciado ou concluído e não pode ser cancelado." });
+    return;
+  }
+  const cancelledAppointment = appointment.appointment;
   await offerNextWaitlistForSlot({
-    userId: appointment.userId,
-    scheduledAt: appointment.scheduledAt,
-    serviceDuration: appointment.serviceDuration,
-    barberId: appointment.barberId,
+    userId: cancelledAppointment.userId,
+    scheduledAt: cancelledAppointment.scheduledAt,
+    serviceDuration: cancelledAppointment.serviceDuration,
+    barberId: cancelledAppointment.barberId,
   }).catch(() => {});
-  const apptHH = new Date(appointment.scheduledAt).toLocaleTimeString("pt-BR", {
+  const apptHH = new Date(cancelledAppointment.scheduledAt).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "America/Sao_Paulo",
   });
-  const apptDD = new Date(appointment.scheduledAt).toLocaleDateString("pt-BR", {
+  const apptDD = new Date(cancelledAppointment.scheduledAt).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     timeZone: "America/Sao_Paulo",
   });
-  sendAdminPush(appointment.userId, {
+  sendAdminPush(cancelledAppointment.userId, {
     title: "❌ Agendamento cancelado",
-    body: `${appointment.clientName} · ${appointment.serviceName} · horário cancelado: ${apptDD} às ${apptHH}`,
-    tag: `cancelled-${appointment.id}`,
-    url: `/agendamento/${appointment.cancelToken}`,
+    body: `${cancelledAppointment.clientName} · ${cancelledAppointment.serviceName} · horário cancelado: ${apptDD} às ${apptHH}`,
+    tag: `cancelled-${cancelledAppointment.id}`,
+    url: `/agendamento/${cancelledAppointment.cancelToken}`,
     sound: "changed",
   }).catch(() => {});
-  res.json(formatAppointment(appointment));
+  res.json(formatAppointment(cancelledAppointment));
 });
 
 // Trigger endpoint — can be pinged periodically by the client (no auth required
