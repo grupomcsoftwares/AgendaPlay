@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { recordPresenceHeartbeat } from "@workspace/api-client-react";
+import { useLocation } from "wouter";
 
 export type AuthUser = {
   id: string;
@@ -40,11 +41,28 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const ACCESS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+function isPublicRoute(pathname: string): boolean {
+  const path = pathname.split("?")[0];
+
+  return (
+    path === "/" ||
+    path === "/login" ||
+    path === "/register" ||
+    path === "/subscribe" ||
+    path === "/booking" ||
+    path.startsWith("/b/") ||
+    path.startsWith("/agendamento/") ||
+    path.startsWith("/fila-espera/")
+  );
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
+  const [location] = useLocation();
 
   const clearAccountCache = useCallback(() => {
     queryClient.clear();
@@ -81,6 +99,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
+
+  useEffect(() => {
+    if (!user || isPublicRoute(location)) return;
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void refresh();
+    };
+
+    const timer = window.setInterval(refreshWhenVisible, ACCESS_REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [location, refresh, user?.id]);
 
   useEffect(() => {
     if (!user) return;
