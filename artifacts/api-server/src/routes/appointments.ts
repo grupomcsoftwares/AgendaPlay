@@ -1891,6 +1891,16 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     res.status(409).json({ error: "Esse horário acabou de ser reservado. Escolha outro." });
     return;
   }
+  // Moving an appointment also frees its previous slot. Offer that slot to
+  // the next compatible waitlist client after the new time is committed.
+  if (result.appointment && appointmentForValidation.scheduledAt.getTime() !== result.appointment.scheduledAt.getTime()) {
+    await offerNextWaitlistForSlot({
+      userId: appointmentForValidation.userId,
+      scheduledAt: appointmentForValidation.scheduledAt,
+      serviceDuration: appointmentForValidation.serviceDuration,
+      barberId: appointmentForValidation.barberId,
+    }).catch(() => {});
+  }
   // Notify admin via push about reschedule
   if (result.appointment) {
     const a = result.appointment;
