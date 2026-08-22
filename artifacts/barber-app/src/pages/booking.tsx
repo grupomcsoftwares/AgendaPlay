@@ -573,7 +573,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       usePlan: false,
     };
   });
-  const [nextAvail, setNextAvail] = useState<{ nextDate: string | null; nextTime: string | null } | null>(null);
 
   // Sync client name from DB on mount — in case the barber edited the name in the panel.
   // Only runs when the phone is already known from localStorage (returning client).
@@ -795,29 +794,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   // Time discount: always identical to the normal path (uses bestCombo)
   const comboTimeDiscount = bestCombo?.timeDiscountMinutes ?? 0;
   const totalDuration = Math.max(5, totalDurationRaw - comboTimeDiscount);
-
-  // The public banner must scan with the same duration that will be booked.
-  // With no service selected yet, omit duration to retain the endpoint's 30-minute preview.
-  useEffect(() => {
-    if (!slugProp) return;
-    let cancelled = false;
-    const params = new URLSearchParams();
-    if (formData.barberId) params.set("barberId", formData.barberId);
-    if (selectedServices.length > 0) params.set("duration", totalDuration.toString());
-
-    fetch(`${BASE}/api/b/${encodeURIComponent(slugProp)}/next-available?${params}`)
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (!cancelled) setNextAvail(data ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setNextAvail(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [BASE, formData.barberId, selectedServices.length, slugProp, totalDuration]);
 
   // For percentage combos, apply the discount only to the services that are
   // part of the combo — not to every selected service. A fixed-value combo
@@ -1242,41 +1218,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           </div>
           <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
         </div>
-
-        {slugProp && nextAvail?.nextDate && (
-          <div
-            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
-            style={{ backgroundColor: AMBER_SOFT, border: `1px solid ${AMBER}55`, color: AMBER }}
-            data-testid="next-available-banner"
-          >
-            <Clock className="w-4 h-4 shrink-0" />
-            <span>
-              {(() => {
-                const today = new Date().toISOString().slice(0, 10);
-                const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-                const label =
-                  nextAvail.nextDate === today
-                    ? "hoje"
-                    : nextAvail.nextDate === tomorrow
-                      ? "amanhã"
-                      : new Date(`${nextAvail.nextDate}T12:00:00Z`).toLocaleDateString("pt-BR", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "short",
-                        });
-
-                return (
-                  <>
-                    {formData.barberId && selectedBarber
-                      ? <><strong>{selectedBarber.name}</strong> está disponível </>
-                      : "Próximo horário disponível: "}
-                    <strong>{label} às {nextAvail.nextTime}</strong>
-                  </>
-                );
-              })()}
-            </span>
-          </div>
-        )}
 
         {/* Link desativado pelo dono da barbearia */}
         {(settings as any)?.bookingEnabled === false && (
