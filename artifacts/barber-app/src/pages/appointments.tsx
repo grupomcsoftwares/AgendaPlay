@@ -1081,10 +1081,11 @@ export default function Appointments() {
                     {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(apt.servicePrice))}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:flex sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full min-w-0 justify-center sm:w-auto"
                     onClick={() => {
                       const day = new Date(apt.scheduledAt);
                       day.setHours(0, 0, 0, 0);
@@ -1098,7 +1099,7 @@ export default function Appointments() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
+                    className="w-full min-w-0 justify-center border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 sm:w-auto"
                     onClick={() => approvePendingPayment(apt)}
                     disabled={approvePayment.isPending || rejectPayment.isPending}
                     data-testid={`button-approve-pending-payment-alert-${apt.id}`}
@@ -1109,7 +1110,7 @@ export default function Appointments() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
+                    className="col-span-2 w-full min-w-0 justify-center border-destructive/40 text-destructive hover:bg-destructive/10 sm:col-span-1 sm:w-auto"
                     onClick={() => rejectPendingPayment(apt)}
                     disabled={approvePayment.isPending || rejectPayment.isPending}
                     data-testid={`button-reject-pending-payment-alert-${apt.id}`}
