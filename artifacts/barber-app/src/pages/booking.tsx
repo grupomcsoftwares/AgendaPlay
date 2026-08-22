@@ -687,9 +687,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           }
           // Persist name+phone so the client doesn't have to retype next visit
           if (formData.name && formData.phone && !isBookingForAnotherPerson) {
-            try {
-              localStorage.setItem(clientInfoKey, JSON.stringify({ name: formData.name, lastName: formData.lastName, phone: formData.phone }));
-            } catch { /* ignore */ }
+            saveClientInfo(clientInfoKey, {
+              name: formData.name,
+              lastName: formData.lastName,
+              phone: formData.phone,
+            });
           }
           // Register push subscription (collected before booking) now that we have the cancelToken
           if (pendingPushSub && created?.cancelToken && created?.scheduledAt) {
@@ -1164,14 +1166,14 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         setWaitlistToken(entry.offerToken);
         try {
           localStorage.setItem(waitlistStorageKey, entry.offerToken);
-          localStorage.setItem(clientInfoKey, JSON.stringify({
-            name: formData.name,
-            lastName: formData.lastName,
-            phone: formData.phone,
-          }));
         } catch {
           // The server entry remains valid if local storage is unavailable.
         }
+        saveClientInfo(clientInfoKey, {
+          name: formData.name,
+          lastName: formData.lastName,
+          phone: formData.phone,
+        });
       }
     } catch (error: any) {
       toast({ title: error?.response?.data?.error ?? error?.message ?? "Não foi possível entrar na fila.", variant: "destructive" });
