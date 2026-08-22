@@ -9,6 +9,8 @@ import {
   getGetAvailabilityQueryKey,
   useGetSettings,
   getGetSettingsQueryKey,
+  useGetLoyaltyBalance,
+  getGetLoyaltyBalanceQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff, Plus } from "lucide-react";
@@ -85,6 +87,20 @@ export default function CancelBooking() {
   const shopId = urlShopId ?? appointment?.userId ?? undefined;
   const tokensStorageKey = `barber_pending_tokens_${shopId ?? "admin"}`;
   const legacyStorageKey = `barber_pending_token_${shopId ?? "admin"}`;
+  const loyaltyPhone = appointment?.notes?.match(/Tel:\s*([^.]+)/)?.[1]?.replace(/\D/g, "") ?? "";
+  const loyaltyQueryParams = {
+    ...(shopId ? { shopId } : {}),
+    phone: loyaltyPhone,
+  };
+  const { data: loyaltyBalance, isLoading: loyaltyBalanceLoading } = useGetLoyaltyBalance(
+    loyaltyQueryParams,
+    {
+      query: {
+        queryKey: getGetLoyaltyBalanceQueryKey(loyaltyQueryParams),
+        enabled: Boolean(shopId) && loyaltyPhone.length >= 8,
+      },
+    },
+  );
 
   // Check appointment time and show reminder banner when 15 min left
   useEffect(() => {
@@ -575,7 +591,9 @@ export default function CancelBooking() {
                   Atenção: seus pontos acumulados serão zerados.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Se você continuar com o cancelamento, perderá todo o saldo de pontos da barbearia. Esta ação não pode ser desfeita.
+                  {loyaltyBalanceLoading
+                    ? "Consultando seu saldo de pontos…"
+                    : `Você tem ${loyaltyBalance?.points ?? 0} ponto${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"} acumulado${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"}. Se continuar com o cancelamento, todo esse saldo será zerado. Esta ação não pode ser desfeita.`}
                 </p>
               </div>
             </div>
