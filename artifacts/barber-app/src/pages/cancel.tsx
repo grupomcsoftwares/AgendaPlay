@@ -734,6 +734,7 @@ function ReschedulePanel({
   onConfirm: () => void;
 }) {
   // Build a 14-day picker starting today (Brazil local).
+  const availableSlots = slots.filter((slot) => slot.available);
   const today = new Date();
   const days: Array<{ key: string; weekday: string; dayNum: string }> = [];
   for (let i = 0; i < 14; i++) {
@@ -794,26 +795,24 @@ function ReschedulePanel({
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Horário</p>
         {loadingSlots ? (
           <p className="text-sm text-muted-foreground">Carregando horários…</p>
-        ) : slots.length === 0 ? (
+        ) : availableSlots.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sem horários neste dia.</p>
         ) : (
           <div className="grid grid-cols-4 gap-1.5" data-testid="reschedule-slots">
-            {slots.map((s) => {
+            {availableSlots.map((s) => {
               const active = s.time === time;
               return (
                 <button
                   key={s.time}
                   type="button"
-                  disabled={!s.available}
                   onClick={() => setTime(s.time)}
                   data-testid={`slot-${s.time}`}
                   className="rounded-md text-xs font-semibold py-2"
                   style={{
-                    backgroundColor: active ? AMBER : s.available ? "hsl(0 0% 12%)" : "hsl(0 0% 8%)",
-                    color: active ? "hsl(0 0% 0%)" : s.available ? "hsl(0 0% 80%)" : "hsl(0 0% 30%)",
+                    backgroundColor: active ? AMBER : "hsl(0 0% 12%)",
+                    color: active ? "hsl(0 0% 0%)" : "hsl(0 0% 80%)",
                     border: `1px solid ${active ? AMBER : "hsl(0 0% 16%)"}`,
-                    cursor: s.available ? "pointer" : "not-allowed",
-                    textDecoration: s.available ? "none" : "line-through",
+                    cursor: "pointer",
                   }}
                 >
                   {s.time}
