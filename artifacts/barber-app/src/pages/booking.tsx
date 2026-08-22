@@ -1487,11 +1487,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     </div>
                     <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: "hsl(0 0% 40%)" }} />
                   </button>
-                    {value === "now" && settings?.loyaltyConfig?.enabled && prepaymentBonusPoints > 0 && (
-                      <p className="mt-2 text-xs font-medium" style={{ color: AMBER }}>
-                        Ganhe mais {prepaymentBonusPoints.toLocaleString("pt-BR")} pontos após a aprovação do Pix
-                      </p>
-                    )}
                 );
               })}
             </div>
@@ -2388,6 +2383,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-base">{title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                        {value === "now" && settings?.loyaltyConfig?.enabled && prepaymentBonusPoints > 0 && (
+                          <p className="text-xs font-medium mt-1" style={{ color: AMBER }}>
+                            +{prepaymentBonusPoints.toLocaleString("pt-BR")} pontos após aprovação do Pix
+                          </p>
+                        )}
                       </div>
                       <div
                         className="rounded-full flex items-center justify-center flex-shrink-0"

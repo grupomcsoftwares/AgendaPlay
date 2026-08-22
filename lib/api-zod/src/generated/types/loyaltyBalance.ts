@@ -13,6 +13,8 @@ export interface LoyaltyBalance {
   points: number;
   pointsPerReal: number;
   pointsPerRedemptionUnit: number;
+  /** @minimum 0 */
+  prepaymentBonusPoints?: number;
   expirationDays: LoyaltyBalanceExpirationDays;
   /** Configured number of days before expiration when the client warning is shown */
   expirationWarningDays: LoyaltyBalanceExpirationWarningDays;

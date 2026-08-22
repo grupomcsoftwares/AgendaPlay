@@ -14,6 +14,11 @@ export interface LoyaltyConfig {
   pointsPerReal: number;
   /** Points needed to redeem R$1 discount */
   pointsPerRedemptionUnit: number;
+  /**
+     * Extra points awarded after an advance Pix payment is approved
+     * @minimum 0
+     */
+  prepaymentBonusPoints?: number;
   /** Days without movement before the client's points expire; 0 disables expiration */
   expirationDays?: LoyaltyConfigExpirationDays;
   /** Show the client a warning when this many days or fewer remain before points expire */

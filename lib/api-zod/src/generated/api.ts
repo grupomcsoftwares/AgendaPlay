@@ -1360,6 +1360,8 @@ export const GetSettingsQueryParams = zod.object({
 export const getSettingsResponseLogoUrlMax = 3000000;
 
 export const getSettingsResponseShowServicePricesDefault = true;
+export const getSettingsResponseLoyaltyConfigOnePrepaymentBonusPointsMin = 0;
+
 export const getSettingsResponseClientReengagementConfigOneMessageMax = 500;
 
 export const getSettingsResponseServiceExclusionsItemServicesMin = 2;
@@ -1444,6 +1446,7 @@ export const GetSettingsResponse = zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "prepaymentBonusPoints": zod.number().min(getSettingsResponseLoyaltyConfigOnePrepaymentBonusPointsMin).optional().describe('Extra points awarded after an advance Pix payment is approved'),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
 }),zod.null()]).optional(),
@@ -1467,6 +1470,8 @@ export const GetSettingsResponse = zod.object({
  * @summary Update barbershop settings
  */
 export const updateSettingsBodyLogoUrlMax = 3000000;
+
+export const updateSettingsBodyLoyaltyConfigOnePrepaymentBonusPointsMin = 0;
 
 export const updateSettingsBodyClientReengagementConfigOneMessageMax = 500;
 
@@ -1548,6 +1553,7 @@ export const UpdateSettingsBody = zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "prepaymentBonusPoints": zod.number().min(updateSettingsBodyLoyaltyConfigOnePrepaymentBonusPointsMin).optional().describe('Extra points awarded after an advance Pix payment is approved'),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
 }),zod.null()]).optional(),
@@ -1569,6 +1575,8 @@ export const UpdateSettingsBody = zod.object({
 export const updateSettingsResponseLogoUrlMax = 3000000;
 
 export const updateSettingsResponseShowServicePricesDefault = true;
+export const updateSettingsResponseLoyaltyConfigOnePrepaymentBonusPointsMin = 0;
+
 export const updateSettingsResponseClientReengagementConfigOneMessageMax = 500;
 
 export const updateSettingsResponseServiceExclusionsItemServicesMin = 2;
@@ -1653,6 +1661,7 @@ export const UpdateSettingsResponse = zod.object({
   "enabled": zod.boolean(),
   "pointsPerReal": zod.number().describe('Points earned per R$1 spent'),
   "pointsPerRedemptionUnit": zod.number().describe('Points needed to redeem R$1 discount'),
+  "prepaymentBonusPoints": zod.number().min(updateSettingsResponseLoyaltyConfigOnePrepaymentBonusPointsMin).optional().describe('Extra points awarded after an advance Pix payment is approved'),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]).optional().describe('Days without movement before the client\'s points expire; 0 disables expiration'),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).optional().describe('Show the client a warning when this many days or fewer remain before points expire')
 }),zod.null()]).optional(),
@@ -1691,11 +1700,16 @@ export const GetLoyaltyBalanceQueryParams = zod.object({
   "phone": zod.coerce.string()
 })
 
+export const getLoyaltyBalanceResponsePrepaymentBonusPointsMin = 0;
+
+
+
 export const GetLoyaltyBalanceResponse = zod.object({
   "enabled": zod.boolean(),
   "points": zod.number(),
   "pointsPerReal": zod.number(),
   "pointsPerRedemptionUnit": zod.number(),
+  "prepaymentBonusPoints": zod.number().min(getLoyaltyBalanceResponsePrepaymentBonusPointsMin).optional(),
   "expirationDays": zod.union([zod.literal(0),zod.literal(30),zod.literal(60),zod.literal(90)]),
   "expirationWarningDays": zod.union([zod.literal(7),zod.literal(15),zod.literal(30)]).describe('Configured number of days before expiration when the client warning is shown'),
   "daysUntilExpiration": zod.number().nullable().describe('Days remaining before the current points balance expires; null when expiration is disabled or there are no points'),

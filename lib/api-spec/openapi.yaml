@@ -2009,6 +2009,10 @@ components:
         pointsPerRedemptionUnit:
           type: number
           description: Points needed to redeem R$1 discount
+        prepaymentBonusPoints:
+          type: integer
+          minimum: 0
+          description: Extra points awarded after an advance Pix payment is approved
         expirationDays:
           type: integer
           enum: [0, 30, 60, 90]
@@ -2057,6 +2061,9 @@ components:
           type: number
         pointsPerRedemptionUnit:
           type: number
+        prepaymentBonusPoints:
+          type: integer
+          minimum: 0
         expirationDays:
           type: integer
           enum: [0, 30, 60, 90]
