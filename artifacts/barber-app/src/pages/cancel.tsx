@@ -593,10 +593,23 @@ export default function CancelBooking() {
                 <p className="text-sm text-muted-foreground">
                   {loyaltyBalanceLoading
                     ? "Consultando seu saldo de pontos…"
-                    : `Você tem ${loyaltyBalance?.points ?? 0} ponto${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"} acumulado${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"}. Se continuar com o cancelamento, todo esse saldo será zerado. Esta ação não pode ser desfeita.`}
+                    : `Você tem ${loyaltyBalance?.points ?? 0} ponto${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"} acumulado${(loyaltyBalance?.points ?? 0) === 1 ? "" : "s"}. Se continuar com o cancelamento, todo esse saldo será zerado. Para manter seus pontos, escolha mudar o horário.`}
                 </p>
               </div>
             </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setConfirming(false);
+                openReschedule();
+              }}
+              disabled={cancelMut.isPending}
+              data-testid="button-reschedule-keep-points"
+            >
+              <CalendarClock className="mr-2 h-4 w-4" />
+              Mudar horário e manter meus pontos
+            </Button>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={() => setConfirming(false)} disabled={cancelMut.isPending}>
                 Voltar
