@@ -271,6 +271,24 @@ export interface AppointmentInput {
   overrideLimitConfirmed?: boolean;
 }
 
+export interface AppointmentRecoveryInput {
+  /**
+     * Shop owner user ID associated with the appointment link
+     * @minLength 1
+     */
+  shopId: string;
+  /**
+     * Phone number used when the appointment was created
+     * @minLength 10
+     */
+  phone: string;
+  /**
+     * Existing appointment cancel token used as proof of possession
+     * @minLength 1
+     */
+  verificationToken: string;
+}
+
 export interface AppointmentUpdate {
   clientName?: string;
   /** @nullable */

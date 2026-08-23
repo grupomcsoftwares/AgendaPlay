@@ -24,6 +24,7 @@ import type {
   AdminOnlineUsers,
   Appointment,
   AppointmentInput,
+  AppointmentRecoveryInput,
   AppointmentUpdate,
   Availability,
   Barber,
@@ -1066,6 +1067,79 @@ export const useCreateAppointment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateAppointmentMutationOptions(options));
+    }
+
+export const getRecoverAppointmentsUrl = () => {
+
+
+
+
+  return `/api/appointments/recover`
+}
+
+/**
+ * Returns active appointments for the same shop and phone only when the caller also proves possession of an existing appointment token. Invalid or mismatched verification data returns no appointment details.
+
+ * @summary Recover active appointments after verifying an existing appointment
+ */
+export const recoverAppointments = async (appointmentRecoveryInput: AppointmentRecoveryInput, options?: RequestInit): Promise<Appointment[]> => {
+
+  return customFetch<Appointment[]>(getRecoverAppointmentsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      appointmentRecoveryInput,)
+  }
+);}
+
+
+
+
+export const getRecoverAppointmentsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverAppointments>>, TError,{data: BodyType<AppointmentRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverAppointments>>, TError,{data: BodyType<AppointmentRecoveryInput>}, TContext> => {
+
+const mutationKey = ['recoverAppointments'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverAppointments>>, {data: BodyType<AppointmentRecoveryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recoverAppointments(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverAppointmentsMutationResult = NonNullable<Awaited<ReturnType<typeof recoverAppointments>>>
+    export type RecoverAppointmentsMutationBody = BodyType<AppointmentRecoveryInput>
+    export type RecoverAppointmentsMutationError = ErrorType<void>
+
+    /**
+ * @summary Recover active appointments after verifying an existing appointment
+ */
+export const useRecoverAppointments = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverAppointments>>, TError,{data: BodyType<AppointmentRecoveryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverAppointments>>,
+        TError,
+        {data: BodyType<AppointmentRecoveryInput>},
+        TContext
+      > => {
+      return useMutation(getRecoverAppointmentsMutationOptions(options));
     }
 
 export const getGetAppointmentUrl = (id: number,) => {

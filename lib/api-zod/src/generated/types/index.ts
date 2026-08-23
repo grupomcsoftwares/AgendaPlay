@@ -14,6 +14,7 @@ export * from './appointment';
 export * from './appointmentInput';
 export * from './appointmentInputPaymentMethod';
 export * from './appointmentPaymentMethod';
+export * from './appointmentRecoveryInput';
 export * from './appointmentUpdate';
 export * from './availability';
 export * from './availabilitySlotsItem';

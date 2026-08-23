@@ -18,6 +18,7 @@ import {
   CompleteAppointmentParams,
   CancelAppointmentParams,
   GetAvailabilityQueryParams,
+  RecoverAppointmentsBody,
 } from "@workspace/api-zod";
 
 const TZ = "America/Sao_Paulo";
@@ -280,6 +281,18 @@ function formatAppointmentWithToken(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
+function normalizePhone(value: string | null | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
+}
+
+function appointmentPhone(
+  appointment: typeof appointmentsTable.$inferSelect,
+  linkedClientPhone?: string | null,
+): string {
+  const notePhone = appointment.notes?.match(/Tel:\s*([^.]+)/i)?.[1];
+  return normalizePhone(notePhone || linkedClientPhone);
+}
+
 function isBlockingAppointment(status: string): boolean {
   return status !== "cancelled" && status !== "payment_rejected" && status !== "completed";
 }
@@ -501,6 +514,66 @@ router.get("/appointments", requireActiveAuth, async (req, res): Promise<void> =
       .orderBy(appointmentsTable.scheduledAt);
   }
   res.json(appointments.map(formatAppointment));
+});
+
+// Public recovery is deliberately proof-based rather than phone-based. A
+// random existing cancel token plus the matching phone is required before any
+// related appointment (including its management token) can be returned.
+router.post("/appointments/recover", async (req, res): Promise<void> => {
+  const parsed = RecoverAppointmentsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Informe o telefone e os dados de verificação." });
+    return;
+  }
+
+  const suppliedPhone = normalizePhone(parsed.data.phone);
+  if (suppliedPhone.length < 10) {
+    res.status(400).json({ error: "Informe um telefone válido." });
+    return;
+  }
+
+  const [verified] = await db
+    .select({
+      appointment: appointmentsTable,
+      linkedClientPhone: clientsTable.phone,
+    })
+    .from(appointmentsTable)
+    .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
+    .where(and(
+      eq(appointmentsTable.userId, parsed.data.shopId),
+      eq(appointmentsTable.cancelToken, parsed.data.verificationToken),
+    ))
+    .limit(1);
+
+  // Keep every failed verification indistinguishable and free of appointment
+  // data so a phone number or token cannot be used for enumeration.
+  if (!verified || !isBlockingAppointment(verified.appointment.status) ||
+      appointmentPhone(verified.appointment, verified.linkedClientPhone) !== suppliedPhone) {
+    res.status(404).json({ error: "Não foi possível validar os dados informados." });
+    return;
+  }
+
+  const candidates = await db
+    .select({
+      appointment: appointmentsTable,
+      linkedClientPhone: clientsTable.phone,
+    })
+    .from(appointmentsTable)
+    .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
+    .where(and(
+      eq(appointmentsTable.userId, parsed.data.shopId),
+      sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment', 'in_progress')`,
+    ))
+    .orderBy(appointmentsTable.scheduledAt);
+
+  const recovered = candidates
+    .filter(({ appointment, linkedClientPhone }) =>
+      appointmentPhone(appointment, linkedClientPhone) === suppliedPhone &&
+      Boolean(appointment.cancelToken),
+    )
+    .map(({ appointment }) => formatAppointmentWithToken(appointment));
+
+  res.json(recovered);
 });
 
 router.get("/availability", async (req, res): Promise<void> => {

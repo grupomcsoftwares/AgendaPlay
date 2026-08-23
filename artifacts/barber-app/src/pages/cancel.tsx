@@ -11,6 +11,7 @@ import {
   getGetSettingsQueryKey,
   useGetLoyaltyBalance,
   getGetLoyaltyBalanceQueryKey,
+  useRecoverAppointments,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff, Plus } from "lucide-react";
@@ -37,6 +38,18 @@ function removePendingAppointmentToken(tokensKey: string, legacyKey: string, tok
     }
   } catch {
     // Local storage may be unavailable; the server-side cancellation still succeeds.
+  }
+}
+
+function saveRecoveredAppointmentTokens(tokensKey: string, legacyKey: string, tokens: string[]): void {
+  try {
+    const uniqueTokens = [...new Set(tokens.filter(Boolean))];
+    if (uniqueTokens.length > 0) {
+      localStorage.setItem(tokensKey, JSON.stringify(uniqueTokens));
+    }
+    localStorage.removeItem(legacyKey);
+  } catch {
+    // Recovery still succeeds if this browser does not allow local storage.
   }
 }
 
@@ -219,6 +232,31 @@ export default function CancelBooking() {
   );
   const cancelMut = useCancelAppointmentByToken();
   const rescheduleMut = useRescheduleAppointmentByToken();
+  const recoverAppointments = useRecoverAppointments();
+
+  const handleRecoverOtherAppointments = () => {
+    if (!shopId || loyaltyPhone.length < 10 || !token) return;
+    setErrorMsg(null);
+    recoverAppointments.mutate(
+      { data: { shopId, phone: loyaltyPhone, verificationToken: token } },
+      {
+        onSuccess: (appointments) => {
+          const tokens = appointments
+            .map((recoveredAppointment) => recoveredAppointment.cancelToken)
+            .filter((recoveredToken): recoveredToken is string => Boolean(recoveredToken));
+          if (tokens.length === 0) {
+            setErrorMsg("Não encontramos outros agendamentos ativos.");
+            return;
+          }
+          saveRecoveredAppointmentTokens(tokensStorageKey, legacyStorageKey, tokens);
+          setLocation(`/booking?shopId=${encodeURIComponent(shopId)}`);
+        },
+        onError: () => {
+          setErrorMsg("Não foi possível recuperar seus agendamentos agora.");
+        },
+      },
+    );
+  };
 
   const serviceDuration = appointment?.serviceDuration ?? 0;
   const availParams = {
@@ -767,6 +805,26 @@ export default function CancelBooking() {
               )}
             </div>
           </div>
+        )}
+
+        {!cancelled && !locked && shopId && loyaltyPhone.length >= 10 && (
+          <button
+            type="button"
+            onClick={handleRecoverOtherAppointments}
+            disabled={recoverAppointments.isPending}
+            data-testid="button-recover-other-appointments"
+            className="w-full rounded-xl py-3 text-sm font-semibold flex items-center justify-center gap-2"
+            style={{
+              backgroundColor: "hsl(38 88% 55% / 0.1)",
+              border: `1px solid ${AMBER}88`,
+              color: AMBER,
+              cursor: recoverAppointments.isPending ? "wait" : "pointer",
+              opacity: recoverAppointments.isPending ? 0.65 : 1,
+            }}
+          >
+            <CalendarIcon className="w-4 h-4" />
+            {recoverAppointments.isPending ? "Recuperando…" : "Ver meus outros agendamentos"}
+          </button>
         )}
       </div>
     </div>

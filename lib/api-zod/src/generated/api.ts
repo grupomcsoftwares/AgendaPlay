@@ -286,6 +286,46 @@ export const CreateAppointmentBody = zod.object({
 
 
 /**
+ * Returns active appointments for the same shop and phone only when the caller also proves possession of an existing appointment token. Invalid or mismatched verification data returns no appointment details.
+
+ * @summary Recover active appointments after verifying an existing appointment
+ */
+
+export const recoverAppointmentsBodyPhoneMin = 10;
+
+
+
+
+export const RecoverAppointmentsBody = zod.object({
+  "shopId": zod.string().min(1).describe('Shop owner user ID associated with the appointment link'),
+  "phone": zod.string().min(recoverAppointmentsBodyPhoneMin).describe('Phone number used when the appointment was created'),
+  "verificationToken": zod.string().min(1).describe('Existing appointment cancel token used as proof of possession')
+})
+
+export const RecoverAppointmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+export const RecoverAppointmentsResponse = zod.array(RecoverAppointmentsResponseItem)
+
+
+/**
  * @summary Get an appointment
  */
 export const GetAppointmentParams = zod.object({

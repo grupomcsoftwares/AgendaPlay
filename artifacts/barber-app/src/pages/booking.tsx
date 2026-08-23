@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueries } from "@tanstack/react-query";
-import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, getAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useJoinWaitlist, useGetWaitlistEntry, getGetWaitlistEntryQueryKey, useLeaveWaitlist } from "@workspace/api-client-react";
+import { useListServices, useCreateAppointment, getListServicesQueryKey, useGetSettings, getGetSettingsQueryKey, useGetAvailability, getGetAvailabilityQueryKey, useListBarbers, getListBarbersQueryKey, useListComboDiscounts, getListComboDiscountsQueryKey, getAppointmentByToken, getGetAppointmentByTokenQueryKey, useGetLoyaltyBalance, getGetLoyaltyBalanceQueryKey, useCheckSubscription, getCheckSubscriptionQueryKey, useJoinWaitlist, useGetWaitlistEntry, getGetWaitlistEntryQueryKey, useLeaveWaitlist, useRecoverAppointments } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { Scissors, Calendar as CalendarIcon, CalendarClock, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle } from "lucide-react";
+import { Scissors, Calendar as CalendarIcon, CalendarClock, Clock, User, ChevronRight, ChevronLeft, DollarSign, CreditCard, Banknote, Check, Copy, X, Star, AlertTriangle, KeyRound } from "lucide-react";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -297,6 +297,119 @@ function AppointmentChooser({
           Fazer outro agendamento
         </button>
       </div>
+    </div>
+  );
+}
+
+function extractRecoveryToken(value: string): string {
+  const trimmed = value.trim();
+  const linkMatch = trimmed.match(/\/agendamento\/([^/?#\s]+)/);
+  if (!linkMatch?.[1]) return trimmed;
+  try {
+    return decodeURIComponent(linkMatch[1]);
+  } catch {
+    return linkMatch[1];
+  }
+}
+
+function AppointmentRecoveryCard({
+  shopId,
+  onRecovered,
+}: {
+  shopId: string;
+  onRecovered: (tokens: string[]) => void;
+}) {
+  const [phone, setPhone] = useState("");
+  const [verification, setVerification] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const recoverAppointments = useRecoverAppointments();
+
+  const handleRecover = () => {
+    const normalizedPhone = phone.replace(/\D/g, "");
+    const verificationToken = extractRecoveryToken(verification);
+    if (normalizedPhone.length < 10 || !verificationToken) {
+      setError("Informe o telefone e cole o link ou código de um agendamento.");
+      return;
+    }
+    setError(null);
+    recoverAppointments.mutate(
+      { data: { shopId, phone: normalizedPhone, verificationToken } },
+      {
+        onSuccess: (appointments) => {
+          const tokens = appointments
+            .map((appointment) => appointment.cancelToken)
+            .filter((token): token is string => Boolean(token));
+          if (tokens.length === 0) {
+            setError("Não encontramos agendamentos ativos para os dados informados.");
+            return;
+          }
+          onRecovered(tokens);
+        },
+        onError: () => {
+          setError("Não foi possível validar os dados informados. Confira o telefone e o link do agendamento.");
+        },
+      },
+    );
+  };
+
+  return (
+    <div
+      className="rounded-2xl p-5 space-y-4"
+      style={{ backgroundColor: "hsl(38 88% 55% / 0.08)", border: `1px solid ${AMBER}66` }}
+      data-testid="card-recover-appointments"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: AMBER_SOFT, color: AMBER }}
+        >
+          <KeyRound className="h-5 w-5" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base font-bold">Já tem um agendamento?</h2>
+          <p className="text-sm text-muted-foreground">
+            Para recuperar seus agendamentos em outro celular, informe seu telefone e cole o link ou código de um agendamento que você já recebeu.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="recover-appointments-phone">Telefone usado no agendamento</Label>
+          <Input
+            id="recover-appointments-phone"
+            data-testid="input-recover-appointments-phone"
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="(11) 99999-9999"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="recover-appointments-token">Link ou código de um agendamento</Label>
+          <Input
+            id="recover-appointments-token"
+            data-testid="input-recover-appointments-token"
+            value={verification}
+            onChange={(event) => setVerification(event.target.value)}
+            placeholder="Cole o link que você recebeu"
+            autoComplete="off"
+          />
+        </div>
+      </div>
+
+      {error && <p className="text-sm" style={{ color: "hsl(0 70% 70%)" }}>{error}</p>}
+
+      <Button
+        type="button"
+        className="w-full"
+        data-testid="button-recover-appointments"
+        onClick={handleRecover}
+        disabled={recoverAppointments.isPending}
+      >
+        <KeyRound className="mr-2 h-4 w-4" />
+        {recoverAppointments.isPending ? "Validando…" : "Recuperar meus agendamentos"}
+      </Button>
     </div>
   );
 }
@@ -1217,6 +1330,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     !isNewBooking &&
     pendingQueriesSettled &&
     activePendingAppointments.length > 1;
+  const canRecoverAppointments =
+    !isNewBooking &&
+    Boolean(shopId) &&
+    pendingQueriesSettled &&
+    activePendingAppointments.length === 0;
 
   if (showAppointmentChooser) {
     return (
@@ -1274,6 +1392,22 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         )}
 
         {(settings as any)?.bookingEnabled !== false && <StepIndicator current={indicatorStep} labels={stepLabels} />}
+
+        {(settings as any)?.bookingEnabled !== false && canRecoverAppointments && shopId && (
+          <AppointmentRecoveryCard
+            shopId={shopId}
+            onRecovered={(tokens) => {
+              const uniqueTokens = [...new Set(tokens)];
+              setPendingTokens(uniqueTokens);
+              savePendingAppointmentTokens(tokensStorageKey, uniqueTokens);
+              try {
+                localStorage.removeItem(storageKey);
+              } catch {
+                // Local storage may be unavailable; the verified appointments still load now.
+              }
+            }}
+          />
+        )}
 
         {(settings as any)?.bookingEnabled !== false && activeWaitlistEntry && (
           <div

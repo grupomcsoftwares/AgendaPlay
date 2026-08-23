@@ -23,6 +23,7 @@
 - [Mobile WebView navigation](mobile-webview-navigation.md) — keep the phone dashboard WebView mounted and navigate categories with in-page history to avoid reload flashes.
 - [New booking from appointment link](new-booking-from-appointment-link.md) — navigate in the same tab and fall back to the appointment owner when old links omit shopId.
 - [Multiple client appointments](multiple-client-appointments.md) — keep all active appointment tokens and show a chooser so each booking can be managed separately.
+- [Appointment recovery verification](appointment-recovery-verification.md) — recover only with an existing appointment token plus matching phone; phone alone must never reveal bookings.
 - [Native WebView session handoff](native-webview-session.md) — native login requests an explicit signed cookie response because React Native may hide Set-Cookie; web login must not receive it.
 - [Public booking price visibility](public-booking-price-visibility.md) — the setting hides prices only on the initial service-selection cards; later summaries and totals remain visible.
 - [Completed appointment availability](completed-appointment-availability.md) — completed queue appointments must not block future booking slots; pending and in-progress appointments still do.

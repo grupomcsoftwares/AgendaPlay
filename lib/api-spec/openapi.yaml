@@ -293,6 +293,33 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /appointments/recover:
+    post:
+      operationId: recoverAppointments
+      tags: [appointments]
+      summary: Recover active appointments after verifying an existing appointment
+      description: >
+        Returns active appointments for the same shop and phone only when the
+        caller also proves possession of an existing appointment token. Invalid
+        or mismatched verification data returns no appointment details.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppointmentRecoveryInput"
+      responses:
+        "200":
+          description: Recovered active appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Appointment"
+        "404":
+          description: Verification failed without revealing appointment data
+
   /appointments/{id}:
     get:
       operationId: getAppointment
@@ -1704,6 +1731,23 @@ components:
             Barber explicitly confirmed booking past the subscriber's monthly
             appointment limit. When absent or false the server rejects the
             request with 422 SUBSCRIPTION_MONTHLY_LIMIT_REACHED.
+
+    AppointmentRecoveryInput:
+      type: object
+      required: [shopId, phone, verificationToken]
+      properties:
+        shopId:
+          type: string
+          minLength: 1
+          description: Shop owner user ID associated with the appointment link
+        phone:
+          type: string
+          minLength: 10
+          description: Phone number used when the appointment was created
+        verificationToken:
+          type: string
+          minLength: 1
+          description: Existing appointment cancel token used as proof of possession
 
     AppointmentUpdate:
       type: object
