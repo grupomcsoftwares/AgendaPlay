@@ -33,3 +33,4 @@
 - [OpenAPI query parameter codegen](openapi-query-parameter-codegen.md) — path endpoints with query inputs can create an Orval Zod export-name collision; regenerate and typecheck the barrel.
 - [Development schema push conflicts](dev-schema-push-conflict.md) — drizzle push can require an interactive named-schema confirmation; apply isolated additive changes without forcing unrelated drift.
 - [Account lifecycle serialization](account-lifecycle-serialization.md) — Stripe Checkout and account deletion share a lock; cleanup revalidates Stripe and fails closed.
+- [Vite and React typecheck quirks](vite-and-react-typecheck-quirks.md) — standalone builds need Vite defaults, and React 19 ref types need narrow compatibility handling.
