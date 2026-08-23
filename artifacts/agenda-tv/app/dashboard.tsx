@@ -20,7 +20,15 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
-import { isAllowedAppUrl, PROD_BASE, PROD_HOSTNAME } from "@/lib/webviewSecurity";
+import {
+  isAllowedAppUrl,
+  isTrustedWebViewMessageOrigin,
+  normalizeAppUrl,
+  parseNativePushMessage,
+  parseNativeWebError,
+  PROD_BASE,
+  PROD_HOSTNAME,
+} from "@/lib/webviewSecurity";
 
 const MENU_ITEMS = [
   { id: "overview",     label: "Vis\u00e3o Geral",    icon: "grid" as const,        url: `${PROD_BASE}/dashboard` },
@@ -37,7 +45,9 @@ const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings");
 const APP_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "queue");
 
 function getMobileRoute(url: string) {
-  const nextUrl = new URL(url);
+  const normalizedUrl = normalizeAppUrl(url);
+  if (!normalizedUrl) return null;
+  const nextUrl = new URL(normalizedUrl);
   nextUrl.searchParams.set("view", "mobile");
   return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
 }
@@ -113,6 +123,7 @@ export default function DashboardScreen() {
   const webViewRef = useRef<WebView>(null);
   const webViewReadyRef = useRef(false);
   const pendingMobileRouteRef = useRef<string | null>(null);
+  const currentWebViewUrlRef = useRef<string | null>(null);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : APP_MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
@@ -121,6 +132,7 @@ export default function DashboardScreen() {
     setSelectedId(item.id);
     if (isPhone) {
       const route = getMobileRoute(item.url);
+      if (!route) return;
       pendingMobileRouteRef.current = route;
       if (webViewRef.current && webViewReadyRef.current) {
         webViewRef.current.injectJavaScript(createMobileNavigationScript(route));
@@ -133,7 +145,7 @@ export default function DashboardScreen() {
   }, [isPhone]);
 
   const bookingUrl = user?.slug
-    ? `https://agendaplay.net/b/${user.slug}`
+    ? `${PROD_BASE}/b/${user.slug}`
     : null;
 
   const shareMessage = useCallback(() => {
@@ -178,23 +190,37 @@ export default function DashboardScreen() {
   }, [shareMessage, user?.barbershopName]);
 
   const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string; url?: string } }) => {
-    if (event.nativeEvent.url && !isAllowedAppUrl(event.nativeEvent.url)) return;
-    let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status"; message?: string };
-    try {
-      message = JSON.parse(event.nativeEvent.data);
-    } catch {
+    if (
+      !isTrustedWebViewMessageOrigin(
+        event.nativeEvent.url,
+        currentWebViewUrlRef.current,
+      )
+    ) {
       return;
     }
-    if (message.type === "AGENDAPLAY_WEB_ERROR") {
+
+    const webError = parseNativeWebError(event.nativeEvent.data);
+    if (webError) {
       setLoading(false);
       Alert.alert(
         "Não foi possível abrir esta tela",
-        message.message || "Feche e abra Configurações novamente.",
+        webError,
       );
       return;
     }
-    if (message.type !== "AGENDAPLAY_NATIVE_PUSH" || !message.action) return;
+
+    const message = parseNativePushMessage(event.nativeEvent.data);
+    if (!message) return;
     const cookie = await getSessionCookie();
+    if (
+      !cookie ||
+      !isTrustedWebViewMessageOrigin(
+        event.nativeEvent.url,
+        currentWebViewUrlRef.current,
+      )
+    ) {
+      return;
+    }
     const result = message.action === "subscribe"
       ? await registerNativePush(cookie)
       : message.action === "unsubscribe"
@@ -244,9 +270,8 @@ export default function DashboardScreen() {
   useEffect(() => {
     getSessionCookie().then((raw) => {
       if (raw) {
-        const domain = new URL(PROD_BASE).hostname;
         setInjectedCookie(
-          `document.cookie = ${JSON.stringify(`${raw}; domain=${domain}; path=/;`)};`,
+          `document.cookie = ${JSON.stringify(`${raw}; path=/; secure; samesite=strict;`)};`,
         );
       }
       setCookieReady(true);
@@ -432,6 +457,17 @@ export default function DashboardScreen() {
             injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
+            onLoadStart={(event: any) => {
+              const nextUrl = event.nativeEvent.url as string | undefined;
+              currentWebViewUrlRef.current =
+                typeof nextUrl === "string" && isAllowedAppUrl(nextUrl) ? nextUrl : null;
+              setLoading(true);
+            }}
+            onNavigationStateChange={(navigationState: { url?: string }) => {
+              currentWebViewUrlRef.current = isAllowedAppUrl(navigationState.url)
+                ? navigationState.url!
+                : null;
+            }}
              sharedCookiesEnabled
              thirdPartyCookiesEnabled={false}
             javaScriptEnabled

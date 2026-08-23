@@ -16,7 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
-import { isAllowedAppUrl, normalizeAppUrl, PROD_BASE, PROD_HOSTNAME } from "@/lib/webviewSecurity";
+import {
+  isAllowedAppUrl,
+  isTrustedWebViewMessageOrigin,
+  normalizeAppUrl,
+  parseNativePushMessage,
+  PROD_BASE,
+  PROD_HOSTNAME,
+} from "@/lib/webviewSecurity";
 
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -52,6 +59,7 @@ export default function ViewerScreen() {
   const isTV = isTvDevice(width);
   const subscriptionBlocked = !!user && !user.canAccess;
   const targetUrl = normalizeAppUrl(url);
+  const currentWebViewUrlRef = useRef<string | null>(null);
 
   const handleExit = useCallback(async () => {
     await logout();
@@ -59,15 +67,26 @@ export default function ViewerScreen() {
   }, [logout, router]);
 
   const handleNativePushMessage = async (event: { nativeEvent: { data: string; url?: string } }) => {
-    if (event.nativeEvent.url && !isAllowedAppUrl(event.nativeEvent.url)) return;
-    let message: { type?: string; action?: "subscribe" | "unsubscribe" | "status" };
-    try {
-      message = JSON.parse(event.nativeEvent.data);
-    } catch {
+    if (
+      !isTrustedWebViewMessageOrigin(
+        event.nativeEvent.url,
+        currentWebViewUrlRef.current,
+      )
+    ) {
       return;
     }
-    if (message.type !== "AGENDAPLAY_NATIVE_PUSH" || !message.action) return;
+    const message = parseNativePushMessage(event.nativeEvent.data);
+    if (!message) return;
     const cookie = await getSessionCookie();
+    if (
+      !cookie ||
+      !isTrustedWebViewMessageOrigin(
+        event.nativeEvent.url,
+        currentWebViewUrlRef.current,
+      )
+    ) {
+      return;
+    }
     const result = message.action === "subscribe"
       ? await registerNativePush(cookie)
       : message.action === "unsubscribe"
@@ -109,7 +128,7 @@ export default function ViewerScreen() {
     getSessionCookie().then((raw) => {
       if (raw && targetUrl) {
         setInjectedCookie(
-          `document.cookie = ${JSON.stringify(`${raw}; domain=${PROD_HOSTNAME}; path=/;`)};`,
+          `document.cookie = ${JSON.stringify(`${raw}; path=/; secure; samesite=strict;`)};`,
         );
       } else if (url && !targetUrl) {
         setInjectedCookie(null);
@@ -225,9 +244,17 @@ export default function ViewerScreen() {
             injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
-            onLoadStart={() => {
+            onLoadStart={(event: any) => {
+              const nextUrl = event.nativeEvent.url as string | undefined;
+              currentWebViewUrlRef.current =
+                typeof nextUrl === "string" && isAllowedAppUrl(nextUrl) ? nextUrl : null;
               setLoading(true);
               setError(false);
+            }}
+            onNavigationStateChange={(navigationState: { url?: string }) => {
+              currentWebViewUrlRef.current = isAllowedAppUrl(navigationState.url)
+                ? navigationState.url!
+                : null;
             }}
             onLoadEnd={() => {
               setLoading(false);

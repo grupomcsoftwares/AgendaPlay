@@ -13,10 +13,13 @@ const isPreviewHost =
   configuredHostname.endsWith(".replit.dev") ||
   configuredHostname.endsWith(".replit.app") ||
   configuredHostname.endsWith(".riker.replit.dev");
+const isDevelopmentBuild =
+  typeof __DEV__ !== "undefined" ? __DEV__ : process.env.NODE_ENV === "development";
 
-// Production builds cannot turn an arbitrary EXPO_PUBLIC_DOMAIN into a
-// trusted origin. Preview builds may use their own Replit host for testing.
-export const PROD_HOSTNAME = isPreviewHost ? configuredHostname : "agendaplay.net";
+// The Replit preview host is needed by the development workflow, but a
+// production bundle always falls back to the public AgendaPlay domain.
+export const PROD_HOSTNAME =
+  isDevelopmentBuild && isPreviewHost ? configuredHostname : "agendaplay.net";
 export const PROD_BASE = `https://${PROD_HOSTNAME}`;
 
 const ALLOWED_HOSTNAMES = new Set([PROD_HOSTNAME]);
@@ -53,5 +56,73 @@ export function normalizeAppUrl(rawUrl?: string | null): string | null {
 }
 
 export function isAllowedAppUrl(rawUrl?: string | null): boolean {
-  return normalizeAppUrl(rawUrl) !== null;
+  // normalizeAppUrl intentionally supplies the app base when no URL is
+  // provided. A missing URL is not a valid WebView navigation or message
+  // source, however.
+  return typeof rawUrl === "string" && rawUrl.length > 0 && normalizeAppUrl(rawUrl) !== null;
+}
+
+export function isTrustedWebViewMessageOrigin(
+  messageUrl?: string | null,
+  currentUrl?: string | null,
+): boolean {
+  if (!isAllowedAppUrl(messageUrl) || !isAllowedAppUrl(currentUrl)) return false;
+
+  try {
+    const messageOrigin = new URL(messageUrl!).origin;
+    const currentOrigin = new URL(currentUrl!).origin;
+    return messageOrigin === currentOrigin;
+  } catch {
+    return false;
+  }
+}
+
+export type NativePushAction = "subscribe" | "unsubscribe" | "status";
+
+export function parseNativePushMessage(
+  rawData: string,
+): { action: NativePushAction } | null {
+  try {
+    const parsed: unknown = JSON.parse(rawData);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+    const message = parsed as Record<string, unknown>;
+    const keys = Object.keys(message);
+    if (keys.length !== 2 || keys.some((key) => key !== "type" && key !== "action")) {
+      return null;
+    }
+    if (message.type !== "AGENDAPLAY_NATIVE_PUSH") return null;
+
+    const action = message.action;
+    if (action !== "subscribe" && action !== "unsubscribe" && action !== "status") {
+      return null;
+    }
+    return { action };
+  } catch {
+    return null;
+  }
+}
+
+export function parseNativeWebError(rawData: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(rawData);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+    const message = parsed as Record<string, unknown>;
+    const keys = Object.keys(message);
+    if (
+      message.type !== "AGENDAPLAY_WEB_ERROR" ||
+      keys.some((key) => !["type", "message", "componentStack"].includes(key)) ||
+      (message.componentStack !== undefined && typeof message.componentStack !== "string") ||
+      (typeof message.componentStack === "string" && message.componentStack.length > 20_000) ||
+      typeof message.message !== "string" ||
+      message.message.length === 0 ||
+      message.message.length > 500
+    ) {
+      return null;
+    }
+    return message.message;
+  } catch {
+    return null;
+  }
 }

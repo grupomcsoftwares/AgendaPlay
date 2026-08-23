@@ -7,6 +7,7 @@ import { PROD_BASE } from "@/lib/webviewSecurity";
 const API_BASE = `${PROD_BASE}/api`;
 const USER_KEY = "@agendaplay/user";
 const COOKIE_KEY = "@agendaplay/session_cookie";
+const SESSION_COOKIE_NAME = "connect.sid";
 
 function normalizeSessionCookie(raw: string | null): string | null {
   if (!raw) return null;
@@ -14,7 +15,18 @@ function normalizeSessionCookie(raw: string | null): string | null {
   if (!first) return null;
   const separator = first.indexOf("=");
   if (separator <= 0) return null;
-  return first;
+  const name = first.slice(0, separator);
+  const value = first.slice(separator + 1);
+  if (
+    name !== SESSION_COOKIE_NAME ||
+    !value ||
+    value.length > 2048 ||
+    /[\s;]/.test(value) ||
+    !/^s(?::|%3a)/i.test(value)
+  ) {
+    return null;
+  }
+  return `${SESSION_COOKIE_NAME}=${value}`;
 }
 
 export type AuthUser = {
@@ -50,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     AsyncStorage.multiGet([USER_KEY, COOKIE_KEY]).then(async ([userEntry, cookieEntry]) => {
       const raw = userEntry[1];
-      const cookie = cookieEntry[1];
+      const cookie = normalizeSessionCookie(cookieEntry[1]);
       if (raw && mounted) {
         try {
           setUser(JSON.parse(raw));
@@ -77,6 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // Keep cached state when the server is temporarily unreachable.
         }
+      } else if (cookieEntry[1]) {
+        // Do not carry an untrusted legacy value into a future WebView.
+        await AsyncStorage.removeItem(COOKIE_KEY);
       }
       if (mounted) setLoading(false);
     });
@@ -112,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const cookie = await AsyncStorage.getItem(COOKIE_KEY);
+    const cookie = normalizeSessionCookie(await AsyncStorage.getItem(COOKIE_KEY));
     if (!cookie) return;
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
@@ -170,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const logout = useCallback(async () => {
-    const cookie = await AsyncStorage.getItem(COOKIE_KEY);
+    const cookie = normalizeSessionCookie(await AsyncStorage.getItem(COOKIE_KEY));
     await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
       headers: cookie ? { Cookie: cookie } : undefined,
@@ -181,7 +196,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const getSessionCookie = useCallback(async () => {
-    return AsyncStorage.getItem(COOKIE_KEY);
+    const raw = await AsyncStorage.getItem(COOKIE_KEY);
+    const cookie = normalizeSessionCookie(raw);
+    if (!cookie && raw) await AsyncStorage.removeItem(COOKIE_KEY);
+    return cookie;
   }, []);
 
   return (

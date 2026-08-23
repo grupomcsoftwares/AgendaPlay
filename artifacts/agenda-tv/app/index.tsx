@@ -19,8 +19,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { isTvDevice } from "@/lib/device";
+import { PROD_BASE } from "@/lib/webviewSecurity";
 
-const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
 const QUEUE_URL = `${PROD_BASE}/queue`;
 
 export default function LoginScreen() {

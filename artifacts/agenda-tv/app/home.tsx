@@ -16,8 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { isTvDevice } from "@/lib/device";
-
-const PROD_BASE = `https://${process.env.EXPO_PUBLIC_DOMAIN || "agendaplay.net"}`;
+import { PROD_BASE } from "@/lib/webviewSecurity";
 
 const MODES = [
   {
