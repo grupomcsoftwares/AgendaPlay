@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request } from "express";
 import { eq } from "drizzle-orm";
-import { db, settingsTable, usersTable } from "@workspace/db";
+import { db, settingsTable, usersTable, type LoyaltyConfig } from "@workspace/db";
 import { UpdateSettingsBody } from "@workspace/api-zod";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 
@@ -18,14 +18,22 @@ type NormalizedReengagementConfig = {
   message: string;
 };
 
-function normalizeLoyaltyConfig(config: typeof settingsTable.$inferSelect["loyaltyConfig"]) {
+function normalizeLoyaltyConfig(config: LoyaltyConfig | null | undefined) {
   if (!config) return config;
+  const bonus = config.prepaymentBonusPoints ?? 0;
   return {
     ...config,
-      prepaymentBonusPoints: Math.max(0, Math.floor(config.prepaymentBonusPoints ?? 0)),
+    prepaymentBonusPoints: Number.isSafeInteger(bonus)
+      ? Math.max(0, bonus)
+      : 0,
     expirationDays: config.expirationDays ?? 0,
     expirationWarningDays: config.expirationWarningDays ?? 7,
   };
+}
+
+function hasInvalidPrepaymentBonus(config: LoyaltyConfig | null | undefined): boolean {
+  const bonus = config?.prepaymentBonusPoints;
+  return bonus !== undefined && (!Number.isSafeInteger(bonus) || bonus < 0);
 }
 
 function normalizeClientReengagementConfig(config: ReengagementConfigInput): NormalizedReengagementConfig {
@@ -96,6 +104,10 @@ router.patch("/settings", requireActiveAuth, async (req, res): Promise<void> => 
   if (!parsed.success) {
     req.log.warn({ error: parsed.error.message, body: req.body }, "settings validation failed");
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (hasInvalidPrepaymentBonus(parsed.data.loyaltyConfig)) {
+    res.status(400).json({ error: "prepaymentBonusPoints deve ser um número inteiro não negativo." });
     return;
   }
   req.log.info({ pixKey: parsed.data.pixKey, paymentEnableNow: parsed.data.paymentEnableNow, showServicePrices: parsed.data.showServicePrices }, "PATCH settings parsed");

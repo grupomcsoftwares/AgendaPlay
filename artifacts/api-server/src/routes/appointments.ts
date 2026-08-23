@@ -1162,10 +1162,15 @@ router.post("/appointments", async (req, res): Promise<void> => {
     // creation fails the whole tx rolls back, so points are never credited on failure).
     // Points are only earned on client-initiated bookings (public link), not admin-panel bookings.
     let pointsEarned = 0;
-    if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyConfig.pointsPerReal && loyaltyPhone) {
-      pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
+    if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyPhone) {
+      if (loyaltyConfig.pointsPerReal && loyaltyConfig.pointsPerReal > 0) {
+        pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
+      }
+      // The browser never supplies this value. It is read from the shop's
+      // server-side config and held as pending until Pix approval.
       if (awaitingPayment && loyaltyPointsRedeemed === 0) {
-        pointsEarned += Math.max(0, Math.floor(loyaltyConfig.prepaymentBonusPoints ?? 0));
+        const bonus = loyaltyConfig.prepaymentBonusPoints ?? 0;
+        if (Number.isSafeInteger(bonus) && bonus > 0) pointsEarned += bonus;
       }
       if (pointsEarned > 0 && !awaitingPayment) {
         await tx
