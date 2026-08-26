@@ -95,6 +95,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 const PgSession = connectPgSimple(session);
+const PERSISTENT_SESSION_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 
 const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 sessionPool.on("error", (err: Error) => logger.error({ err }, "Session pool error"));
@@ -152,7 +153,10 @@ app.use(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 90 * 24 * 60 * 60 * 1000,
+      // Keep the barber signed in across browser restarts while rolling the
+      // expiry forward during active use. Logout and account cleanup still
+      // destroy the session immediately.
+      maxAge: PERSISTENT_SESSION_MAX_AGE_MS,
     },
   }),
 );
