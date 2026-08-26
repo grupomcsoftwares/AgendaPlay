@@ -26,6 +26,7 @@ self.addEventListener("push", (event) => {
     body,
     icon,
     badge: icon,
+    silent: false,
     vibrate: [200, 100, 200, 100, 200],
     tag: data.tag || "agendaplay",
     renotify: true,
