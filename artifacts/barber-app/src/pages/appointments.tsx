@@ -1181,7 +1181,7 @@ export default function Appointments() {
                       )}
                       {getPaymentBadge(apt.paymentMethod ?? "on_site")}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       {apt.status === 'pending_payment' && (
                         <>
                           <Button
@@ -1218,7 +1218,7 @@ export default function Appointments() {
                       {apt.status === 'pending' && (
                         <>
                           <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}><Play className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="WhatsApp" aria-label="Enviar lembrete pelo WhatsApp" className="rounded-full border border-[#25D366]/35 bg-[#25D366]/10 text-[#25D366] shadow-[0_0_10px_rgba(37,211,102,0.08)] hover:border-[#25D366]/65 hover:bg-[#25D366]/20 hover:text-[#5ee88a] hover:shadow-[0_0_14px_rgba(37,211,102,0.2)]" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-[18px] w-[18px]" /></Button>
                           <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}><X className="h-4 w-4" /></Button>
                         </>
                       )}
@@ -1289,7 +1289,7 @@ export default function Appointments() {
                       <TableCell>{getPaymentBadge(apt.paymentMethod ?? "on_site")}</TableCell>
                       <TableCell>{getStatusBadge(apt.status)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-2">
                           {apt.status === 'pending_payment' && (
                             <>
                               <Button
@@ -1326,7 +1326,7 @@ export default function Appointments() {
                           {apt.status === 'pending' && (
                             <>
                               <Button variant="ghost" size="icon" title="Iniciar" className="text-teal-500 hover:text-teal-400 hover:bg-teal-500/10" onClick={() => startAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-start-${apt.id}`}><Play className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" title="Enviar lembrete WhatsApp" className="text-green-500 hover:text-green-400 hover:bg-green-500/10" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Enviar lembrete WhatsApp" aria-label="Enviar lembrete pelo WhatsApp" className="rounded-full border border-[#25D366]/35 bg-[#25D366]/10 text-[#25D366] shadow-[0_0_10px_rgba(37,211,102,0.08)] hover:border-[#25D366]/65 hover:bg-[#25D366]/20 hover:text-[#5ee88a] hover:shadow-[0_0_14px_rgba(37,211,102,0.2)]" onClick={() => sendWhatsAppReminder(apt)} data-testid={`button-notify-${apt.id}`}><MessageCircle className="h-[18px] w-[18px]" /></Button>
                               <Button variant="ghost" size="icon" title="Cancelar" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-${apt.id}`}><X className="h-4 w-4" /></Button>
                             </>
                           )}
