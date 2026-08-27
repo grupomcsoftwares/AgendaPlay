@@ -42,6 +42,18 @@ async function ensureApplicationSchema() {
         OR "subscription_expires_at" IS NOT NULL
       );
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "former_account_phones" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      "phone_hash" text NOT NULL,
+      "first_seen_at" timestamp with time zone NOT NULL DEFAULT now(),
+      "last_deleted_at" timestamp with time zone NOT NULL DEFAULT now()
+    );
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "former_account_phones_hash_unique"
+      ON "former_account_phones" ("phone_hash");
+  `);
   logger.info("Application schema ready");
 }
 

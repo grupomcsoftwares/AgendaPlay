@@ -9,6 +9,7 @@ import {
   clientSubscriptionsTable,
   comboDiscountsTable,
   formerAccountDocumentsTable,
+  formerAccountPhonesTable,
   loyaltyPointsTable,
   nativePushSubscriptionsTable,
   onlinePresenceTable,
@@ -24,7 +25,7 @@ import {
 } from "@workspace/db";
 import { eq, inArray, sql } from "drizzle-orm";
 import type Stripe from "stripe";
-import { getAccountDocumentHash, type AccountDocumentType } from "../lib/documentHistory.js";
+import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.js";
 import { logger } from "../lib/logger.js";
 import { getAccountStatus } from "../routes/accountStatus.js";
 import { getUncachableStripeClient } from "../stripeClient.js";
@@ -223,7 +224,8 @@ async function deleteAccountDataLocked(
         'native_push_subscriptions',
         'online_presence',
         'session',
-        'waitlist'
+        'waitlist',
+        'former_account_phones'
       )
   `);
   const optionalTables = new Set(
@@ -243,24 +245,17 @@ async function deleteAccountDataLocked(
       return false;
     }
 
-    const documentType =
-      user.documentType === "cnpj" ? "cnpj" : "cpf";
-    const documentNumber =
-      documentType === "cnpj" ? user.cnpj : user.cpf;
-    if (documentNumber) {
-      const documentHash = getAccountDocumentHash(
-        documentType as AccountDocumentType,
-        documentNumber,
-      );
+    const phone = normalizeAccountPhone(user.phone);
+    if (phone && optionalTables.has("former_account_phones")) {
+      const phoneHash = getAccountPhoneHash(phone);
       await tx
-        .insert(formerAccountDocumentsTable)
+        .insert(formerAccountPhonesTable)
         .values({
-          documentType,
-          documentHash,
+          phoneHash,
           lastDeletedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: formerAccountDocumentsTable.documentHash,
+          target: formerAccountPhonesTable.phoneHash,
           set: { lastDeletedAt: new Date() },
         });
     }

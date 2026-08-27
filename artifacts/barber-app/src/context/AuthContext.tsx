@@ -33,7 +33,7 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { email: string; documentType: "cpf" | "cnpj"; documentNumber: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<AuthUser>;
+  register: (data: { email: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<AuthUser | null>;
 };
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data);
   }, [clearAccountCache]);
 
-  const register = useCallback(async (data: { email: string; documentType: "cpf" | "cnpj"; documentNumber: string; password: string; barbershopName: string; ownerName: string; phone: string }) => {
+  const register = useCallback(async (data: { email: string; password: string; barbershopName: string; ownerName: string; phone: string }) => {
     // A newly created account must start with an empty client cache.
     clearAccountCache();
     const res = await fetch(`${BASE}/api/auth/register`, {

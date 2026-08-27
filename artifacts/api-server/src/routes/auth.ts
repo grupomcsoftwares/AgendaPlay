@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { formerAccountDocumentsTable, usersTable } from "@workspace/db";
+import { formerAccountPhonesTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import type Stripe from "stripe";
@@ -10,7 +10,7 @@ import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
-import { getAccountDocumentHash, normalizeAccountDocument } from "../lib/documentHistory.js";
+import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.js";
 import { cleanupExpiredAccountByEmail } from "../services/subscriptionCleanup.js";
 
 const SESSION_COOKIE_NAME = "connect.sid";
@@ -60,13 +60,8 @@ const userCols = {
   createdAt: usersTable.createdAt,
 };
 
-function normalizeDocumentType(value: unknown): "cpf" | "cnpj" | null {
-  if (value === "cpf" || value === "cnpj") return value;
-  return null;
-}
-
 function normalizePhone(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return normalizeAccountPhone(value);
 }
 
 async function reconcileActiveSubscription(user: {
@@ -170,46 +165,9 @@ async function reconcileActiveSubscription(user: {
   }
 }
 
-function isValidCpf(cpf: string): boolean {
-  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
-
-  let firstSum = 0;
-  for (let index = 0; index < 9; index += 1) {
-    firstSum += Number(cpf[index]) * (10 - index);
-  }
-  const firstCheck = (firstSum * 10) % 11;
-  if ((firstCheck === 10 ? 0 : firstCheck) !== Number(cpf[9])) return false;
-
-  let secondSum = 0;
-  for (let index = 0; index < 10; index += 1) {
-    secondSum += Number(cpf[index]) * (11 - index);
-  }
-  const secondCheck = (secondSum * 10) % 11;
-  return (secondCheck === 10 ? 0 : secondCheck) === Number(cpf[10]);
-}
-
-function isValidCnpj(cnpj: string): boolean {
-  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
-
-  const calculateDigit = (value: string, weights: number[]) => {
-    const sum = value.split("").reduce((total, digit, index) => total + Number(digit) * weights[index]!, 0);
-    const remainder = sum % 11;
-    return remainder < 2 ? 0 : 11 - remainder;
-  };
-
-  const firstDigit = calculateDigit(cnpj.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  if (firstDigit !== Number(cnpj[12])) return false;
-
-  const secondDigit = calculateDigit(cnpj.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
-  return secondDigit === Number(cnpj[13]);
-}
-
 router.post("/auth/register", async (req: Request, res: Response): Promise<void> => {
-  const { email, documentType: rawDocumentType, documentNumber, cpf, password, barbershopName, ownerName, phone } = req.body as {
+  const { email, password, barbershopName, ownerName, phone } = req.body as {
     email?: string;
-    documentType?: string;
-    documentNumber?: string;
-    cpf?: string;
     password?: string;
     barbershopName?: string;
     ownerName?: string;
@@ -217,27 +175,15 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   };
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
-  // `cpf` remains accepted for one compatibility window for older clients.
-  const documentType = rawDocumentType === undefined ? "cpf" : normalizeDocumentType(rawDocumentType);
-  const normalizedDocument = normalizeAccountDocument(documentNumber ?? cpf);
   const normalizedPhone = normalizePhone(phone);
-  const phoneDigits = normalizedPhone.replace(/\D/g, "");
 
-  if (!normalizedEmail || !documentType || !normalizedDocument || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
+  if (!normalizedEmail || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
     return;
   }
 
-  if (!/^\d{10,11}$/.test(phoneDigits)) {
+  if (!/^\d{10,11}$/.test(normalizedPhone)) {
     res.status(400).json({ error: "Informe um telefone válido com DDD." });
-    return;
-  }
-
-  const validDocument = documentType === "cpf"
-    ? isValidCpf(normalizedDocument)
-    : isValidCnpj(normalizedDocument);
-  if (!validDocument) {
-    res.status(400).json({ error: `Informe um ${documentType.toUpperCase()} válido.` });
     return;
   }
 
@@ -257,38 +203,35 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  let existingDocument = await db
+  let existingPhone = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
-    .where(eq(documentType === "cpf" ? usersTable.cpf : usersTable.cnpj, normalizedDocument))
+    .where(sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`)
     .limit(1);
-  if (existingDocument.length > 0) {
-    await cleanupExpiredAccountByEmail(existingDocument[0]!.email);
-    existingDocument = await db
+  if (existingPhone.length > 0) {
+    await cleanupExpiredAccountByEmail(existingPhone[0]!.email);
+    existingPhone = await db
       .select({ id: usersTable.id, email: usersTable.email })
       .from(usersTable)
-      .where(eq(documentType === "cpf" ? usersTable.cpf : usersTable.cnpj, normalizedDocument))
+      .where(sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`)
       .limit(1);
-    if (existingDocument.length > 0) {
-      res.status(409).json({ error: `Este ${documentType.toUpperCase()} já está cadastrado em uma conta.` });
+    if (existingPhone.length > 0) {
+      res.status(409).json({ error: "Este telefone já está cadastrado em uma conta." });
       return;
     }
   }
 
-  const documentHash = getAccountDocumentHash(documentType, normalizedDocument);
-  const [formerDocument] = await db
-    .select({ id: formerAccountDocumentsTable.id })
-    .from(formerAccountDocumentsTable)
-    .where(eq(formerAccountDocumentsTable.documentHash, documentHash))
+  const phoneHash = getAccountPhoneHash(normalizedPhone);
+  const [formerPhone] = await db
+    .select({ id: formerAccountPhonesTable.id })
+    .from(formerAccountPhonesTable)
+    .where(eq(formerAccountPhonesTable.phoneHash, phoneHash))
     .limit(1);
-  const trialEligible = !formerDocument;
+  const trialEligible = !formerPhone;
 
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     email: normalizedEmail,
-    documentType,
-    cpf: documentType === "cpf" ? normalizedDocument : null,
-    cnpj: documentType === "cnpj" ? normalizedDocument : null,
     passwordHash,
     barbershopName: barbershopName.trim(),
     ownerName: ownerName.trim(),

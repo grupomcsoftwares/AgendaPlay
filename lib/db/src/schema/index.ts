@@ -18,3 +18,4 @@ export * from "./slug-redirects";
 export * from "./waitlist";
 export * from "./online-presence";
 export * from "./former-account-documents";
+export * from "./former-account-phones";
