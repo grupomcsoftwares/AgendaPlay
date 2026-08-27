@@ -30,6 +30,7 @@ const DEFAULT_DAY_SCHEDULE: DaySchedule = {
   lunchStart: "12:00",
   lunchEnd: "13:00",
 };
+const PUBLIC_BOOKING_MIN_ADVANCE_MINUTES = 5;
 
 function localHHMM(d: Date): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TZ, hour12: false, hour: "2-digit", minute: "2-digit" }).format(d);
@@ -113,13 +114,127 @@ async function getEffectiveDaySchedule(
   return weekly?.[localDayKey(date)] ?? DEFAULT_DAY_SCHEDULE;
 }
 
+async function hasAvailablePublicSlotAfterBuffer(
+  shopId: string,
+  date: string,
+  duration: number,
+  barberId: number | null | undefined,
+  excludedAppointmentId: number | null = null,
+): Promise<boolean> {
+  const dayDate = new Date(`${date}T12:00:00Z`);
+  const day = await getEffectiveDaySchedule(shopId, dayDate, barberId);
+  if (day.closed) return false;
+
+  const [settings] = await db
+    .select({
+      slotIntervalMinutes: settingsTable.slotIntervalMinutes,
+      smartSlots: settingsTable.smartSlots,
+    })
+    .from(settingsTable)
+    .where(eq(settingsTable.userId, shopId))
+    .limit(1);
+
+  const openMin = parseHHMM(day.open);
+  const closeMin = parseHHMM(day.close);
+  const lunchStart = parseHHMM(day.lunchStart);
+  const lunchEnd = parseHHMM(day.lunchEnd);
+  const hasLunch = lunchEnd > lunchStart;
+  const dayStart = new Date(`${date}T00:00:00Z`);
+  const appts = await db
+    .select()
+    .from(appointmentsTable)
+    .where(and(
+      eq(appointmentsTable.userId, shopId),
+      gte(appointmentsTable.scheduledAt, new Date(dayStart.getTime() - 24 * 3600 * 1000)),
+      lt(appointmentsTable.scheduledAt, new Date(dayStart.getTime() + 48 * 3600 * 1000)),
+    ));
+
+  const blocked: Array<[number, number]> = [];
+  for (const appointment of appts) {
+    if (appointment.id === excludedAppointmentId || !isBlockingAppointment(appointment.status)) continue;
+    if (localYMD(appointment.scheduledAt) !== date) continue;
+    if (barberId !== null && barberId !== undefined &&
+        appointment.barberId !== null && appointment.barberId !== barberId) continue;
+    const start = parseHHMM(localHHMM(appointment.scheduledAt));
+    blocked.push([start, start + appointment.serviceDuration]);
+  }
+
+  const now = new Date();
+  const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
+  const blockingAppointmentCount = blocked.length;
+  const adaptiveSmartStep = blockingAppointmentCount <= 3
+    ? duration
+    : blockingAppointmentCount <= 6
+      ? 30
+      : blockingAppointmentCount <= 9
+        ? 20
+        : 10;
+  const step = settings?.smartSlots
+    ? Math.max(20, adaptiveSmartStep)
+    : Math.max(5, settings?.slotIntervalMinutes ?? 15);
+  const firstSlotMin = settings?.smartSlots && nowMin >= 0
+    ? Math.max(
+        openMin,
+        Math.ceil((nowMin + PUBLIC_BOOKING_MIN_ADVANCE_MINUTES) / 5) * 5,
+      )
+    : openMin;
+
+  for (let t = firstSlotMin; t + duration <= closeMin; t += step) {
+    const end = t + duration;
+    const overlapsLunch = hasLunch && t < lunchEnd && end > lunchStart;
+    if (overlapsLunch && settings?.smartSlots && t < lunchEnd) {
+      t = lunchEnd - step;
+      continue;
+    }
+    const overlapsAppointment = blocked.some(([start, finish]) => t < finish && end > start);
+    const isBeforeCurrentMinute = nowMin >= 0 && t < nowMin;
+    const isInsidePublicBuffer = nowMin >= 0 &&
+      t >= nowMin &&
+      t < nowMin + PUBLIC_BOOKING_MIN_ADVANCE_MINUTES;
+    if (!overlapsLunch && !overlapsAppointment && !isBeforeCurrentMinute && !isInsidePublicBuffer) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function getBookingWindowError(
   shopId: string,
   date: Date,
   duration: number,
   barberId: number | null | undefined,
+  isPublicBooking = false,
+  excludedAppointmentId: number | null = null,
 ): Promise<string | null> {
-  if (date.getTime() <= Date.now()) return "O horário deve estar no futuro.";
+  const now = new Date();
+  const requestedDateKey = localYMD(date);
+  const nowDateKey = localYMD(now);
+  const requestedStartMin = parseHHMM(localHHMM(date));
+  const nowMin = requestedDateKey === nowDateKey ? parseHHMM(localHHMM(now)) : -1;
+  const isCurrentLocalMinute = isPublicBooking &&
+    nowMin >= 0 &&
+    requestedStartMin === nowMin;
+  if (date.getTime() <= now.getTime() && !isCurrentLocalMinute) {
+    return "O horário deve estar no futuro.";
+  }
+
+  const isInsidePublicBuffer = isPublicBooking &&
+    nowMin >= 0 &&
+    requestedStartMin >= nowMin &&
+    requestedStartMin < nowMin + PUBLIC_BOOKING_MIN_ADVANCE_MINUTES;
+  if (isInsidePublicBuffer) {
+    const hasLaterSlot = await hasAvailablePublicSlotAfterBuffer(
+      shopId,
+      requestedDateKey,
+      duration,
+      barberId,
+      excludedAppointmentId,
+    );
+    if (hasLaterSlot) {
+      return "Escolha um horário com pelo menos 5 minutos de antecedência.";
+    }
+  }
+
   const [settings] = await db
     .select({ maxBookingDays: settingsTable.maxBookingDays })
     .from(settingsTable)
@@ -804,6 +919,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     scheduledAtDate,
     authoritative.serviceDuration,
     typeof parsed.data.barberId === "number" ? parsed.data.barberId : null,
+    !isAdminBooking,
   );
   if (bookingWindowError) {
     res.status(400).json({ error: bookingWindowError });
@@ -1368,6 +1484,7 @@ router.patch("/appointments/:id", requireActiveAuth, async (req, res): Promise<v
         ? updateData.serviceDuration
         : existingAppointment.serviceDuration),
       targetBarberId,
+      false,
     );
     if (windowError) {
       res.status(400).json({ error: windowError });
@@ -1873,6 +1990,8 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     newDate,
     appointmentForValidation.serviceDuration,
     validationBarberId,
+    true,
+    appointmentForValidation.id,
   );
   if (bookingWindowError) {
     res.status(400).json({ error: bookingWindowError });
