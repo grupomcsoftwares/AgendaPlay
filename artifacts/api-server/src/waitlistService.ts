@@ -44,7 +44,7 @@ function localMinutes(date: Date): number {
 }
 
 function isBlockingAppointment(status: string): boolean {
-  return status !== "cancelled" && status !== "payment_rejected" && status !== "completed";
+  return status !== "cancelled" && status !== "no_show" && status !== "payment_rejected" && status !== "completed";
 }
 
 function formatWaitlistEntry(entry: typeof waitlistTable.$inferSelect) {

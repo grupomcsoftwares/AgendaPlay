@@ -407,6 +407,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const redirectedPendingToken = React.useRef<string | null>(null);
   const activePendingAppointments = pendingAppointments.filter((appointment) =>
     appointment.status !== "cancelled" &&
+    appointment.status !== "no_show" &&
     appointment.status !== "completed" &&
     appointment.status !== "payment_rejected" &&
     Boolean(appointment.cancelToken)

@@ -521,6 +521,35 @@ export const CompleteAppointmentResponse = zod.object({
 
 
 /**
+ * @summary Mark an in-progress appointment as no-show
+ */
+export const MarkAppointmentNoShowParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkAppointmentNoShowResponse = zod.object({
+  "id": zod.number(),
+  "userId": zod.string().describe('Shop owner user ID associated with the appointment.'),
+  "clientId": zod.number().nullish(),
+  "clientName": zod.string(),
+  "serviceId": zod.number().nullish(),
+  "serviceName": zod.string(),
+  "barberId": zod.number().nullish(),
+  "barberName": zod.string().nullish(),
+  "servicePrice": zod.number(),
+  "serviceDuration": zod.number(),
+  "scheduledAt": zod.string(),
+  "status": zod.string(),
+  "paymentMethod": zod.enum(['now', 'on_site']).optional(),
+  "coveredByPlan": zod.boolean().optional(),
+  "creditsUsed": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "cancelToken": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
  * @summary Cancel an appointment
  */
 export const CancelAppointmentParams = zod.object({

@@ -455,6 +455,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Appointment"
 
+  /appointments/{id}/no-show:
+    post:
+      operationId: markAppointmentNoShow
+      tags: [appointments]
+      summary: Mark an in-progress appointment as no-show
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Appointment marked as no-show
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Appointment"
+
   /appointments/{id}/cancel:
     post:
       operationId: cancelAppointment

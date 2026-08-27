@@ -240,7 +240,7 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
 
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {
-    if (a.status === "cancelled" || a.status === "completed") continue;
+    if (a.status === "cancelled" || a.status === "no_show" || a.status === "completed") continue;
     if (localYMD(a.scheduledAt) !== today) continue;
     const start = parseHHMM(localHHMM(a.scheduledAt));
       blocked.push([start, start + a.serviceDuration]);
@@ -380,7 +380,7 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
 
   const blocked: Array<[number, number]> = [];
   for (const a of appts) {
-    if (a.status === "cancelled" || a.status === "completed") continue;
+    if (a.status === "cancelled" || a.status === "no_show" || a.status === "completed") continue;
     if (localYMD(a.scheduledAt) !== today) continue;
     const start = parseHHMM(localHHMM(a.scheduledAt));
     blocked.push([start, start + a.serviceDuration]);

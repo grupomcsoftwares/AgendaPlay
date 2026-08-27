@@ -117,7 +117,7 @@ export default function CancelBooking() {
 
   // Check appointment time and show reminder banner when 15 min left
   useEffect(() => {
-    if (!appointment || appointment.status === "cancelled" || appointment.status === "in_progress" || appointment.status === "completed") return;
+    if (!appointment || appointment.status === "cancelled" || appointment.status === "no_show" || appointment.status === "in_progress" || appointment.status === "completed") return;
     const check = () => {
       const apptTime = new Date(appointment.scheduledAt).getTime();
       const diffMin = (apptTime - Date.now()) / 60000;
@@ -296,7 +296,8 @@ export default function CancelBooking() {
   const { date, time } = formatDateTime(appointment.scheduledAt);
   const paymentRejected = appointment.status === "payment_rejected";
   const cancelled = appointment.status === "cancelled" || paymentRejected;
-  const locked = appointment.status === "in_progress" || appointment.status === "completed";
+  const noShow = appointment.status === "no_show";
+  const locked = appointment.status === "in_progress" || appointment.status === "completed" || noShow;
   const paidInAdvance = appointment.paymentMethod === "now";
   const paymentPending = appointment.status === "pending_payment";
 
@@ -602,6 +603,12 @@ export default function CancelBooking() {
               )}
             </div>
           </div>
+        ) : noShow ? (
+          <div className="space-y-3">
+            <p className="text-sm text-center text-muted-foreground">
+              Este agendamento foi encerrado porque o cliente não compareceu. O saldo de pontos foi zerado e o horário não pode mais ser alterado pelo link.
+            </p>
+          </div>
         ) : paidInAdvance ? (
           <div className="space-y-3">
             <p className="text-sm text-center text-muted-foreground">
@@ -619,7 +626,9 @@ export default function CancelBooking() {
         ) : locked ? (
           <div className="space-y-3">
             <p className="text-sm text-center text-muted-foreground">
-              Este agendamento já está em andamento ou foi concluído e não pode ser cancelado pelo link.
+              {noShow
+                ? "Este agendamento foi encerrado porque o cliente não compareceu."
+                : "Este agendamento já está em andamento ou foi concluído e não pode ser cancelado pelo link."}
             </p>
             <Button
               className="w-full"

@@ -16,6 +16,7 @@ import {
   DeleteAppointmentParams,
   StartAppointmentParams,
   CompleteAppointmentParams,
+  MarkAppointmentNoShowParams,
   CancelAppointmentParams,
   GetAvailabilityQueryParams,
   RecoverAppointmentsBody,
@@ -412,7 +413,7 @@ function appointmentPhone(
 }
 
 function isBlockingAppointment(status: string): boolean {
-  return status !== "cancelled" && status !== "payment_rejected" && status !== "completed";
+  return status !== "cancelled" && status !== "no_show" && status !== "payment_rejected" && status !== "completed";
 }
 
 /**
@@ -1887,6 +1888,95 @@ router.post("/appointments/:id/complete", requireActiveAuth, async (req, res): P
   res.json(formatAppointment(appointment));
 });
 
+router.post("/appointments/:id/no-show", requireActiveAuth, async (req, res): Promise<void> => {
+  const params = MarkAppointmentNoShowParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const userId = req.session.userId!;
+  const result = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(appointmentsTable)
+      .where(and(
+        eq(appointmentsTable.id, params.data.id),
+        eq(appointmentsTable.userId, userId),
+      ))
+      .for("update")
+      .limit(1);
+
+    if (!existing) return { error: "notfound" as const };
+    if (existing.status === "no_show") {
+      return { appointment: existing, changed: false };
+    }
+    if (existing.status !== "in_progress") {
+      return { error: "invalid_state" as const };
+    }
+
+    const [updated] = await tx
+      .update(appointmentsTable)
+      .set({ status: "no_show" })
+      .where(and(
+        eq(appointmentsTable.id, params.data.id),
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.status, "in_progress"),
+      ))
+      .returning();
+    if (!updated) return { error: "invalid_state" as const };
+
+    await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+
+    const [linkedClient] = existing.clientId
+      ? await tx
+        .select({ phone: clientsTable.phone })
+        .from(clientsTable)
+        .where(and(
+          eq(clientsTable.id, existing.clientId),
+          eq(clientsTable.userId, userId),
+        ))
+        .limit(1)
+      : [];
+    const phoneMatch = existing.notes?.match(/Tel:\s*([^.]+)/);
+    const loyaltyPhone = normalizePhone(linkedClient?.phone) ||
+      (phoneMatch ? normalizePhone(phoneMatch[1]) : "");
+    if (loyaltyPhone) {
+      await tx
+        .update(loyaltyPointsTable)
+        .set({ points: 0, updatedAt: new Date() })
+        .where(and(
+          eq(loyaltyPointsTable.userId, userId),
+          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
+        ));
+    }
+
+    return { appointment: updated, changed: true };
+  });
+
+  if (result.error === "notfound") {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+  if (result.error === "invalid_state") {
+    res.status(409).json({ error: "Só é possível registrar falta em um atendimento em andamento." });
+    return;
+  }
+
+  const appointment = result.appointment;
+  if (result.changed) {
+    await offerNextWaitlistForSlot({
+      userId: appointment.userId,
+      scheduledAt: appointment.scheduledAt,
+      serviceDuration: appointment.serviceDuration,
+      barberId: appointment.barberId,
+    }).catch(() => {});
+    broadcastQueueUpdate(userId);
+  }
+
+  res.json(formatAppointment(appointment));
+});
+
 // Token-based routes — token is globally unique, no shopId needed.
 // We derive the shop from the appointment's own userId for availability checks.
 router.get("/appointments/by-token/:token", async (req, res): Promise<void> => {
@@ -2011,6 +2101,10 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
     .limit(1);
   if (!appointmentForValidation) {
     res.status(404).json({ error: "Agendamento não encontrado" });
+    return;
+  }
+  if (appointmentForValidation.status === "no_show") {
+    res.status(409).json({ error: "Este agendamento foi encerrado por não comparecimento e não pode ser alterado." });
     return;
   }
   const [accountForValidation] = await db
@@ -2181,7 +2275,7 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)));
     if (!existing) return { error: "notfound" as const };
     if (existing.status === "cancelled") return { error: "already_cancelled" as const };
-    if (!["pending", "confirmed", "pending_payment", "in_progress"].includes(existing.status)) {
+    if (!["pending", "confirmed", "pending_payment"].includes(existing.status)) {
       return { error: "locked" as const };
     }
     const [a] = await tx
@@ -2190,7 +2284,7 @@ router.post("/appointments/:id/cancel", requireActiveAuth, async (req, res): Pro
       .where(and(
         eq(appointmentsTable.id, params.data.id),
         eq(appointmentsTable.userId, userId),
-        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment', 'in_progress')`,
+        sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment')`,
       ))
       .returning();
     if (!a) return { error: "locked" as const };

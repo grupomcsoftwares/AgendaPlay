@@ -7,10 +7,12 @@ import {
   useDeleteAppointment,
   useStartAppointment,
   useCompleteAppointment,
+  useMarkAppointmentNoShow,
   useCancelAppointment,
   useApproveAppointmentPayment,
   useRejectAppointmentPayment,
   getListAppointmentsQueryKey,
+  getListQueueQueryKey,
   useListServices,
   getListServicesQueryKey,
   useListClients,
@@ -127,6 +129,7 @@ export default function Appointments() {
   const deleteAppointment = useDeleteAppointment();
   const startAppointment = useStartAppointment();
   const completeAppointment = useCompleteAppointment();
+  const markAppointmentNoShow = useMarkAppointmentNoShow();
   const cancelAppointment = useCancelAppointment();
   const approvePayment = useApproveAppointmentPayment();
   const rejectPayment = useRejectAppointmentPayment();
@@ -351,6 +354,7 @@ export default function Appointments() {
     setDateEnd(day);
   };
   const [cancelTarget, setCancelTarget] = useState<{ id: number; clientName: string } | null>(null);
+  const [noShowTarget, setNoShowTarget] = useState<{ id: number; clientName: string } | null>(null);
 
   // Refresh every surface that depends on appointment data.
   const invalidateAll = () => {
@@ -359,6 +363,7 @@ export default function Appointments() {
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey({}) });
     queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey(pendingPaymentParams) });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
     queryClient.invalidateQueries({ queryKey: ["/api/availability"], exact: false });
   };
   const invalidate = invalidateAll;
@@ -565,6 +570,28 @@ export default function Appointments() {
     );
   };
 
+  const confirmNoShow = () => {
+    if (!noShowTarget) return;
+    markAppointmentNoShow.mutate(
+      { id: noShowTarget.id },
+      {
+        onSuccess: () => {
+          invalidate();
+          setNoShowTarget(null);
+          toast({ title: "Falta registrada", description: "O saldo de pontos do cliente foi zerado." });
+        },
+        onError: (err) => {
+          const apiErr = err as ApiError<{ error?: string }>;
+          toast({
+            variant: "destructive",
+            title: "Não foi possível registrar a falta",
+            description: apiErr?.data?.error ?? "Tente novamente.",
+          });
+        },
+      },
+    );
+  };
+
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'pending': return <Badge variant="outline" className="text-yellow-500 border-yellow-500/20 bg-yellow-500/10">Pendente</Badge>;
@@ -572,6 +599,7 @@ export default function Appointments() {
       case 'in_progress': return <Badge variant="outline" className="text-teal-500 border-teal-500/20 bg-teal-500/10">Em Andamento</Badge>;
       case 'completed': return <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/10">Concluído</Badge>;
       case 'cancelled': return <Badge variant="outline" className="text-destructive border-destructive/20 bg-destructive/10">Cancelado</Badge>;
+      case 'no_show': return <Badge variant="outline" className="text-orange-400 border-orange-400/20 bg-orange-400/10">Não compareceu</Badge>;
       case 'payment_rejected': return <Badge variant="outline" className="text-red-400 border-red-400/20 bg-red-400/10">Pix recusado</Badge>;
       default: return <Badge>{status}</Badge>;
     }
@@ -1224,8 +1252,8 @@ export default function Appointments() {
                       )}
                       {apt.status === 'in_progress' && (
                         <>
-                          <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="Cancelar por falta do cliente" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-no-show-${apt.id}`}><X className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Concluir" aria-label="Concluir atendimento" disabled={completeAppointment.isPending || markAppointmentNoShow.isPending} className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Cliente não compareceu" aria-label="Cliente não compareceu" disabled={completeAppointment.isPending || markAppointmentNoShow.isPending} className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setNoShowTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-no-show-${apt.id}`}><AlertTriangle className="h-4 w-4" /></Button>
                         </>
                       )}
                       {apt.status === 'completed' && (
@@ -1332,8 +1360,8 @@ export default function Appointments() {
                           )}
                           {apt.status === 'in_progress' && (
                             <>
-                              <Button variant="ghost" size="icon" title="Concluir" className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" title="Cancelar por falta do cliente" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setCancelTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-cancel-no-show-${apt.id}`}><X className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Concluir" aria-label="Concluir atendimento" disabled={completeAppointment.isPending || markAppointmentNoShow.isPending} className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => completeAppointment.mutate({id: apt.id}, { onSuccess: invalidate })} data-testid={`button-complete-${apt.id}`}><Check className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" title="Cliente não compareceu" aria-label="Cliente não compareceu" disabled={completeAppointment.isPending || markAppointmentNoShow.isPending} className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setNoShowTarget({ id: apt.id, clientName: apt.clientName })} data-testid={`button-no-show-${apt.id}`}><AlertTriangle className="h-4 w-4" /></Button>
                             </>
                           )}
                           {apt.status === 'completed' && (
@@ -1368,6 +1396,28 @@ export default function Appointments() {
               data-testid="button-confirm-cancel"
             >
               {cancelAppointment.isPending ? "Cancelando…" : "Sim, cancelar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!noShowTarget} onOpenChange={(open) => !open && setNoShowTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cliente não compareceu?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground py-2">
+            Registrar a falta de <strong className="text-foreground">{noShowTarget?.clientName}</strong> encerrará o atendimento e zerará todo o saldo de pontos desse cliente. Essa ação não pode ser desfeita.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoShowTarget(null)}>Voltar</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmNoShow}
+              disabled={markAppointmentNoShow.isPending}
+              data-testid="button-confirm-no-show"
+            >
+              {markAppointmentNoShow.isPending ? "Registrando…" : "Registrar falta"}
             </Button>
           </DialogFooter>
         </DialogContent>

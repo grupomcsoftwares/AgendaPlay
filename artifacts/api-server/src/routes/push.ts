@@ -240,7 +240,7 @@ router.post("/push/trigger-reminders", async (req, res) => {
       .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
       .where(
         and(
-          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "completed"]),
+          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "no_show", "completed"]),
           or(
             eq(pushSubscriptionsTable.notify15Sent, false),
             eq(pushSubscriptionsTable.notify10Sent, false),
@@ -564,7 +564,7 @@ export async function runPushScheduler() {
         .leftJoin(settingsTable, eq(appointmentsTable.userId, settingsTable.userId))
         .where(and(
           eq(pushSubscriptionsTable.notify15Sent, false),
-          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "completed"]),
+          notInArray(appointmentsTable.status, ["pending_payment", "payment_rejected", "cancelled", "no_show", "completed"]),
         ));
 
       for (const row of rows) {
