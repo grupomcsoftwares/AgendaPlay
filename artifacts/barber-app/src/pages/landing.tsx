@@ -43,7 +43,7 @@ export default function Landing() {
             <a href="#para-quem" className="transition-colors hover:text-white">Para sua barbearia</a>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden text-sm font-medium text-white/70 transition-colors hover:text-white sm:inline-flex">Entrar</Link>
+            <Link href="/login" className="shrink-0 text-sm font-medium text-white/70 transition-colors hover:text-white">Entrar</Link>
             <Link href="/register" className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-[#06100b] transition hover:bg-emerald-300">Começar grátis</Link>
           </div>
         </nav>
