@@ -5,7 +5,9 @@ import { z } from "zod/v4";
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
-  documentType: text("document_type").notNull().default("cpf"),
+  // Legacy document columns remain for existing accounts; new registrations
+  // are identified by phone.
+  documentType: text("document_type").notNull().default("phone"),
   cpf: text("cpf").unique(),
   cnpj: text("cnpj").unique(),
   passwordHash: text("password_hash").notNull(),

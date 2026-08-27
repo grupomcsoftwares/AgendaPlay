@@ -8,7 +8,6 @@ import {
   clientsTable,
   clientSubscriptionsTable,
   comboDiscountsTable,
-  formerAccountDocumentsTable,
   formerAccountPhonesTable,
   loyaltyPointsTable,
   nativePushSubscriptionsTable,
@@ -224,8 +223,7 @@ async function deleteAccountDataLocked(
         'native_push_subscriptions',
         'online_presence',
         'session',
-        'waitlist',
-        'former_account_phones'
+        'waitlist'
       )
   `);
   const optionalTables = new Set(
@@ -246,7 +244,7 @@ async function deleteAccountDataLocked(
     }
 
     const phone = normalizeAccountPhone(user.phone);
-    if (phone && optionalTables.has("former_account_phones")) {
+    if (phone) {
       const phoneHash = getAccountPhoneHash(phone);
       await tx
         .insert(formerAccountPhonesTable)

@@ -28,6 +28,10 @@ const LIVE_PLANS = [
 async function ensureApplicationSchema() {
   await pool.query(`
     ALTER TABLE "users"
+    ALTER COLUMN "document_type" SET DEFAULT 'phone';
+  `);
+  await pool.query(`
+    ALTER TABLE "users"
     ADD COLUMN IF NOT EXISTS "stripe_payment_failing" boolean NOT NULL DEFAULT false;
   `);
   await pool.query(`

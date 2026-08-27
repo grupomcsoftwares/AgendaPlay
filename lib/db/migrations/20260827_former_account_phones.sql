@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE "users"
+  ALTER COLUMN "document_type" SET DEFAULT 'phone';
+
 CREATE TABLE IF NOT EXISTS "former_account_phones" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "phone_hash" text NOT NULL,

@@ -60,7 +60,7 @@ export default function Register() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">Crie sua barbearia</h1>
           <p className="text-sm" style={{ color: "hsl(0 0% 60%)" }}>
-            Novas contas recebem 30 dias grátis, sem cartão de crédito
+            Novas contas recebem 30 dias grátis, sem cartão de crédito. O benefício é único por telefone.
           </p>
         </div>
 
@@ -124,6 +124,9 @@ export default function Register() {
                 style={inputStyle}
               />
             </div>
+            <p className="text-xs" style={{ color: "hsl(0 0% 50%)" }}>
+              Esse telefone identifica o cadastro e mantém o histórico do período grátis mesmo se a conta for excluída.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -134,6 +137,7 @@ export default function Register() {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="username"
                 required
                 value={form.email}
                 onChange={handleChange}
@@ -152,6 +156,7 @@ export default function Register() {
                 id="password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 required
                 minLength={6}
                 value={form.password}

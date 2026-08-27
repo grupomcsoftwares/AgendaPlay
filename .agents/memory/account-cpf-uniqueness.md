@@ -3,8 +3,8 @@ name: Account CPF uniqueness
 description: Business rule for using CPF to prevent duplicate barbershop accounts.
 ---
 
-Each newly registered barbershop account must provide one valid Brazilian CPF. Store only its digits and enforce uniqueness so a different email cannot create another account with the same CPF.
+New barbershop accounts no longer require CPF or CNPJ. The normalized owner phone is the primary registration identifier, and a phone already used by an active account cannot create another account.
 
-**Why:** Email-only registration allowed repeated trial accounts using different email addresses.
+**Why:** Phone is now the stable identifier that survives account deletion and prevents a different email or document from restarting the free trial.
 
-**How to apply:** Keep CPF unique at the database level, do not expose it in login/session payloads, and delete it with the user row during definitive account deletion so the person can register again afterward.
+**How to apply:** Normalize Brazilian phone digits at registration, check active accounts by normalized phone, and record a protected phone hash during definitive deletion so future registrations are returning customers.

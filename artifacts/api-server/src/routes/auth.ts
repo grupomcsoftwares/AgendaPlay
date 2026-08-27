@@ -232,6 +232,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     email: normalizedEmail,
+    documentType: "phone",
     passwordHash,
     barbershopName: barbershopName.trim(),
     ownerName: ownerName.trim(),

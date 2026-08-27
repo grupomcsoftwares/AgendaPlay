@@ -3,8 +3,8 @@ name: Account document choice
 description: Rules for the CPF/CNPJ choice during barbershop account registration.
 ---
 
-New accounts choose one document type: CPF for the responsible person or CNPJ for the company. The selected number is normalized to digits, validated with its Brazilian check digits, and unique within its document column. Existing CPF accounts remain valid through the legacy CPF column.
+CPF/CNPJ are legacy account fields only. New barbershop registration does not ask for a document and uses the normalized owner phone as the account identity and trial-history key. Existing document columns and historical rows remain only for compatibility.
 
-**Why:** Individual barbers and registered companies need different identifiers, while both must prevent duplicate trial accounts.
+**Why:** The product now identifies the account by phone so deleting and recreating it cannot restart the free trial with a different document or email.
 
-**How to apply:** Keep `document_type` as `cpf` or `cnpj`, store only the matching document column, reject duplicates regardless of email, and release the document when the account is definitively deleted.
+**How to apply:** Do not add CPF/CNPJ back to the registration form or trial decision. Store new account phone numbers in canonical digits, and keep old document data untouched for existing accounts.

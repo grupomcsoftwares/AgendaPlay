@@ -10,6 +10,7 @@
 - [Account deletion schema drift](account-deletion-schema-drift.md) — never let an account-delete transaction reference a table absent from the deployed database; one failed cleanup query rolls back the email deletion.
 - [Public booking slug lifecycle](public-booking-slug-lifecycle.md) — never derive a new account's public slug from its shop name; deleted-and-recreated accounts must not resurrect old public links.
 - [Account CPF uniqueness](account-cpf-uniqueness.md) — CPF identifies one account; normalize and validate it at registration, and release it only after definitive account deletion.
+- [Phone trial history](phone-trial-history.md) — new account identity and one-time 30-day trial eligibility are based on the normalized owner phone.
 - [Account identity source](account-identity-source.md) — full name, phone, and shop name are captured at registration and treated as account identity in settings.
 - [Account document choice](account-document-choice.md) — registration supports either a validated unique CPF or CNPJ; legacy CPF records remain compatible.
 - [Editable settings contracts](settings-input-contracts.md) — editable fields must exist in the request schema, not only the response schema, or updates can be silently discarded.
