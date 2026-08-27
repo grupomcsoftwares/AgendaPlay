@@ -223,6 +223,9 @@ async function getBookingWindowError(
     requestedStartMin >= nowMin &&
     requestedStartMin < nowMin + PUBLIC_BOOKING_MIN_ADVANCE_MINUTES;
   if (isInsidePublicBuffer) {
+    if (requestedStartMin !== nowMin) {
+      return "Escolha um horário com pelo menos 5 minutos de antecedência.";
+    }
     const hasLaterSlot = await hasAvailablePublicSlotAfterBuffer(
       shopId,
       requestedDateKey,
@@ -737,7 +740,10 @@ router.get("/availability", async (req, res): Promise<void> => {
 
   // Booking rules from settings
   const maxBookingDays = settings?.maxBookingDays ?? 30;
-  const minAdvanceMinutes = 0; // always show nearest available slot — no advance buffer
+  const isPublicAvailability = !req.session?.userId;
+  const minAdvanceMinutes = isPublicAvailability
+    ? PUBLIC_BOOKING_MIN_ADVANCE_MINUTES
+    : 0;
   const slotIntervalMinutes = settings?.slotIntervalMinutes ?? 15;
   const smartSlots = settings?.smartSlots ?? false;
 
@@ -816,6 +822,8 @@ router.get("/availability", async (req, res): Promise<void> => {
   const nowMin = localYMD(now) === date ? parseHHMM(localHHMM(now)) : -1;
 
   const slots: Array<{ time: string; available: boolean }> = [];
+  const fallbackBufferSlots: string[] = [];
+  let hasAvailableSlotAfterBuffer = false;
   // Smart Slots adapts its granularity to the day's demand. On an empty day
   // the service duration avoids an unnecessarily long list; as the schedule
   // fills up, smaller increments expose useful gaps between appointments.
@@ -848,11 +856,53 @@ router.get("/availability", async (req, res): Promise<void> => {
       continue;
     }
     const overlapsAppt = blocked.some(([s, e]) => t < e + BUFFER && end + BUFFER > s);
-    const inPast = nowMin >= 0 && t < nowMin + minAdvanceMinutes;
-    const available = !overlapsLunch && !overlapsAppt && !inPast;
     const hh = Math.floor(t / 60).toString().padStart(2, "0");
     const mm = (t % 60).toString().padStart(2, "0");
-    slots.push({ time: `${hh}:${mm}`, available });
+    const time = `${hh}:${mm}`;
+    const inPast = nowMin >= 0 && t < nowMin;
+    const insidePublicBuffer = isPublicAvailability &&
+      nowMin >= 0 &&
+      t >= nowMin &&
+      t < nowMin + minAdvanceMinutes;
+    const fitsWithoutBuffer = !overlapsLunch && !overlapsAppt && !inPast;
+    if (fitsWithoutBuffer && insidePublicBuffer && t === nowMin) {
+      fallbackBufferSlots.push(time);
+    }
+    if (fitsWithoutBuffer && !insidePublicBuffer) {
+      hasAvailableSlotAfterBuffer = true;
+    }
+    slots.push({ time, available: fitsWithoutBuffer && !insidePublicBuffer });
+  }
+
+  // Keep the nearest usable slot from disappearing when the five-minute
+  // courtesy window would otherwise leave the customer with no booking at
+  // all. Only slots that are still in the current minute and fit the full
+  // service can be released as this fallback.
+  if (isPublicAvailability && !hasAvailableSlotAfterBuffer && fallbackBufferSlots.length > 0) {
+    const fallbackSlots = new Set(fallbackBufferSlots);
+    for (const slot of slots) {
+      if (fallbackSlots.has(slot.time)) slot.available = true;
+    }
+  }
+
+  // Smart Slots may start its regular sequence after the five-minute
+  // threshold, so add the exact current minute as a last-resort option when
+  // it is the only place where the full service can fit.
+  if (isPublicAvailability && !hasAvailableSlotAfterBuffer && nowMin >= openMin) {
+    const currentEnd = nowMin + duration;
+    const currentOverlapsLunch = hasLunch && nowMin < lunchEnd && currentEnd > lunchStart;
+    const currentOverlapsAppointment = blocked.some(([start, finish]) =>
+      nowMin < finish && currentEnd > start,
+    );
+    const currentTime = `${Math.floor(nowMin / 60).toString().padStart(2, "0")}:${(nowMin % 60).toString().padStart(2, "0")}`;
+    if (
+      currentEnd <= closeMin &&
+      !currentOverlapsLunch &&
+      !currentOverlapsAppointment &&
+      !slots.some((slot) => slot.time === currentTime)
+    ) {
+      slots.push({ time: currentTime, available: true });
+    }
   }
 
   const waitlistAvailable = nowMin < 0 || nowMin + duration <= closeMin;
