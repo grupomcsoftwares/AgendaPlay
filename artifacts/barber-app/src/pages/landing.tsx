@@ -32,19 +32,19 @@ export default function Landing() {
   return (
     <div className="min-h-screen w-full overflow-hidden bg-[#080909] text-white">
       <header className="relative z-10 border-b border-white/10">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 lg:px-8" aria-label="Navegação principal">
-          <a href="/" className="flex items-center gap-3" aria-label="AgendaPlay início">
-            <img src={logoUrl} alt="Logo AgendaPlay" width={42} height={42} className="rounded-xl object-contain" />
-            <span className="text-lg font-bold tracking-tight">Agenda<span className="text-emerald-400">Play</span></span>
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-5 sm:py-4 lg:px-8" aria-label="Navegação principal">
+          <a href="/" className="flex items-center gap-2 sm:gap-3" aria-label="AgendaPlay início">
+            <img src={logoUrl} alt="Logo AgendaPlay" width={42} height={42} className="h-9 w-9 rounded-xl object-contain sm:h-[42px] sm:w-[42px]" />
+            <span className="text-base font-bold tracking-tight sm:text-lg">Agenda<span className="text-emerald-400">Play</span></span>
           </a>
           <div className="hidden items-center gap-8 text-sm text-white/65 md:flex">
             <a href="#recursos" className="transition-colors hover:text-white">Recursos</a>
             <a href="#como-funciona" className="transition-colors hover:text-white">Como funciona</a>
             <a href="#para-quem" className="transition-colors hover:text-white">Para sua barbearia</a>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="shrink-0 text-sm font-medium text-white/70 transition-colors hover:text-white">Entrar</Link>
-            <Link href="/register" className="shrink-0 whitespace-nowrap rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-[#06100b] transition hover:bg-emerald-300">Começar grátis</Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/login" className="shrink-0 text-xs font-medium text-white/70 transition-colors hover:text-white sm:text-sm">Entrar</Link>
+            <Link href="/register" className="shrink-0 whitespace-nowrap rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#06100b] transition hover:bg-emerald-300 sm:px-4 sm:text-sm">Começar grátis</Link>
           </div>
         </nav>
       </header>
