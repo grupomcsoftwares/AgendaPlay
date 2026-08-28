@@ -1587,7 +1587,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 const isSelected = formData.serviceIds.includes(service.id);
                 const effectivePrice = getEffectiveServicePrice(service, formData.date);
                 const promotionalPrice = getPromotionalPrice(service, formData.date);
-                const hasPromotion = promotionalPrice !== null;
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -1656,21 +1655,23 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                 style={{ color: AMBER, whiteSpace: "nowrap" }}
                               >
                                 {promotionalPrice !== null ? (
-                                  <>
-                                    <span className="line-through opacity-60">
-                                      R$ {service.price.toFixed(2).replace(".", ",")}
-                                    </span>
-                                    <span className="flex items-center gap-1" style={{ color: "hsl(142 71% 45%)" }}>
-                                      <DollarSign className="w-3.5 h-3.5" />
-                                      R$ {promotionalPrice.toFixed(2).replace(".", ",")}
-                                    </span>
+                                  <span className="flex flex-col items-end gap-0.5">
                                     <span
                                       className="text-[10px] font-bold tracking-wide animate-pulse"
                                       style={{ color: "hsl(142 71% 45%)" }}
                                     >
                                       PROMOÇÃO
                                     </span>
-                                  </>
+                                    <span className="flex items-center gap-1">
+                                      <span className="line-through opacity-60">
+                                        R$ {service.price.toFixed(2).replace(".", ",")}
+                                      </span>
+                                      <span className="flex items-center gap-1" style={{ color: "hsl(142 71% 45%)" }}>
+                                        <DollarSign className="w-3.5 h-3.5" />
+                                        R$ {promotionalPrice.toFixed(2).replace(".", ",")}
+                                      </span>
+                                    </span>
+                                  </span>
                                 ) : (
                                   <>
                                     <DollarSign className="w-3.5 h-3.5" />
