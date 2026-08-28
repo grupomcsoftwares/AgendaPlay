@@ -171,7 +171,7 @@ async function hasAvailablePublicSlotAfterBuffer(
         ? 20
         : 10;
   const step = settings?.smartSlots
-    ? Math.max(20, adaptiveSmartStep)
+    ? Math.max(5, Math.min(adaptiveSmartStep, duration))
     : Math.max(5, settings?.slotIntervalMinutes ?? 15);
   const firstSlotMin = settings?.smartSlots && nowMin >= 0
     ? Math.max(
@@ -839,9 +839,9 @@ router.get("/availability", async (req, res): Promise<void> => {
         ? 20
         : 10;
   const step = smartSlots
-    // Very short services should not flood the booking screen with nearly
-    // identical options. Keep at least 20 minutes between suggested starts.
-    ? Math.max(20, adaptiveSmartStep)
+    // Never use a coarse smart-slot step for a shorter service: doing so can
+    // hide a valid gap that is long enough for the selected service.
+    ? Math.max(5, Math.min(adaptiveSmartStep, duration))
     : Math.max(5, slotIntervalMinutes);
   const firstSlotMin = smartSlots && nowMin >= 0
     ? Math.max(openMin, Math.ceil((nowMin + minAdvanceMinutes) / 5) * 5)
