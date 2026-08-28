@@ -1640,7 +1640,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                             {showServicePrices && (
                               <span
                                 className="flex items-center gap-1 font-semibold"
-                                style={{ color: hasPromotion ? "hsl(142 71% 45%)" : AMBER, whiteSpace: "nowrap" }}
+                                style={{ color: AMBER, whiteSpace: "nowrap" }}
                               >
                                 {promotionalPrice !== null ? (
                                   <>
@@ -1650,6 +1650,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                     <span className="flex items-center gap-1" style={{ color: "hsl(142 71% 45%)" }}>
                                       <DollarSign className="w-3.5 h-3.5" />
                                       R$ {promotionalPrice.toFixed(2).replace(".", ",")}
+                                    </span>
+                                    <span
+                                      className="text-[10px] font-bold tracking-wide animate-pulse"
+                                      style={{ color: "hsl(142 71% 45%)" }}
+                                    >
+                                      PROMOÇÃO
                                     </span>
                                   </>
                                 ) : (
