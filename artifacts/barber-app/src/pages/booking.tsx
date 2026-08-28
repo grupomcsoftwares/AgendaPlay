@@ -769,18 +769,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     () => (services ?? []).filter(s => formData.serviceIds.includes(s.id)),
     [services, formData.serviceIds]
   );
-  const promotionalServiceIds = React.useMemo(
-    () => new Set(
-      (services ?? [])
-        .filter(service =>
-          (service.dayPricing ?? []).some(dayPrice =>
-            Number(dayPrice.price) !== Number(service.price)
-          )
-        )
-        .map(service => service.id)
-    ),
-    [services]
-  );
   const getPromotionalPrice = (service: typeof selectedServices[number], date?: Date) => {
     const regularPrice = Number(service.price);
     const lowerPrices = (service.dayPricing ?? [])
@@ -1584,7 +1572,9 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             <div className="space-y-3">
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
-                const hasPromotion = promotionalServiceIds.has(service.id);
+                const effectivePrice = getEffectiveServicePrice(service, formData.date);
+                const promotionalPrice = getPromotionalPrice(service, formData.date);
+                const hasPromotion = promotionalPrice !== null;
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -1652,12 +1642,20 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                 className="flex items-center gap-1 font-semibold"
                                 style={{ color: hasPromotion ? "hsl(142 71% 45%)" : AMBER, whiteSpace: "nowrap" }}
                               >
-                                {hasPromotion ? (
-                                  <span className="text-xs font-bold tracking-wide">PROMOÇÃO</span>
+                                {promotionalPrice !== null ? (
+                                  <>
+                                    <span className="line-through opacity-60">
+                                      R$ {service.price.toFixed(2).replace(".", ",")}
+                                    </span>
+                                    <span className="flex items-center gap-1" style={{ color: "hsl(142 71% 45%)" }}>
+                                      <DollarSign className="w-3.5 h-3.5" />
+                                      R$ {promotionalPrice.toFixed(2).replace(".", ",")}
+                                    </span>
+                                  </>
                                 ) : (
                                   <>
                                     <DollarSign className="w-3.5 h-3.5" />
-                                    R$ {service.price.toFixed(2).replace(".", ",")}
+                                    R$ {effectivePrice.toFixed(2).replace(".", ",")}
                                   </>
                                 )}
                               </span>
