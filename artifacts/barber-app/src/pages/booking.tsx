@@ -1645,7 +1645,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                             </p>
                           )}
                           <div className="flex items-center gap-4 text-sm">
-                            <span className="flex items-center gap-1 text-muted-foreground">
+                            <span className="flex items-center gap-1 text-muted-foreground whitespace-nowrap">
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
                             </span>
