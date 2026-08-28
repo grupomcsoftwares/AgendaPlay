@@ -790,6 +790,19 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     const price = dayPrice ? Number(dayPrice.price) : Number(service.price);
     return Number.isFinite(price) ? price : Number(service.price);
   };
+  const servicesWithDayDiscount = selectedServices.filter(service =>
+    (service.dayPricing ?? []).some(dayPrice =>
+      Number.isFinite(Number(dayPrice.price)) && Number(dayPrice.price) < Number(service.price)
+    )
+  );
+  const servicesWithoutSelectedDayDiscount = servicesWithDayDiscount.filter(service =>
+    getPromotionalPrice(service, formData.date) === null
+  );
+  const dayDiscountMessage = servicesWithoutSelectedDayDiscount.length === 0
+    ? null
+    : servicesWithoutSelectedDayDiscount.length === servicesWithDayDiscount.length
+      ? "O desconto não se aplica neste dia."
+      : "O desconto não se aplica a todos os serviços neste dia.";
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
   const totalPriceRaw = selectedServices.reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0);
@@ -1938,6 +1951,19 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     );
                   })}
                 </div>
+                {dayDiscountMessage && (
+                  <div
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold"
+                    style={{
+                      backgroundColor: "hsl(0 72% 50% / 0.12)",
+                      border: "1px solid hsl(0 72% 50% / 0.35)",
+                      color: "hsl(0 78% 68%)",
+                    }}
+                  >
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{dayDiscountMessage}</span>
+                  </div>
+                )}
                 {bookingDayOptions.length === 0 && (
                   <p className="text-center text-sm py-4" style={{ color: "hsl(0 0% 55%)" }}>
                     Não há dias de atendimento disponíveis neste período.
