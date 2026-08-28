@@ -1655,7 +1655,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                 style={{ color: AMBER, whiteSpace: "nowrap" }}
                               >
                                 {promotionalPrice !== null ? (
-                                  <span className="flex flex-col items-end gap-0.5">
+                                  <span className="flex flex-col items-center gap-0.5">
                                     <span
                                       className="text-[10px] font-bold tracking-wide animate-pulse"
                                       style={{ color: "hsl(142 71% 45%)" }}
