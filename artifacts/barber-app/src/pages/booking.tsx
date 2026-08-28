@@ -1617,7 +1617,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                         opacity: isBlocked ? 0.6 : 1,
                       }}
                     >
-                      <div className={`flex items-start gap-3 ${!showServicePrices ? "items-center" : ""}`}>
+                      <div className={`grid grid-cols-[4rem_minmax(0,1fr)_1.375rem] items-start gap-3 ${!showServicePrices ? "items-center" : ""}`}>
                         <div
                           className="w-16 h-16 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                           style={{
