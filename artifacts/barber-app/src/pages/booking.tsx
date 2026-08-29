@@ -98,6 +98,11 @@ function formatPendingAppointmentTime(value: string): string {
   });
 }
 
+function getAppointmentPath(token: string, shopId?: string): string {
+  const shopParam = shopId ? `?shopId=${encodeURIComponent(shopId)}` : "";
+  return `/agendamento/${encodeURIComponent(token)}${shopParam}`;
+}
+
 type PendingAppointmentSummary = {
   cancelToken?: string | null;
   clientName: string;
@@ -435,8 +440,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     const token = activeAppointments[0]?.cancelToken;
     if (!token || redirectedPendingToken.current === token) return;
     redirectedPendingToken.current = token;
-    const shopParam = shopId ? `?shopId=${encodeURIComponent(shopId)}` : "";
-    setLocation(`/agendamento/${token}${shopParam}`);
+    setLocation(getAppointmentPath(token, shopId));
   }, [
     isNewBooking,
     activePendingAppointments,
@@ -873,17 +877,26 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     }
   }, [useLoyaltyPoints, formData.usePlan]);
 
-  // After booking confirmation, wait 2 s then navigate to the appointment preview.
+  // After booking confirmation, open the appointment preview with a full
+  // navigation. This is more reliable on iPhone Safari/PWA contexts than
+  // leaving the booking form in the browser history.
   // Falls back to localStorage in case confirmedToken state wasn't set.
   useEffect(() => {
     if (!confirmed) return;
-    const token = confirmedToken ?? localStorage.getItem(storageKey);
+    let token = confirmedToken;
+    if (!token) {
+      try {
+        token = localStorage.getItem(storageKey);
+      } catch {
+        token = null;
+      }
+    }
     if (!token) return;
     const timer = setTimeout(() => {
-      setLocation(`/agendamento/${token}`);
-    }, 2000);
+      window.location.replace(getAppointmentPath(token, shopId));
+    }, 1200);
     return () => clearTimeout(timer);
-  }, [confirmed, confirmedToken, storageKey, setLocation]);
+  }, [confirmed, confirmedToken, shopId, storageKey]);
   const loyaltyDiscountAmount = useLoyaltyPoints
     ? Math.min(
         loyaltyAvailableDiscount,
@@ -2558,6 +2571,15 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             {formData.paymentMethod === "now"
               ? "Seu horário está reservado e aguarda o barbeiro confirmar o pagamento Pix."
               : "Tudo certo! Te esperamos no horário marcado."}
+          </p>
+          <p className="bk-fade-2 text-base font-semibold mt-4" style={{ color: AMBER }}>
+            {formData.date.toLocaleDateString("pt-BR", {
+              weekday: "long",
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}{" "}
+            às {formData.time}
           </p>
           {settings?.bookingPageMessage && (
             <p className="bk-fade-2 text-sm mt-3 max-w-xs" style={{ color: AMBER }}>
