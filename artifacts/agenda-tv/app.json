@@ -41,9 +41,9 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/sounds/new-appointment.mp3",
-            "./assets/sounds/appointment-changed.mp3",
-            "./assets/sounds/pix-pending.mp3"
+            "./assets/sounds/new_appointment.mp3",
+            "./assets/sounds/appointment_changed.mp3",
+            "./assets/sounds/pix_pending.mp3"
           ]
         }
       ]

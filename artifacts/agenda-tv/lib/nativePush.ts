@@ -44,19 +44,19 @@ export async function registerNativePush(cookie: string | null): Promise<NativeP
         name: "Novos agendamentos",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        sound: "new-appointment.mp3",
+        sound: "new_appointment.mp3",
       }),
       Notifications.setNotificationChannelAsync(APPOINTMENT_CHANGED_CHANNEL, {
         name: "Cancelamentos e alterações",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 150, 100, 150],
-        sound: "appointment-changed.mp3",
+        sound: "appointment_changed.mp3",
       }),
       Notifications.setNotificationChannelAsync(PIX_PENDING_CHANNEL, {
         name: "Pix aguardando aprovação",
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 300, 150, 300, 150, 300],
-        sound: "pix-pending.mp3",
+        sound: "pix_pending.mp3",
       }),
     ]);
 
