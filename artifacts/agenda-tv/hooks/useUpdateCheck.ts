@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { PROD_BASE } from "@/lib/webviewSecurity";
+import { isAllowedApkUrl, PROD_BASE } from "@/lib/webviewSecurity";
 
 const API_BASE = `${PROD_BASE}/api`;
 
@@ -11,7 +11,7 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.12";
+export const APP_VERSION = "1.0.13";
 
 /** Returns true only when `server` is a valid version strictly greater than `current`. */
 function isNewerVersion(server: string, current: string): boolean {
@@ -45,10 +45,17 @@ export function useUpdateCheck(): UpdateInfo {
       try {
         const res = await fetch(`${API_BASE}/app-version`, { method: "GET" });
         if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data.version) {
-          setLatestVersion(data.version);
-          setServerApkUrl(data.apkUrl ?? null);
+        const data: unknown = await res.json();
+        if (!data || typeof data !== "object" || Array.isArray(data)) return;
+        const payload = data as { version?: unknown; apkUrl?: unknown };
+        if (
+          !cancelled &&
+          typeof payload.version === "string" &&
+          payload.version.trim().length > 0 &&
+          payload.version.trim().length <= 32
+        ) {
+          setLatestVersion(payload.version.trim());
+          setServerApkUrl(isAllowedApkUrl(payload.apkUrl) ? payload.apkUrl : null);
         }
       } catch {
         // Silently ignore network errors

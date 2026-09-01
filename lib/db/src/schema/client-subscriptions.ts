@@ -12,7 +12,6 @@ export const clientSubscriptionsTable = pgTable("client_subscriptions", {
   creditsRemaining: integer("credits_remaining"), // points left to spend
   creditsTotal: integer("credits_total"), // original allocation
   expiresAt: timestamp("expires_at", { withTimezone: true }), // when current period expires
-  renewedAt: timestamp("renewed_at", { withTimezone: true }), // last renewal timestamp
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

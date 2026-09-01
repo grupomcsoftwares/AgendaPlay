@@ -243,7 +243,6 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     slug: null,
   }).returning();
 
-  req.session.userId = user.id;
   const status = getAccountStatus(user);
 
   const payload = {
@@ -319,19 +318,27 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     ...status,
   };
 
-  req.session.save((err) => {
-    if (err) {
-      req.log.error({ err }, "session.save failed on login");
+  req.session.regenerate((regenerateErr) => {
+    if (regenerateErr) {
+      req.log.error({ err: regenerateErr }, "session.regenerate failed on login");
       res.status(500).json({ error: "Erro ao salvar sessão." });
       return;
     }
-    const nativeSessionCookie =
-      req.get("x-agendaplay-native") === "1"
-        ? getNativeSessionCookie(req.sessionID)
-        : null;
-    res.json({
-      ...payload,
-      ...(nativeSessionCookie ? { sessionCookie: nativeSessionCookie } : {}),
+    req.session.userId = user.id;
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        req.log.error({ err: saveErr }, "session.save failed on login");
+        res.status(500).json({ error: "Erro ao salvar sessão." });
+        return;
+      }
+      const nativeSessionCookie =
+        req.get("x-agendaplay-native") === "1"
+          ? getNativeSessionCookie(req.sessionID)
+          : null;
+      res.json({
+        ...payload,
+        ...(nativeSessionCookie ? { sessionCookie: nativeSessionCookie } : {}),
+      });
     });
   });
 });

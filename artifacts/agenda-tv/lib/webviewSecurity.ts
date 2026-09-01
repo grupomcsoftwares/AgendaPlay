@@ -62,6 +62,25 @@ export function isAllowedAppUrl(rawUrl?: string | null): boolean {
   return typeof rawUrl === "string" && rawUrl.length > 0 && normalizeAppUrl(rawUrl) !== null;
 }
 
+export function isAllowedApkUrl(rawUrl?: unknown): rawUrl is string {
+  if (typeof rawUrl !== "string" || rawUrl.length === 0 || rawUrl.length > 2048) return false;
+  try {
+    const candidate = new URL(rawUrl);
+    return (
+      candidate.protocol === "https:" &&
+      ALLOWED_HOSTNAMES.has(candidate.hostname.toLowerCase()) &&
+      (candidate.port === "" || candidate.port === "443") &&
+      candidate.username === "" &&
+      candidate.password === "" &&
+      candidate.pathname === "/api/app-download.apk" &&
+      candidate.search === "" &&
+      candidate.hash === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isTrustedWebViewMessageOrigin(
   messageUrl?: string | null,
   currentUrl?: string | null,

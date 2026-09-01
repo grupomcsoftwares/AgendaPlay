@@ -139,23 +139,33 @@ async function autoAdvanceInTx(tx: Tx, userId: string): Promise<void> {
   if (available.length === 0) return;
 
   const candidates = await tx
-    .select({ queue: queueTable, scheduledAt: appointmentsTable.scheduledAt })
+    .select({
+      queue: queueTable,
+      scheduledAt: appointmentsTable.scheduledAt,
+      appointmentBarberId: appointmentsTable.barberId,
+    })
     .from(queueTable)
     .leftJoin(appointmentsTable, eq(queueTable.appointmentId, appointmentsTable.id))
     .where(and(eq(queueTable.userId, userId), sql`${queueTable.status} = 'waiting'`))
     // Same ordering as GET /queue: by scheduled time, walk-ins last by position
     .orderBy(sql`${appointmentsTable.scheduledAt} ASC NULLS LAST`, queueTable.position);
 
+  const remainingCandidates = [...candidates];
   for (const barber of available) {
-    const next = candidates.find(
-      (c) => c.queue.barberId === barber.id &&
-        (c.queue.appointmentId === null || (c.scheduledAt !== null && c.scheduledAt <= now)),
-    );
-    if (!next) continue;
+    const nextIndex = remainingCandidates.findIndex((c) => {
+      const isWalkIn = c.queue.appointmentId === null;
+      const assignedBarberId = c.queue.barberId ?? c.appointmentBarberId;
+      const barberMatches = isWalkIn || assignedBarberId === barber.id;
+      const appointmentIsDue = isWalkIn || (c.scheduledAt !== null && c.scheduledAt <= now);
+      return barberMatches && appointmentIsDue;
+    });
+    if (nextIndex < 0) continue;
+    const next = remainingCandidates[nextIndex];
     await tx
       .update(queueTable)
-      .set({ status: "in_progress", startedAt: new Date() })
+      .set({ barberId: barber.id, status: "in_progress", startedAt: new Date() })
       .where(and(eq(queueTable.id, next.queue.id), eq(queueTable.status, "waiting")));
+    remainingCandidates.splice(nextIndex, 1);
     if (next.queue.appointmentId !== null) {
       await tx
         .update(appointmentsTable)

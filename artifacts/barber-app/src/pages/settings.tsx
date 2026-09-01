@@ -175,11 +175,11 @@ export default function Settings() {
 
   const { data: loyaltyClients } = useListLoyaltyClients({ query: { queryKey: getListLoyaltyClientsQueryKey() } });
 
-  const { data: subscriberUsage } = useQuery<SubscriberMonthlyUsage[]>({
+  const { data: subscriberUsage, isError: subscriberUsageError } = useQuery<SubscriberMonthlyUsage[]>({
     queryKey: ["subscriptions-monthly-usage"],
     queryFn: async () => {
       const res = await fetch("/api/subscriptions/monthly-usage", { credentials: "include" });
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Não foi possível carregar o uso mensal dos assinantes.");
       return res.json();
     },
     refetchOnWindowFocus: true,
@@ -198,6 +198,8 @@ export default function Settings() {
       }
       toast({ title: "Assinatura renovada com sucesso" });
       queryClient.invalidateQueries({ queryKey: ["subscriptions-monthly-usage"] });
+    } catch {
+      toast({ title: "Não foi possível renovar a assinatura. Verifique a conexão e tente novamente.", variant: "destructive" });
     } finally {
       setRenewingId(null);
     }
@@ -1712,7 +1714,11 @@ export default function Settings() {
           )}
 
           {/* Subscriber monthly usage — shown when shop has active or expired subscribers */}
-          {subscriberUsage && subscriberUsage.length > 0 && (
+          {subscriberUsageError ? (
+            <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+              Não foi possível atualizar o uso mensal dos assinantes. Tente novamente.
+            </div>
+          ) : subscriberUsage && subscriberUsage.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-border">
               <p className="text-sm font-semibold">Assinantes</p>
               <div className="space-y-1 max-h-72 overflow-y-auto pr-1">

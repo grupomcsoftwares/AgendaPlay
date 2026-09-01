@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { getAccountStatus } from "../routes/accountStatus.js";
+import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 
 /**
  * Requires an authenticated account with either an active trial or a current
@@ -24,6 +25,7 @@ export async function requireAccess(req: Request, res: Response, next: NextFunct
         stripeCurrentPeriodEnd: usersTable.stripeCurrentPeriodEnd,
         subscriptionExpiresAt: usersTable.subscriptionExpiresAt,
         maxBarbers: usersTable.maxBarbers,
+      email: usersTable.email,
       })
       .from(usersTable)
       .where(eq(usersTable.id, req.session.userId))
@@ -34,7 +36,7 @@ export async function requireAccess(req: Request, res: Response, next: NextFunct
       return;
     }
 
-    if (!getAccountStatus(user).canAccess) {
+    if (!isSystemAdminEmail(user.email) && !getAccountStatus(user).canAccess) {
       res.status(403).json({
         code: "SUBSCRIPTION_EXPIRED",
         error: "A assinatura ou o período de teste expirou. Reative sua assinatura para continuar.",

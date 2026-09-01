@@ -57,7 +57,9 @@ function formatSubscription(s: typeof clientSubscriptionsTable.$inferSelect) {
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
     expiresAt: s.expiresAt?.toISOString() ?? null,
-    renewedAt: s.renewedAt?.toISOString() ?? null,
+    // Kept for API compatibility. Older deployed databases do not have a
+    // renewed_at column, so renewal history is not available here yet.
+    renewedAt: null,
   };
 }
 
@@ -358,7 +360,6 @@ router.post("/subscriptions/:id/renew", requireActiveAuth, async (req, res): Pro
       creditsRemaining: planCredits,
       creditsTotal: planCredits,
       expiresAt: newExpiry,
-      renewedAt: now,
     })
     .where(and(eq(clientSubscriptionsTable.id, id), eq(clientSubscriptionsTable.userId, userId)))
     .returning();
@@ -494,7 +495,6 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
       clientEmail: clientSubscriptionsTable.clientEmail,
       status: clientSubscriptionsTable.status,
       expiresAt: clientSubscriptionsTable.expiresAt,
-      renewedAt: clientSubscriptionsTable.renewedAt,
       planId: clientSubscriptionsTable.planId,
       planName: subscriptionPlansTable.name,
       maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
@@ -552,7 +552,7 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
     clientEmail: s.clientEmail,
     status: s.status,
     expiresAt: s.expiresAt?.toISOString() ?? null,
-    renewedAt: s.renewedAt?.toISOString() ?? null,
+    renewedAt: null,
     planId: s.planId,
     planName: s.planName ?? null,
     maxAppointmentsPerMonth: s.maxAppointmentsPerMonth ?? null,

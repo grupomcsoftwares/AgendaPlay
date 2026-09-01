@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { Readable } from "node:stream";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.12";
+export const APP_VERSION = "1.0.13";
 
 // Keep the EAS artifact as the server-side source, but expose a same-origin
 // download endpoint to Android/Fire TV browsers. EAS first redirects through

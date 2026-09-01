@@ -13,6 +13,7 @@ import {
   Linking,
   useWindowDimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const { user, login, loading } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isTV = isTvDevice(width);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,7 +67,11 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={[styles.scroll, isTV && styles.tvScroll]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: 24 + insets.top, paddingBottom: 24 + insets.bottom },
+          isTV && styles.tvScroll,
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         <Image

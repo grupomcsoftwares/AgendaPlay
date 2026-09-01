@@ -40,7 +40,13 @@ export default function Dashboard() {
 
   const paymentFailed = subscriptionStatus?.pastDue ?? user?.pastDue ?? false;
 
-  const { data: summary, isLoading } = useGetDashboardSummary({
+  const {
+    data: summary,
+    isLoading,
+    isError: summaryError,
+    isFetching: summaryFetching,
+    refetch: refetchSummary,
+  } = useGetDashboardSummary({
     query: {
       queryKey: getGetDashboardSummaryQueryKey(),
       refetchInterval: 5000,
@@ -140,6 +146,27 @@ export default function Dashboard() {
   return (
     <div className="flex-1 overflow-auto p-4 md:p-8 space-y-5 md:space-y-8 bg-background">
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visão Geral</h1>
+
+      {summaryError && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-destructive"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <p className="flex-1 text-sm">Não foi possível carregar os dados do dashboard.</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10"
+            onClick={() => void refetchSummary()}
+            disabled={summaryFetching}
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${summaryFetching ? "animate-spin" : ""}`} />
+            Tentar novamente
+          </Button>
+        </div>
+      )}
 
       {paymentFailed && (
         <div

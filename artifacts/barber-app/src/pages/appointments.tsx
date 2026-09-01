@@ -108,11 +108,11 @@ export default function Appointments() {
   const { data: comboDiscounts } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
 
   // Subscriber monthly cut usage — used to warn barber when a client is at their limit
-  const { data: subscriberUsage } = useQuery<SubscriberMonthlyUsage[]>({
+  const { data: subscriberUsage, isError: subscriberUsageError } = useQuery<SubscriberMonthlyUsage[]>({
     queryKey: ["subscriptions-monthly-usage"],
     queryFn: async () => {
       const res = await fetch("/api/subscriptions/monthly-usage", { credentials: "include" });
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Não foi possível carregar o uso mensal dos assinantes.");
       return res.json();
     },
     refetchOnWindowFocus: true,
@@ -1053,6 +1053,11 @@ export default function Appointments() {
       </div>
 
       {/* Subscriber limit warning — shown when any active subscriber has used up their monthly cuts */}
+      {subscriberUsageError && (
+        <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+          Não foi possível atualizar os limites mensais dos assinantes. Tente novamente.
+        </div>
+      )}
       {subscribersAtLimit.length > 0 && (
         <div className="rounded-lg border border-orange-500/40 bg-orange-500/5 p-3 space-y-2">
           <div className="flex items-center gap-2">

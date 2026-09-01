@@ -454,7 +454,7 @@ export default function DashboardScreen() {
               })(),
             }}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"};`}
+            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"}; ${injectedCookie || ""}`}
             injectedJavaScript={injectedCookie || ""}
             onMessage={handleNativePushMessage}
             onLoadStart={(event: any) => {
