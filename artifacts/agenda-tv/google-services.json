@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "409856772662",
+    "project_id": "agendaplay-d4c60",
+    "storage_bucket": "agendaplay-d4c60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409856772662:android:5af3610f562187989fa697",
+        "android_client_info": {
+          "package_name": "com.agendaplay.tv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBB8cIdghdbANjwlFBO48YUb-vRoBkcW0A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
