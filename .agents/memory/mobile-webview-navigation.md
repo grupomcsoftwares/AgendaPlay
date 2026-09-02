@@ -3,8 +3,8 @@ name: Mobile WebView navigation
 description: The Expo phone dashboard embeds the web panel in one WebView and must navigate categories internally to avoid reload flashes.
 ---
 
-On phone-sized devices, dashboard category changes should use in-WebView history navigation rather than changing the WebView source URL. Keep the WebView mounted so the embedded panel does not flash during every category change.
+On phone-sized devices, keep the same WebView mounted, but use a same-origin `window.location.assign` for category changes when Android release WebViews do not notify the SPA router about history updates.
 
-**Why:** Replacing the WebView source reloads the entire web panel and produces a visible blink on Android.
+**Why:** The Android release WebView accepted `history.pushState` but did not update the Wouter route, leaving users on the overview. A same-origin navigation reliably initializes each route; native progress handling prevents the loader from getting stuck.
 
-**How to apply:** Preserve the initial mobile source and use `history.pushState` plus a `popstate` event for subsequent menu navigation. Keep source replacement for tablet/TV flows where the current behavior is intentional. Keep a requested route pending until the WebView has emitted `onLoadEnd`; sending injected JavaScript before the bridge is ready can lose navigation and show a blank page. Provide an event fallback for older Android WebViews and reload after a renderer-process termination.
+**How to apply:** Preserve the WebView instance and initial source, inject a relative same-origin route for phone menu actions, set readiness false on load start, and clear the loader on load end or progress 1. Keep a requested route pending until the WebView has emitted `onLoadEnd`; reload after a renderer-process termination.

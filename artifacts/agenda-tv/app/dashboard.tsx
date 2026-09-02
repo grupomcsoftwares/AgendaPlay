@@ -56,21 +56,10 @@ function createMobileNavigationScript(route: string) {
   return `
     (function () {
       var nextRoute = ${JSON.stringify(route)};
-      try {
-        window.history.pushState({}, "", nextRoute);
-        var event;
-        if (typeof window.PopStateEvent === "function") {
-          event = new window.PopStateEvent("popstate");
-        } else {
-          event = document.createEvent("Event");
-          event.initEvent("popstate", true, true);
-        }
-        window.dispatchEvent(event);
-      } catch (error) {
-        // Older Android WebViews can reject history events. A full navigation
-        // is safer than leaving the user on a blank or stale screen.
-        window.location.assign(nextRoute);
-      }
+      // Android WebView builds can update the URL with pushState without
+      // notifying the SPA router. Let the WebView perform the same-origin
+      // navigation so the route is initialized reliably on every platform.
+      window.location.assign(nextRoute);
     })();
     true;
   `;
@@ -461,6 +450,7 @@ export default function DashboardScreen() {
               const nextUrl = event.nativeEvent.url as string | undefined;
               currentWebViewUrlRef.current =
                 typeof nextUrl === "string" && isAllowedAppUrl(nextUrl) ? nextUrl : null;
+               webViewReadyRef.current = false;
               setLoading(true);
             }}
             onNavigationStateChange={(navigationState: { url?: string }) => {
@@ -481,6 +471,9 @@ export default function DashboardScreen() {
                 pendingMobileRouteRef.current = null;
               }
             }}
+             onLoadProgress={(event: any) => {
+               if (event.nativeEvent.progress === 1) setLoading(false);
+             }}
              onError={() => setLoading(false)}
              onHttpError={() => setLoading(false)}
              onRenderProcessGone={() => {
