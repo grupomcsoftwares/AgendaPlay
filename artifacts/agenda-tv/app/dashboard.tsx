@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Platform,
   ScrollView,
@@ -314,6 +315,17 @@ export default function DashboardScreen() {
                 );
               })}
 
+              {menuOpen && (
+                <View style={styles.developerCard}>
+                  <Image
+                    source={require("../assets/images/mc-softwares-logo.png")}
+                    accessibilityLabel="Desenvolvido por MC Softwares"
+                    resizeMode="contain"
+                    style={styles.developerLogo}
+                  />
+                </View>
+              )}
+
             </View>
           </ScrollView>
         </View>
@@ -575,5 +587,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#333",
+  },
+  developerCard: {
+    marginTop: 12,
+    marginHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2a2a1a",
+    alignItems: "center",
+  },
+  developerLogo: {
+    width: 150,
+    height: 64,
   },
 });
