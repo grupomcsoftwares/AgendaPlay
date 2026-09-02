@@ -1669,12 +1669,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               >
                                 {promotionalPrice !== null ? (
                                   <span className="flex flex-col items-center gap-0.5">
-                                    <span
-                                      className="text-[10px] font-bold tracking-wide animate-pulse"
-                                      style={{ color: "hsl(142 71% 45%)" }}
-                                    >
-                                      PROMOÇÃO
-                                    </span>
                                     <span className="flex items-center gap-1">
                                       <span className="line-through opacity-60">
                                         R$ {service.price.toFixed(2).replace(".", ",")}
@@ -1684,6 +1678,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                         R$ {promotionalPrice.toFixed(2).replace(".", ",")}
                                       </span>
                                     </span>
+                                     <span
+                                       className="text-[10px] font-bold tracking-wide animate-pulse"
+                                       style={{ color: "hsl(142 71% 45%)" }}
+                                     >
+                                       PROMOÇÃO
+                                     </span>
                                   </span>
                                 ) : (
                                   <>
