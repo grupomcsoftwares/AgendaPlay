@@ -1657,7 +1657,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               {service.description}
                             </p>
                           )}
-                          <div className="flex items-end gap-4 text-sm">
+                          <div className="flex items-start gap-4 text-sm">
                             <span className="flex items-center gap-1 text-muted-foreground whitespace-nowrap">
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
@@ -1679,7 +1679,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                       </span>
                                     </span>
                                      <span
-                                       className="text-[10px] font-bold tracking-wide animate-pulse"
+                                       className="text-xs font-bold tracking-wide animate-pulse"
                                        style={{ color: "hsl(142 71% 45%)" }}
                                      >
                                        PROMOÇÃO
