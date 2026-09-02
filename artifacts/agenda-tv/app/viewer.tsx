@@ -14,6 +14,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
+import { useUpdateCheck } from "@/hooks/useUpdateCheck";
+import UpdateDialog from "@/components/UpdateDialog";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
 import {
@@ -50,18 +52,22 @@ export default function ViewerScreen() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const { user, getSessionCookie, logout } = useAuth();
+  const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const webViewRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
+  const exitInProgressRef = useRef(false);
   const isTV = isTvDevice(width);
   const subscriptionBlocked = !!user && !user.canAccess;
   const targetUrl = normalizeAppUrl(url);
   const currentWebViewUrlRef = useRef<string | null>(null);
 
   const handleExit = useCallback(async () => {
+    if (exitInProgressRef.current) return;
+    exitInProgressRef.current = true;
     await logout();
     router.replace("/");
   }, [logout, router]);
@@ -105,11 +111,15 @@ export default function ViewerScreen() {
   // Hardware back button (Android) + TV remote back key
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      router.back();
+      if (isTV) {
+        void handleExit();
+      } else {
+        router.back();
+      }
       return true;
     });
     return () => sub.remove();
-  }, [router]);
+  }, [handleExit, isTV, router]);
 
   // TV remote back/menu keys
   useTVRemote((type) => {
@@ -328,6 +338,7 @@ export default function ViewerScreen() {
               onFocus={() => setBackFocused(true)}
               onBlur={() => setBackFocused(false)}
               focusable
+              hasTVPreferredFocus={isTV && showBack}
               testID={isTV ? "tv-logout-button" : "back-button"}
             >
               <Feather
@@ -342,6 +353,15 @@ export default function ViewerScreen() {
           )}
         </>
       )}
+
+      <UpdateDialog
+        visible={hasUpdate}
+        currentVersion={currentVersion}
+        latestVersion={latestVersion}
+        apkUrl={apkUrl ?? undefined}
+        onDismiss={dismiss}
+        onUpdate={() => apkUrl && Linking.openURL(apkUrl)}
+      />
     </View>
   );
 }
