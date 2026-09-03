@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.multiGet([USER_KEY, COOKIE_KEY]).then(async ([userEntry, cookieEntry]) => {
       const raw = userEntry[1];
       const cookie = normalizeSessionCookie(cookieEntry[1]);
-      if (raw && mounted) {
+      if (raw && cookie && mounted) {
         try {
           setUser(JSON.parse(raw));
         } catch {}
@@ -93,9 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // Keep cached state when the server is temporarily unreachable.
         }
-      } else if (cookieEntry[1]) {
-        // Do not carry an untrusted legacy value into a future WebView.
-        await AsyncStorage.removeItem(COOKIE_KEY);
+      } else if (mounted && (raw || cookieEntry[1])) {
+        // Never restore a cached user without the matching session cookie.
+        // Otherwise the native menu looks authenticated while the WebView
+        // correctly receives the login page.
+        await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
       }
       if (mounted) setLoading(false);
     });
@@ -111,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         "Content-Type": "application/json",
         "X-AgendaPlay-Native": "1",
       },
+      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
@@ -122,9 +125,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cookieHeader =
       normalizeSessionCookie(responseData.sessionCookie) ??
       normalizeSessionCookie(res.headers.get("set-cookie"));
-    if (cookieHeader) {
-      await AsyncStorage.setItem(COOKIE_KEY, cookieHeader);
+    if (!cookieHeader) {
+      throw new Error("Não foi possível preparar a sessão do aplicativo. Tente fazer login novamente.");
     }
+
+    await AsyncStorage.setItem(COOKIE_KEY, cookieHeader);
+
+    // Confirm the server accepts the exact cookie that will be handed to the
+    // WebView. A native login must never finish in a half-authenticated state.
+    const sessionCheck = await fetch(`${API_BASE}/auth/me`, {
+      credentials: "include",
+      headers: {
+        Cookie: cookieHeader,
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+    if (sessionCheck.status === 401) {
+      await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
+      throw new Error("A sessão não pôde ser sincronizada com o aplicativo. Tente novamente.");
+    }
+
     const { sessionCookie: _sessionCookie, ...data } = responseData;
     setUser(data);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
