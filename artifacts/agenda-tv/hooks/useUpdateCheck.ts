@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { AppState } from "react-native";
 import { isAllowedApkUrl, PROD_BASE } from "@/lib/webviewSecurity";
 
 const API_BASE = `${PROD_BASE}/api`;
+const UPDATE_CHECK_INTERVAL_MS = 60_000;
 
 export type UpdateInfo = {
   hasUpdate: boolean;
@@ -43,7 +45,10 @@ export function useUpdateCheck(): UpdateInfo {
 
     async function check() {
       try {
-        const res = await fetch(`${API_BASE}/app-version`, { method: "GET" });
+        const res = await fetch(`${API_BASE}/app-version?check=${Date.now()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const data: unknown = await res.json();
         if (!data || typeof data !== "object" || Array.isArray(data)) return;
@@ -62,8 +67,21 @@ export function useUpdateCheck(): UpdateInfo {
       }
     }
 
-    check();
-    return () => { cancelled = true; };
+    void check();
+
+    const interval = setInterval(() => {
+      void check();
+    }, UPDATE_CHECK_INTERVAL_MS);
+
+    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") void check();
+    });
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      appStateSubscription.remove();
+    };
   }, []);
 
   const dismiss = useCallback(() => {
