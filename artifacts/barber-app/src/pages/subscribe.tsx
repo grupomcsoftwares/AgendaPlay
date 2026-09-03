@@ -213,15 +213,20 @@ export default function Subscribe() {
   // A TV is a display-only endpoint. Never render checkout there, even when
   // the WebView session has not finished restoring its cookie yet.
   if (isTVView) {
+    const sessionDisconnected = !user;
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
         style={{ backgroundColor: "hsl(0 0% 4%)", color: "hsl(0 0% 95%)" }}
       >
-        <div className="text-5xl" aria-hidden="true">🔒</div>
-        <h1 className="text-2xl font-bold">Assinatura expirada</h1>
+        <div className="text-5xl" aria-hidden="true">{sessionDisconnected ? "🔐" : "🔒"}</div>
+        <h1 className="text-2xl font-bold">
+          {sessionDisconnected ? "Sessão da TV desconectada" : "Assinatura expirada"}
+        </h1>
         <p className="max-w-lg text-base" style={{ color: "hsl(0 0% 60%)" }}>
-          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
+          {sessionDisconnected
+            ? "Feche e abra o AgendaPlay TV para entrar novamente na conta."
+            : "A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou."}
         </p>
       </div>
     );
