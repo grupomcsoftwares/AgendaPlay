@@ -4,6 +4,13 @@ dist/
 static-build/
 android/
 ios/
+../.git/
+../.local/
+../.cache/
+../.pnpm-store/
+**/node_modules/
+**/dist-electron/
+**/*.tsbuildinfo
 *.log
 attached_assets/
 artifacts/barber-app/

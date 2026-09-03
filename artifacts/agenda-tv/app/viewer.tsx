@@ -51,7 +51,7 @@ export default function ViewerScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { user, getSessionCookie, logout } = useAuth();
+  const { user, loading: authLoading, getSessionCookie, logout, refresh } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const webViewRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +61,7 @@ export default function ViewerScreen() {
   const [backFocused, setBackFocused] = useState(false);
   const exitInProgressRef = useRef(false);
   const isTV = isTvDevice(width);
-  const subscriptionBlocked = !!user && !user.canAccess;
+  const subscriptionBlocked = !authLoading && !!user && !user.canAccess;
   const targetUrl = normalizeAppUrl(url);
   const currentWebViewUrlRef = useRef<string | null>(null);
 
@@ -224,6 +224,15 @@ export default function ViewerScreen() {
                 <Text style={styles.retryText}>Voltar</Text>
               </Pressable>
             </>
+          )}
+          {isTV && (
+            <Pressable
+              style={[styles.retryBtn, { marginTop: 18 }]}
+              onPress={() => void refresh()}
+              focusable
+            >
+              <Text style={styles.retryText}>Atualizar status</Text>
+            </Pressable>
           )}
         </View>
       </View>
