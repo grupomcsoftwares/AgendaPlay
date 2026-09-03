@@ -80,7 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`${BASE}/api/auth/me`, { credentials: "include" });
+      const res = await fetch(`${BASE}/api/auth/me`, {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
       if (res.ok) {
         let data = await res.json();
         // Server-side sync is now handled in /auth/me itself; no client-side sync needed.
