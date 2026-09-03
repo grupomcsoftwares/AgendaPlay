@@ -95,7 +95,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { user, getSessionCookie } = useAuth();
+  const { user, getSessionCookie, logout } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -117,6 +117,11 @@ export default function DashboardScreen() {
 
   const activeMenu = isTV ? TV_MENU_ITEMS : APP_MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
+
+  const handleLogout = useCallback(async () => {
+    await logout();
+    router.replace("/");
+  }, [logout, router]);
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
@@ -314,6 +319,17 @@ export default function DashboardScreen() {
                   </Pressable>
                 );
               })}
+
+              {menuOpen && !isTV && (
+                <Pressable
+                  style={({ pressed }) => [styles.logoutMenuItem, pressed && styles.logoutMenuItemPressed]}
+                  onPress={() => void handleLogout()}
+                  testID="mobile-dashboard-logout"
+                >
+                  <Feather name="log-out" size={17} color="#ef4444" />
+                  <Text style={styles.logoutMenuLabel}>Sair da conta</Text>
+                </Pressable>
+              )}
 
               {menuOpen && (
                 <View style={styles.developerCard}>
@@ -549,6 +565,27 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#0f0f0f",
     opacity: 0.5,
+  },
+  logoutMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#3a1d1d",
+    backgroundColor: "#160d0d",
+  },
+  logoutMenuItemPressed: {
+    backgroundColor: "#271111",
+    borderColor: "#ef4444",
+  },
+  logoutMenuLabel: {
+    color: "#ef4444",
+    fontSize: 13,
+    fontWeight: "600",
   },
   content: {
     flex: 1,
