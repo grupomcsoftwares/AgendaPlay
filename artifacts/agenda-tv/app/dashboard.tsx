@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -108,7 +108,6 @@ export default function DashboardScreen() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [cookieReady, setCookieReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
   const webViewRef = useRef<WebView>(null);
   const webViewReadyRef = useRef(false);
@@ -215,18 +214,25 @@ export default function DashboardScreen() {
     }
   });
 
-  // Inject session cookie into WebView
-  const [injectedCookie, setInjectedCookie] = useState<string | null>(null);
+  // Load the session before mounting the WebView. The cookie is sent on the
+  // initial document request as well as injected for the SPA's own requests.
+  const [sessionCookie, setSessionCookie] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     getSessionCookie().then((raw) => {
-      if (raw) {
-        setInjectedCookie(
-          `document.cookie = ${JSON.stringify(`${raw}; path=/; secure; samesite=strict;`)};`,
-        );
-      }
-      setCookieReady(true);
+      setSessionCookie(raw);
     });
   }, [getSessionCookie]);
+
+  const initialUrl = isPhone ? activeMenu[0]?.url : selectedItem?.url;
+  const webViewSource = useMemo(() => {
+    const u = new URL(initialUrl || PROD_BASE);
+    u.searchParams.set("view", "mobile");
+    if (isTV) u.searchParams.set("tv", "1");
+    return {
+      uri: u.toString(),
+      ...(sessionCookie ? { headers: { Cookie: sessionCookie } } : {}),
+    };
+  }, [initialUrl, isTV, sessionCookie]);
 
   return (
     <View style={[styles.root, { paddingTop: topPad }]}>
@@ -367,21 +373,13 @@ export default function DashboardScreen() {
             </View>
           </View>
         )}
-        {cookieReady && (
+        {sessionCookie !== undefined && (
           <WebView
             ref={webViewRef}
-            source={{
-              uri: (() => {
-                const initialItem = isPhone ? activeMenu[0] : selectedItem;
-                const u = new URL(initialItem.url);
-                u.searchParams.set("view", "mobile");
-                if (isTV) u.searchParams.set("tv", "1");
-                return u.toString();
-              })(),
-            }}
+            source={webViewSource}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"}; ${injectedCookie || ""}`}
-            injectedJavaScript={injectedCookie || ""}
+            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"}; ${sessionCookie ? `document.cookie = ${JSON.stringify(`${sessionCookie}; path=/; secure; samesite=strict;`)};` : ""}`}
+            injectedJavaScript={sessionCookie ? `document.cookie = ${JSON.stringify(`${sessionCookie}; path=/; secure; samesite=strict;`)};` : ""}
             onMessage={handleNativePushMessage}
             onLoadStart={(event: any) => {
               const nextUrl = event.nativeEvent.url as string | undefined;

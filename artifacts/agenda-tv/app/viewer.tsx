@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -57,7 +57,6 @@ export default function ViewerScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showBack, setShowBack] = useState(false);
-  const [cookieReady, setCookieReady] = useState(false);
   const [backFocused, setBackFocused] = useState(false);
   const exitInProgressRef = useRef(false);
   const isTV = isTvDevice(width);
@@ -132,21 +131,31 @@ export default function ViewerScreen() {
     }
   });
 
-  // Inject session cookie via JavaScript (reliable across platforms)
-  const [injectedCookie, setInjectedCookie] = useState<string | null>(null);
+  // Load the session before mounting the WebView. The cookie is sent on the
+  // initial document request as well as injected for the SPA's own requests.
+  const [sessionCookie, setSessionCookie] = useState<string | null | undefined>(undefined);
   useEffect(() => {
     getSessionCookie().then((raw) => {
       if (raw && targetUrl) {
-        setInjectedCookie(
-          `document.cookie = ${JSON.stringify(`${raw}; path=/; secure; samesite=strict;`)};`,
-        );
-      } else if (url && !targetUrl) {
-        setInjectedCookie(null);
+        setSessionCookie(raw);
+      } else {
+        setSessionCookie(null);
+      }
+      if (url && !targetUrl) {
         setError(true);
       }
-      setCookieReady(true);
     });
   }, [getSessionCookie, targetUrl, url]);
+
+  const webViewSource = useMemo(() => {
+    const u = new URL(targetUrl || PROD_BASE);
+    u.searchParams.set("view", "mobile");
+    if (isTV) u.searchParams.set("tv", "1");
+    return {
+      uri: u.toString(),
+      ...(sessionCookie ? { headers: { Cookie: sessionCookie } } : {}),
+    };
+  }, [targetUrl, isTV, sessionCookie]);
 
   // Timeout: if loading takes > 15s, show retry option
   useEffect(() => {
@@ -248,7 +257,7 @@ export default function ViewerScreen() {
 
   return (
     <View style={styles.container}>
-      {!cookieReady ? (
+      {sessionCookie === undefined ? (
         <View style={styles.loadingOverlay}>
           <Feather name="scissors" size={36} color="#c9a84c" />
           <ActivityIndicator size="large" color="#c9a84c" style={{ marginTop: 16 }} />
@@ -258,15 +267,10 @@ export default function ViewerScreen() {
         <>
           <WebView
             ref={webViewRef}
-            source={{ uri: (() => {
-              const u = new URL(targetUrl || PROD_BASE);
-              u.searchParams.set("view", "mobile");
-              if (isTV) u.searchParams.set("tv", "1");
-              return u.toString();
-            })() }}
+            source={webViewSource}
             style={styles.webview}
-            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"}; ${injectedCookie || ""}`}
-            injectedJavaScript={injectedCookie || ""}
+            injectedJavaScriptBeforeContentLoaded={`window.__AGENDAPLAY_MOBILE__ = true; window.__AGENDAPLAY_TV__ = ${isTV ? "true" : "false"}; ${sessionCookie ? `document.cookie = ${JSON.stringify(`${sessionCookie}; path=/; secure; samesite=strict;`)};` : ""}`}
+            injectedJavaScript={sessionCookie ? `document.cookie = ${JSON.stringify(`${sessionCookie}; path=/; secure; samesite=strict;`)};` : ""}
             onMessage={handleNativePushMessage}
             onLoadStart={(event: any) => {
               const nextUrl = event.nativeEvent.url as string | undefined;
