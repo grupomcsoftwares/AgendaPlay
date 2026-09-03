@@ -27,6 +27,21 @@ function TVSubscriptionExpired() {
   );
 }
 
+function TVSessionDisconnected() {
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
+      style={{ backgroundColor: "hsl(0 0% 4%)", color: "hsl(0 0% 95%)" }}
+    >
+      <div className="text-5xl" aria-hidden="true">🔐</div>
+      <h1 className="text-2xl font-bold">Sessão da TV desconectada</h1>
+      <p className="max-w-lg text-base" style={{ color: "hsl(0 0% 60%)" }}>
+        Feche e abra o AgendaPlay TV para entrar novamente na conta.
+      </p>
+    </div>
+  );
+}
+
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -64,7 +79,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    if (tvView) return <TVSubscriptionExpired />;
+    if (tvView) return <TVSessionDisconnected />;
     return null;
   }
 
