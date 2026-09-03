@@ -74,7 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cookie) {
         try {
           const res = await fetch(`${API_BASE}/auth/me`, {
-            headers: { Cookie: cookie },
+            headers: {
+              Cookie: cookie,
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
           });
           if (res.ok) {
             const data = await res.json();
@@ -131,7 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!cookie) return;
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
-        headers: { Cookie: cookie },
+        headers: {
+          Cookie: cookie,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
       });
       if (res.ok) {
         const data = await res.json();
