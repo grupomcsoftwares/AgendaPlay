@@ -203,8 +203,13 @@ export default function ViewerScreen() {
             hasTVPreferredFocus
             testID="tv-logout-button"
           >
-            <Feather name="log-out" size={13} color={backFocused ? "#c9a84c" : "#f5f5f5"} />
-            <Text style={[styles.exitText, backFocused && styles.exitTextFocused]}>Sair</Text>
+            <Feather name="log-out" size={18} color={backFocused ? "#0c0c0c" : "#f5f5f5"} />
+            <Text
+              style={[styles.exitText, backFocused && styles.exitTextFocused]}
+              numberOfLines={1}
+            >
+              Sair
+            </Text>
           </Pressable>
         )}
         <View style={[styles.center, { paddingHorizontal: 28 }]}>
@@ -352,11 +357,16 @@ export default function ViewerScreen() {
             >
               <Feather
                 name={isTV ? "log-out" : "arrow-left"}
-                size={isTV ? 13 : 16}
-                color={backFocused ? "#c9a84c" : "#f5f5f5"}
+                size={isTV ? 18 : 16}
+                color={backFocused ? "#0c0c0c" : "#f5f5f5"}
               />
               {isTV && (
-                <Text style={[styles.exitText, backFocused && styles.exitTextFocused]}>Sair</Text>
+                <Text
+                  style={[styles.exitText, backFocused && styles.exitTextFocused]}
+                  numberOfLines={1}
+                >
+                  Sair
+                </Text>
               )}
             </Pressable>
           )}
@@ -418,17 +428,25 @@ const styles = StyleSheet.create({
   },
   backBtnTv: {
     left: 10,
-    minWidth: 28,
-    height: 30,
-    paddingHorizontal: 9,
-    borderRadius: 15,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderWidth: 1,
-    borderColor: "#222",
+    width: 92,
+    minWidth: 92,
+    height: 46,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "rgba(12,12,12,0.94)",
+    borderWidth: 2,
+    borderColor: "#555",
     flexDirection: "row",
-    gap: 5,
+    gap: 8,
   },
-  backBtnFocused: { borderColor: "#c9a84c", backgroundColor: "rgba(201,168,76,0.15)" },
-  exitText: { color: "#f5f5f5", fontSize: 11, fontWeight: "600" },
-  exitTextFocused: { color: "#c9a84c" },
+  backBtnFocused: {
+    borderColor: "#f0cf63",
+    backgroundColor: "#c9a84c",
+    shadowColor: "#c9a84c",
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  exitText: { color: "#f5f5f5", fontSize: 16, fontWeight: "700", flexShrink: 0 },
+  exitTextFocused: { color: "#0c0c0c" },
 });
