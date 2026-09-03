@@ -2,14 +2,14 @@ import { Router, type IRouter } from "express";
 import { Readable } from "node:stream";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.13";
+export const APP_VERSION = "1.0.19";
 
 // Keep the EAS artifact as the server-side source, but expose a same-origin
 // download endpoint to Android/Fire TV browsers. EAS first redirects through
 // expo.dev and then to a temporary signed CDN URL, which Silk Browser can fail
 // to follow as an APK download.
 export const APK_SOURCE_URL: string | null =
-  "https://expo.dev/artifacts/eas/ly5ZNWjOM5BFjkCR0Sl4vti4pg65KXQUxsPtBNy4rvs.apk";
+  "https://expo.dev/artifacts/eas/F3c38ZjhvNw4CMlPQPSksn2aE-QZvkP9vY2-SGN-VIU.apk";
 export const APK_URL: string | null = "https://agendaplay.net/api/app-download.apk";
 
 const router: IRouter = Router();
