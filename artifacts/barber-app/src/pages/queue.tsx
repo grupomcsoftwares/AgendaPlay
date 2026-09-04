@@ -155,10 +155,11 @@ function DigitalTime({ scheduledAt }: { scheduledAt: string }) {
 }
 
 function QueueContent() {
+  const tvView = isTVView();
   const hideAddButton =
     typeof window !== "undefined" &&
     (!!(window as any).__AGENDAPLAY_MOBILE__ ||
-      !!(window as any).__AGENDAPLAY_TV__ ||
+      tvView ||
       window.location.search.includes("view=mobile"));
 
   const { data: queue, isLoading } = useListQueue({
@@ -188,6 +189,8 @@ function QueueContent() {
 
   // ── Real-time queue updates via SSE ──────────────────────────────────
   useEffect(() => {
+    if (!tvView) return;
+
     const apiBase = import.meta.env.VITE_API_URL || "";
     const sseUrl = `${apiBase}/api/queue/subscribe`;
     const source = new EventSource(sseUrl, { withCredentials: true });
@@ -296,7 +299,7 @@ function QueueContent() {
       clearTimeout(autoFocus);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [tvView]);
   // ──────────────────────────────────────────────────────────────────────────
 
   // Sounds: play when service starts or ends
@@ -480,6 +483,8 @@ function QueueContent() {
                         className="rounded-md border px-3 py-2 text-xs font-semibold"
                         style={{ borderColor: "hsl(0 0% 25%)", color: "hsl(0 0% 70%)" }}
                         data-testid={`button-complete-barber-${barber.id}`}
+                        data-tvfocus
+                        tabIndex={0}
                       >
                         Finalizar atendimento
                       </button>

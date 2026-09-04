@@ -46,6 +46,23 @@ function useTVRemote(onEvent: (type: string) => void) {
   }, []);
 }
 
+function injectTVKey(webViewRef: React.MutableRefObject<any>, key: string) {
+  const serializedKey = JSON.stringify(key);
+  webViewRef.current?.injectJavaScript(`
+    (function () {
+      var key = ${serializedKey};
+      var event = new KeyboardEvent("keydown", {
+        key: key,
+        code: key === "Enter" ? "Enter" : key,
+        bubbles: true,
+        cancelable: true
+      });
+      window.dispatchEvent(event);
+    })();
+    true;
+  `);
+}
+
 export default function ViewerScreen() {
   const { url } = useLocalSearchParams<{ url: string; title: string }>();
   const insets = useSafeAreaInsets();
@@ -128,6 +145,21 @@ export default function ViewerScreen() {
       } else {
         router.back();
       }
+      return;
+    }
+
+    if (isTV) {
+      const keyByEvent: Record<string, string> = {
+        up: "ArrowUp",
+        down: "ArrowDown",
+        left: "ArrowLeft",
+        right: "ArrowRight",
+        select: "Enter",
+        enter: "Enter",
+        dpad_center: "Enter",
+      };
+      const key = keyByEvent[type];
+      if (key) injectTVKey(webViewRef, key);
     }
   });
 
@@ -202,7 +234,7 @@ export default function ViewerScreen() {
             style={[
               styles.backBtn,
               styles.backBtnTv,
-              { top: insets.top + 8 },
+              { top: isTV ? 8 : insets.top + 8 },
               backFocused && styles.backBtnFocused,
             ]}
             onPress={() => void handleExit()}
@@ -287,6 +319,17 @@ export default function ViewerScreen() {
             onLoadEnd={() => {
               setLoading(false);
               setTimeout(() => setShowBack(true), 800);
+              if (isTV) {
+                setTimeout(() => {
+                  webViewRef.current?.injectJavaScript(`
+                    (function () {
+                      var first = document.querySelector("[data-tvfocus]");
+                      if (first) first.focus();
+                    })();
+                    true;
+                  `);
+                }, 900);
+              }
             }}
             onLoadProgress={(event: any) => {
               if (event.nativeEvent.progress === 1) setLoading(false);
@@ -349,14 +392,14 @@ export default function ViewerScreen() {
               style={[
                 styles.backBtn,
                 isTV && styles.backBtnTv,
-                { top: insets.top + (isTV ? 8 : 12) },
+                { top: isTV ? 8 : insets.top + 12 },
                 backFocused && styles.backBtnFocused,
               ]}
               onPress={() => (isTV ? void handleExit() : router.back())}
               onFocus={() => setBackFocused(true)}
               onBlur={() => setBackFocused(false)}
               focusable
-              hasTVPreferredFocus={isTV && showBack}
+              hasTVPreferredFocus={false}
               testID={isTV ? "tv-logout-button" : "back-button"}
             >
               <Feather
@@ -432,16 +475,16 @@ const styles = StyleSheet.create({
   },
   backBtnTv: {
     left: 10,
-    width: 92,
-    minWidth: 92,
-    height: 46,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+    width: 72,
+    minWidth: 72,
+    height: 34,
+    paddingHorizontal: 9,
+    borderRadius: 9,
     backgroundColor: "rgba(12,12,12,0.94)",
     borderWidth: 2,
     borderColor: "#555",
     flexDirection: "row",
-    gap: 8,
+    gap: 5,
   },
   backBtnFocused: {
     borderColor: "#f0cf63",
@@ -451,6 +494,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  exitText: { color: "#f5f5f5", fontSize: 16, fontWeight: "700", flexShrink: 0 },
+  exitText: { color: "#f5f5f5", fontSize: 12, fontWeight: "700", flexShrink: 0 },
   exitTextFocused: { color: "#0c0c0c" },
 });
