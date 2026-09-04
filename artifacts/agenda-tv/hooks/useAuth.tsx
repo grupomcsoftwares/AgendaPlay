@@ -113,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         "Content-Type": "application/json",
         "X-AgendaPlay-Native": "1",
       },
-      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
     if (!res.ok) {
@@ -134,16 +133,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Confirm the server accepts the exact cookie that will be handed to the
     // WebView. A native login must never finish in a half-authenticated state.
     const sessionCheck = await fetch(`${API_BASE}/auth/me`, {
-      credentials: "include",
       headers: {
         Cookie: cookieHeader,
         "Cache-Control": "no-cache",
         Pragma: "no-cache",
       },
     });
-    if (sessionCheck.status === 401) {
+    if (!sessionCheck.ok) {
       await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
-      throw new Error("A sessão não pôde ser sincronizada com o aplicativo. Tente novamente.");
+      throw new Error(
+        sessionCheck.status === 401
+          ? "A sessão não pôde ser sincronizada com o aplicativo. Tente novamente."
+          : "Não foi possível validar a sessão do aplicativo. Tente novamente.",
+      );
     }
 
     const { sessionCookie: _sessionCookie, ...data } = responseData;
