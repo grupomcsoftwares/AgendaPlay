@@ -1594,6 +1594,25 @@ router.patch("/appointments/:id", requireActiveAuth, async (req, res): Promise<v
         .set(updateData)
         .where(and(eq(appointmentsTable.id, params.data.id), eq(appointmentsTable.userId, userId)))
         .returning();
+      if (
+        appointment &&
+        typeof updateData.serviceName === "string" &&
+        typeof updateData.servicePrice === "string" &&
+        typeof updateData.serviceDuration === "number"
+      ) {
+        await tx
+          .update(queueTable)
+          .set({
+            serviceName: updateData.serviceName,
+            servicePrice: updateData.servicePrice,
+            serviceDuration: updateData.serviceDuration,
+          })
+          .where(and(
+            eq(queueTable.appointmentId, params.data.id),
+            eq(queueTable.userId, userId),
+            sql`${queueTable.status} != 'completed'`,
+          ));
+      }
       return appointment ? { appointment } : { error: "notfound" as const };
     });
     if (updateResult.error === "conflict") {
@@ -1604,6 +1623,7 @@ router.patch("/appointments/:id", requireActiveAuth, async (req, res): Promise<v
       res.status(404).json({ error: "Appointment not found" });
       return;
     }
+    broadcastQueueUpdate(userId);
     res.json(formatAppointment(updateResult.appointment));
     return;
   }
