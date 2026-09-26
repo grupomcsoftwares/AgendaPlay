@@ -71,9 +71,9 @@ router.get(
       const status = getAccountStatus(account);
       const billingStatus: "paid" | "trial" | "expired" = status.hasActiveSubscription
         ? "paid"
-        : status.trialExpired
-          ? "expired"
-          : "trial";
+        : status.canAccess
+          ? "trial"
+          : "expired";
       return {
         email: account.email,
         barbershopName: account.barbershopName,

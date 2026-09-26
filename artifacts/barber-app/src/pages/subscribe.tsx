@@ -232,7 +232,10 @@ export default function Subscribe() {
     );
   }
 
-  const trialExpiredAndNoSub = user && user.trialExpired && !user.hasActiveSubscription;
+  const paidSubscriptionExpired = Boolean(user?.hasEverPaid && !user.hasActiveSubscription);
+  const trialExpiredAndNoSub = Boolean(
+    user && !user.hasEverPaid && user.trialExpired && !user.hasActiveSubscription,
+  );
   const showFirstMonthDiscount = Boolean(user?.firstMonthDiscountEligible);
 
   return (
@@ -275,12 +278,28 @@ export default function Subscribe() {
             <div className="text-2xl flex-shrink-0" aria-hidden="true">🔒</div>
             <div>
               <p className="font-semibold text-sm" style={{ color: "hsl(0 80% 70%)" }}>
-                {user.returningCustomer ? "Conta anterior identificada" : "Período de teste encerrado"}
+                {user?.returningCustomer ? "Conta anterior identificada" : "Período de teste encerrado"}
               </p>
               <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
-                {user.returningCustomer
+                {user?.returningCustomer
                   ? "Este CPF/CNPJ já utilizou o período gratuito. Assine um plano para liberar a nova conta."
                   : "Seu acesso foi bloqueado porque os 30 dias de teste expiraram. Assine para continuar."}
+              </p>
+            </div>
+          </div>
+        )}
+        {paidSubscriptionExpired && (
+          <div
+            className="rounded-2xl px-5 py-4 flex items-start gap-3"
+            style={{ backgroundColor: "hsl(0 60% 15%)", border: "1px solid hsl(0 60% 30%)" }}
+          >
+            <div className="text-2xl flex-shrink-0" aria-hidden="true">🔒</div>
+            <div>
+              <p className="font-semibold text-sm" style={{ color: "hsl(0 80% 70%)" }}>
+                Assinatura encerrada
+              </p>
+              <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
+                O período da sua assinatura terminou e o acesso ao sistema foi bloqueado. Escolha um plano abaixo para renovar e voltar a usar o AgendaPlay.
               </p>
             </div>
           </div>
@@ -298,7 +317,9 @@ export default function Subscribe() {
             <Clock className="w-4 h-4" />
             {!user
               ? "Faça login para assinar"
-              : user.returningCustomer
+              : paidSubscriptionExpired
+                ? "Assinatura encerrada — renove para continuar"
+                : user.returningCustomer
                 ? "Cliente retornando"
                 : user.trialExpired
                   ? "Período de teste encerrado"

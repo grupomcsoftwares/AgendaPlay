@@ -402,7 +402,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
   }
 
   let status = getAccountStatus(user);
-  if (!status.hasActiveSubscription && status.trialExpired) {
+  if (!status.canAccess) {
     await reconcileActiveSubscription(user);
     const [reconciledUser] = await db
       .select(userCols)

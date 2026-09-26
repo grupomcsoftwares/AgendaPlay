@@ -36,10 +36,13 @@ export async function requireAccess(req: Request, res: Response, next: NextFunct
       return;
     }
 
-    if (!isSystemAdminEmail(user.email) && !getAccountStatus(user).canAccess) {
+    const accountStatus = getAccountStatus(user);
+    if (!isSystemAdminEmail(user.email) && !accountStatus.canAccess) {
       res.status(403).json({
         code: "SUBSCRIPTION_EXPIRED",
-        error: "A assinatura ou o período de teste expirou. Reative sua assinatura para continuar.",
+        error: user.hasEverPaid
+          ? "Sua assinatura expirou. Renove o plano para continuar usando o AgendaPlay."
+          : "Seu período de teste terminou. Assine um plano para continuar usando o AgendaPlay.",
       });
       return;
     }

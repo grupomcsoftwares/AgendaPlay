@@ -15,6 +15,7 @@ export type AuthUser = {
   returningCustomer: boolean;
   trialDaysLeft: number;
   trialExpired: boolean;
+  hasEverPaid: boolean;
   hasActiveSubscription: boolean;
   canAccess: boolean;
   subscriptionDueDate?: string | null;
@@ -41,7 +42,7 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const ACCESS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const ACCESS_REFRESH_INTERVAL_MS = 60 * 1000;
 
 function isPublicRoute(pathname: string): boolean {
   const path = pathname.split("?")[0];
@@ -116,13 +117,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const timer = window.setInterval(refreshWhenVisible, ACCESS_REFRESH_INTERVAL_MS);
+    const subscriptionExpiryMs =
+      user.hasActiveSubscription && user.subscriptionDueDate
+        ? Date.parse(user.subscriptionDueDate)
+        : Number.NaN;
+    const expiryTimer =
+      Number.isFinite(subscriptionExpiryMs) && subscriptionExpiryMs > Date.now()
+        ? window.setTimeout(refreshWhenVisible, subscriptionExpiryMs - Date.now() + 1000)
+        : undefined;
     document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       window.clearInterval(timer);
+      if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [location, refresh, user?.id]);
+  }, [location, refresh, user?.id, user?.hasActiveSubscription, user?.subscriptionDueDate]);
 
   useEffect(() => {
     if (!user) return;

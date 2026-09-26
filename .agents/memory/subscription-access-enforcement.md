@@ -15,6 +15,12 @@ Every database projection passed to `getAccountStatus` or `accountCanAccess` mus
 
 **How to apply:** Reuse a complete billing-field projection whenever a route makes an access decision outside the shared middleware; test a recent `trialStartedAt` with `trialEligible=false` alongside normal trial and active-subscription cases.
 
+An account with confirmed paid history must not fall back to a still-running free trial after its paid subscription ends. Access requires a current paid period for that account; only never-paid accounts may use trial eligibility.
+
+**Why:** A paid subscription can expire before the original 30-day trial clock does, and allowing the remaining trial would keep the barber system open after the public booking link had been blocked.
+
+**How to apply:** Keep `hasEverPaid` as a billing-history marker, never as an access grant; use it to distinguish expired paid subscriptions from free-trial expiration in both server decisions and user-facing copy.
+
 The shared Expo app must keep the expired-subscription payment action on phone screens but show only the expiration notice on TV screens.
 
 **Why:** A TV is a display endpoint, not the place where the shop owner should complete billing; exposing checkout controls there creates the wrong interaction path.

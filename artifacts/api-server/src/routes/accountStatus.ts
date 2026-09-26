@@ -68,7 +68,9 @@ export function getAccountStatus(user: AccountBillingFields) {
     trialDaysLeft,
     trialExpired,
     hasActiveSubscription,
-    canAccess: !trialExpired || hasActiveSubscription,
+    // A paid account cannot fall back onto its unused trial after the paid
+    // period ends. Only accounts that have never paid can access via trial.
+    canAccess: hasActiveSubscription || (!hasEverPaid && !trialExpired),
     // The free trial is intentionally unrestricted so the shop can test the
     // full product before choosing a paid barber-count plan.
     maxBarbers: hasActiveSubscription ? user.maxBarbers ?? null : null,

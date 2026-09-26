@@ -126,6 +126,7 @@ function UserFooter({
   trialColor,
   trialBg,
   hasActiveSubscription,
+  hasEverPaid,
   subscriptionDaysLeft,
   subscriptionDueDate,
   onLogout,
@@ -138,6 +139,7 @@ function UserFooter({
   trialColor: string;
   trialBg: string;
   hasActiveSubscription: boolean;
+  hasEverPaid: boolean;
   subscriptionDaysLeft: number | null;
   subscriptionDueDate: string | null;
   onLogout: () => void;
@@ -177,7 +179,25 @@ function UserFooter({
           )}
         </div>
       )}
-      {showTrialBanner && (
+      {hasEverPaid && !hasActiveSubscription && (
+        <div
+          className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center gap-2"
+          style={{ backgroundColor: "hsl(0 60% 10%)", border: "1px solid hsl(0 70% 55% / 0.3)" }}
+        >
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "hsl(0 70% 55%)" }} />
+          <span className="text-xs font-medium" style={{ color: "hsl(0 70% 55%)" }}>
+            Assinatura encerrada
+          </span>
+          <Link
+            href="/subscribe"
+            className="ml-auto text-xs font-semibold underline"
+            style={{ color: "hsl(0 70% 55%)" }}
+          >
+            Renovar
+          </Link>
+        </div>
+      )}
+      {showTrialBanner && !hasEverPaid && (
         <div
           className="mx-3 mt-3 px-3 py-2 rounded-lg flex items-center gap-2"
           style={{ backgroundColor: trialBg, border: `1px solid ${trialColor}30` }}
@@ -384,6 +404,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
     trialColor,
     trialBg,
     hasActiveSubscription: hasSubscription,
+    hasEverPaid: user?.hasEverPaid ?? false,
     subscriptionDaysLeft,
     subscriptionDueDate,
     onLogout: handleLogout,

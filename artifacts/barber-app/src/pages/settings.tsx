@@ -226,6 +226,7 @@ export default function Settings() {
 
   const { data: subscriptionStatus } = useQuery<{
     hasActiveSubscription: boolean;
+    hasEverPaid: boolean;
     subscriptionId: string | null;
     stripePriceId: string | null;
     maxBarbers: number | null;
@@ -1869,6 +1870,12 @@ export default function Settings() {
                       </p>
                     )}
                   </>
+                ) : displayedSubscriptionStatus?.hasEverPaid ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive border border-destructive/30">
+                      Assinatura encerrada
+                    </span>
+                  </div>
                 ) : displayedSubscriptionStatus && !displayedSubscriptionStatus.trialExpired ? (
                   <>
                     <div className="flex items-center gap-2">
@@ -1937,6 +1944,16 @@ export default function Settings() {
                     Cancelar assinatura
                   </Button>
                 </>
+              ) : displayedSubscriptionStatus?.hasEverPaid ? (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => window.location.href = "/subscribe"}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Renovar assinatura
+                </Button>
               ) : !displayedSubscriptionStatus?.trialExpired ? (
                 <Button
                   variant="outline"

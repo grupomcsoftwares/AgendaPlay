@@ -336,6 +336,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
 
   res.json({
     hasActiveSubscription: status.hasActiveSubscription,
+    hasEverPaid: user.hasEverPaid,
     subscriptionId: user.stripeSubscriptionId,
     stripePriceId: user.stripePriceId,
     maxBarbers: status.maxBarbers,
