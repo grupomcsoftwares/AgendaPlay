@@ -5,27 +5,14 @@ import { formerAccountPhonesTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import type Stripe from "stripe";
-import { createHmac } from "node:crypto";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
 import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.js";
 import { cleanupExpiredAccountByEmail } from "../services/subscriptionCleanup.js";
+import { getNativeSessionCookie } from "../lib/nativeSessionCookie.js";
 
-const SESSION_COOKIE_NAME = "connect.sid";
-
-function getNativeSessionCookie(sessionId: string): string | null {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) return null;
-  const signature = createHmac("sha256", secret)
-    .update(sessionId)
-    .digest("base64")
-    .replace(/=+$/, "");
-  return `${SESSION_COOKIE_NAME}=s:${sessionId}.${signature}`;
-}
-
-declare module "express-session" {
   interface SessionData {
     userId?: string;
   }
@@ -174,7 +161,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     phone?: string;
   };
 
-  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedEmail = email.trim().toLowerCase();
   const normalizedPhone = normalizePhone(phone);
 
   if (!normalizedEmail || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
@@ -230,20 +217,9 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   const trialEligible = !formerPhone;
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const [user] = await db.insert(usersTable).values({
-    email: normalizedEmail,
-    documentType: "phone",
-    passwordHash,
-    barbershopName: barbershopName.trim(),
-    ownerName: ownerName.trim(),
-    phone: normalizedPhone,
-    trialEligible,
-    // New accounts start without a public name-based link. The owner can
-    // choose a custom slug later from Settings.
-    slug: null,
-  }).returning();
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
 
-  const status = getAccountStatus(user);
+  let status = getAccountStatus(user);
 
   const payload = {
     id: user.id,
@@ -254,6 +230,10 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
     hasEverPaid: user.hasEverPaid,
+    stripeCustomerId: user.stripeCustomerId,
+    stripeSubscriptionId: user.stripeSubscriptionId,
+    stripePaymentFailing: user.stripePaymentFailing,
+    pastDue: user.stripePaymentFailing,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
@@ -279,7 +259,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   const normalizedEmail = email.trim().toLowerCase();
   await cleanupExpiredAccountByEmail(normalizedEmail);
 
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, normalizedEmail));
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -301,7 +281,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   }
 
   req.session.userId = user.id;
-  const status = getAccountStatus(user);
+  let status = getAccountStatus(user);
 
   const payload = {
     id: user.id,
@@ -333,10 +313,10 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
         res.status(500).json({ error: "Erro ao salvar sessão." });
         return;
       }
-      const nativeSessionCookie =
-        req.get("x-agendaplay-native") === "1"
-          ? getNativeSessionCookie(req.sessionID)
-          : null;
+    const nativeSessionCookie =
+      req.get("x-agendaplay-native") === "1"
+        ? getNativeSessionCookie(req.sessionID, process.env.SESSION_SECRET)
+        : null;
       res.json({
         ...payload,
         ...(nativeSessionCookie ? { sessionCookie: nativeSessionCookie } : {}),
