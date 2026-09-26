@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { formerAccountPhonesTable, usersTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import type { SessionData } from "express-session";
 import type Stripe from "stripe";
 import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
@@ -13,6 +12,7 @@ import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.
 import { cleanupExpiredAccountByEmail } from "../services/subscriptionCleanup.js";
 import { getNativeSessionCookie } from "../lib/nativeSessionCookie.js";
 
+declare module "express-session" {
   interface SessionData {
     userId?: string;
   }
