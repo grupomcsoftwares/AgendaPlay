@@ -282,7 +282,7 @@ export default function Subscribe() {
               </p>
               <p className="text-sm mt-0.5" style={{ color: "hsl(0 0% 65%)" }}>
                 {user?.returningCustomer
-                  ? "Este CPF/CNPJ já utilizou o período gratuito. Assine um plano para liberar a nova conta."
+                  ? "Este número de telefone já utilizou o período gratuito. Assine um plano para liberar a nova conta."
                   : "Seu acesso foi bloqueado porque os 30 dias de teste expiraram. Assine para continuar."}
               </p>
             </div>
