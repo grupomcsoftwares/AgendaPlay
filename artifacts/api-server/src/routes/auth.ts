@@ -253,6 +253,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
+    hasEverPaid: user.hasEverPaid,
     isSystemAdmin: isSystemAdminEmail(user.email),
     ...status,
   };
@@ -310,6 +311,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
+    hasEverPaid: user.hasEverPaid,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripePaymentFailing: user.stripePaymentFailing,
@@ -420,6 +422,7 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     phone: user.phone,
     slug: user.slug,
     trialStartedAt: user.trialStartedAt,
+    hasEverPaid: user.hasEverPaid,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripePaymentFailing: user.stripePaymentFailing,

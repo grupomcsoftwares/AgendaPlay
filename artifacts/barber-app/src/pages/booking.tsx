@@ -17,8 +17,8 @@ const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 const AMBER_DEEP = "hsl(38 80% 45%)";
 const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
-const STEP_LABELS_BASE = ["Seus dados", "Serviço", "Data e hora", "Pagamento"] as const;
-const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Serviço", "Data e hora", "Pagamento"] as const;
+const STEP_LABELS_BASE = ["Seus dados", "Dia", "Serviço", "Horário", "Revisão", "Pagamento"] as const;
+const STEP_LABELS_WITH_BARBER = ["Seus dados", "Profissional", "Dia", "Serviço", "Horário", "Revisão", "Pagamento"] as const;
 const DEFAULT_OPEN_MINUTES = 9 * 60;
 const DEFAULT_CLOSE_MINUTES = 18 * 60;
 const BUSYNESS_REFRESH_INTERVAL_MS = 2 * 60 * 1000;
@@ -307,9 +307,11 @@ function AppointmentChooser({
 }
 
 function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
-  const cols = labels.length === 5 ? "grid-cols-5" : "grid-cols-4";
   return (
-    <div className={`grid ${cols} gap-3 w-full`}>
+    <div
+      className="grid gap-3 w-full"
+      style={{ gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))` }}
+    >
       {labels.map((label, i) => {
         const idx = i + 1;
         const isActive = idx <= current;
@@ -971,10 +973,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const isBookingDateClosed = (date: Date) =>
     Boolean(bookingWeekly?.[WEEKDAY_KEYS[date.getDay()]]?.closed);
   const stepLabels = needsBarberStep ? STEP_LABELS_WITH_BARBER : STEP_LABELS_BASE;
-  // Indicator mapping:
-  //  - step 0 = "Seus dados" (new first step) → indicator 1
-  //  - Without barber: indicator = step + 1
-  //  - With barber: step 0→1, picker→2, service→3, step 2→4, step 3→5
+  // The booking order is day → service → time → review → payment,
+  // with barber selection inserted before the day when the shop has multiple barbers.
   const indicatorStep = needsBarberStep
     ? (step === 0 ? 1 : pickingBarber ? 2 : step === 1 ? 3 : step + 2)
     : step + 1;
@@ -1110,7 +1110,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
 
   const handleServicesConfirm = () => {
     if (selectedServices.length === 0) return;
-    setStep(2);
+    setStep(3);
   };
 
   const paymentEnableNow = settings?.paymentEnableNow ?? false;
@@ -1141,7 +1141,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     availabilityParams,
     { query: {
       queryKey: getGetAvailabilityQueryKey(availabilityParams),
-      enabled: step === 2 && totalDuration > 0 && !pickingBarber && !isBookingDateClosed(formData.date),
+      enabled: step === 3 && totalDuration > 0 && !pickingBarber && !isBookingDateClosed(formData.date),
     } }
   );
   const joinWaitlist = useJoinWaitlist();
@@ -1507,12 +1507,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           </div>
         )}
 
-        {(settings as any)?.bookingEnabled !== false && step === 1 && !pickingBarber && (
+        {(settings as any)?.bookingEnabled !== false && step === 2 && !pickingBarber && (
           <div className="space-y-4">
             {needsBarberStep ? (
               <button
                 type="button"
-                onClick={() => setPickingBarber(true)}
+                onClick={() => { setStep(1); setPickingBarber(true); }}
                 data-testid="button-back-to-barbers"
                 className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
                 style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
@@ -1523,13 +1523,13 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             ) : (
               <button
                 type="button"
-                onClick={() => { if (!urlChildName) setStep(0); }}
-                data-testid="button-back-service-to-step0"
+                onClick={() => setStep(1)}
+                data-testid="button-back-service-to-day"
                 className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
                 style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
               >
                 <ChevronLeft className="w-4 h-4" />
-                Voltar
+                Voltar para escolha do dia
               </button>
             )}
             {selectedBarber && needsBarberStep && (
@@ -1786,13 +1786,111 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           </div>
         )}
 
-        {(settings as any)?.bookingEnabled !== false && <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 1) ? "none" : "block" }}>
+        {(settings as any)?.bookingEnabled !== false && <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 2 || (step === 1 && pickingBarber)) ? "none" : "block" }}>
 
-          {step === 2 && (
+          {step === 1 && !pickingBarber && (
             <CardContent className="p-6 space-y-6">
               <button
                 type="button"
-                onClick={() => setStep(1)}
+                onClick={() => {
+                  if (needsBarberStep) setPickingBarber(true);
+                  else if (!urlChildName) setStep(0);
+                }}
+                data-testid="button-back-day"
+                className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
+                style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar
+              </button>
+
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold">Escolha o dia</h2>
+                <p className="text-sm text-muted-foreground">
+                  Selecione o dia para o seu agendamento.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <div
+                  className="flex gap-2 overflow-x-auto pb-2"
+                  style={{ scrollbarWidth: "thin" }}
+                  data-testid="date-scroller"
+                >
+                  {bookingDayOptions.map((day, index) => {
+                    const isSelected = formData.date.toDateString() === day.toDateString();
+                    const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+                    const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+                    return (
+                      <button
+                        key={day.toISOString()}
+                        type="button"
+                        onClick={() => setFormData((previous) => ({ ...previous, date: day, time: "" }))}
+                        data-testid={`button-date-${index}`}
+                        className="flex flex-col items-center justify-center rounded-xl flex-shrink-0"
+                        style={{
+                          width: 68,
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          backgroundColor: "hsl(0 0% 9%)",
+                          border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", color: "hsl(0 0% 75%)" }}>
+                          {weekdays[day.getDay()]}
+                        </span>
+                        {index === 0 && (
+                          <span style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.05em", color: AMBER, marginTop: 2 }}>
+                            HOJE
+                          </span>
+                        )}
+                        <span style={{ fontSize: "1.4rem", fontWeight: 700, marginTop: index === 0 ? 2 : 6, lineHeight: 1 }}>
+                          {day.getDate()}
+                        </span>
+                        <span style={{ fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.05em", color: "hsl(0 0% 55%)", marginTop: 4 }}>
+                          {months[day.getMonth()]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {bookingDayOptions.length === 0 ? (
+                  <p className="text-center text-sm py-4" style={{ color: "hsl(0 0% 55%)" }}>
+                    Não há dias de atendimento disponíveis neste período.
+                  </p>
+                ) : (
+                  <p className="text-center text-xs" style={{ color: "hsl(0 0% 45%)", letterSpacing: "0.05em" }}>
+                    ARRASTE PARA VER MAIS
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                data-testid="button-confirm-day"
+                disabled={bookingDayOptions.length === 0}
+                onClick={() => setStep(2)}
+                className="w-full rounded-xl text-center font-semibold transition-opacity"
+                style={{
+                  height: 52,
+                  backgroundColor: AMBER_DEEP,
+                  color: "hsl(0 0% 100%)",
+                  border: "none",
+                  cursor: bookingDayOptions.length === 0 ? "not-allowed" : "pointer",
+                  opacity: bookingDayOptions.length === 0 ? 0.55 : 1,
+                }}
+              >
+                Continuar para escolher serviço
+              </button>
+            </CardContent>
+          )}
+
+          {step === 3 && (
+            <CardContent className="p-6 space-y-6">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
                 data-testid="button-back-step2"
                 className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
                 style={{ background: "none", border: "none", color: "hsl(0 0% 65%)", cursor: "pointer", padding: 0 }}
@@ -1800,6 +1898,13 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 <ChevronLeft className="w-4 h-4" />
                 Voltar
               </button>
+
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold">Escolha o horário</h2>
+                <p className="text-sm text-muted-foreground">
+                  Selecione um horário para os serviços escolhidos.
+                </p>
+              </div>
 
               {selectedServices.length > 0 && (
                 <div
@@ -1885,85 +1990,27 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               )}
 
               <div className="space-y-3">
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: "hsl(0 0% 60%)", letterSpacing: "0.05em" }}
-                >
-                  SELECIONE O DIA E HORÁRIO:
-                </p>
-
                 <div
-                  className="flex gap-2 overflow-x-auto pb-2"
-                  style={{ scrollbarWidth: "thin" }}
-                  data-testid="date-scroller"
+                  className="flex items-center justify-between gap-3 rounded-xl px-4 py-3"
+                  style={{ backgroundColor: "hsl(0 0% 9%)", border: "1px solid hsl(0 0% 14%)" }}
                 >
-                  {bookingDayOptions.map((d, i) => {
-                    const isSelected = formData.date.toDateString() === d.toDateString();
-                    const weekdays = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
-                    const months = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, date: d, time: "" })}
-                        data-testid={`button-date-${i}`}
-                        className="flex flex-col items-center justify-center rounded-xl flex-shrink-0"
-                        style={{
-                          width: 68,
-                          paddingTop: 12,
-                          paddingBottom: 12,
-                          backgroundColor: "hsl(0 0% 9%)",
-                          border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: "0.7rem",
-                            fontWeight: 700,
-                            letterSpacing: "0.05em",
-                            color: "hsl(0 0% 75%)",
-                          }}
-                        >
-                          {weekdays[d.getDay()]}
-                        </span>
-                        {i === 0 && (
-                          <span
-                            style={{
-                              fontSize: "0.6rem",
-                              fontWeight: 700,
-                              letterSpacing: "0.05em",
-                              color: AMBER,
-                              marginTop: 2,
-                            }}
-                          >
-                            HOJE
-                          </span>
-                        )}
-                        <span
-                          style={{
-                            fontSize: "1.4rem",
-                            fontWeight: 700,
-                            marginTop: i === 0 ? 2 : 6,
-                            lineHeight: 1,
-                          }}
-                        >
-                          {d.getDate()}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: "0.6rem",
-                            fontWeight: 600,
-                            letterSpacing: "0.05em",
-                            color: "hsl(0 0% 55%)",
-                            marginTop: 4,
-                          }}
-                        >
-                          {months[d.getMonth()]}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: "hsl(0 0% 60%)", letterSpacing: "0.05em" }}>
+                      HORÁRIOS PARA
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {formData.date.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    data-testid="button-change-date"
+                    className="text-xs underline transition-opacity hover:opacity-70"
+                    style={{ background: "none", border: "none", color: AMBER, cursor: "pointer" }}
+                  >
+                    Alterar dia
+                  </button>
                 </div>
                 {dayDiscountMessage && (
                   <div
@@ -1978,17 +2025,6 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     <span>{dayDiscountMessage}</span>
                   </div>
                 )}
-                {bookingDayOptions.length === 0 && (
-                  <p className="text-center text-sm py-4" style={{ color: "hsl(0 0% 55%)" }}>
-                    Não há dias de atendimento disponíveis neste período.
-                  </p>
-                )}
-                <p
-                  className="text-center text-xs"
-                  style={{ color: "hsl(0 0% 45%)", letterSpacing: "0.05em" }}
-                >
-                  ARRASTE PARA VER MAIS
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -2141,7 +2177,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 type="button"
                 data-testid="button-confirm-datetime"
                 disabled={!formData.time}
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="w-full rounded-xl text-center font-semibold transition-opacity"
                 style={{
                   height: 52,
@@ -2154,12 +2190,12 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               >
                 {formData.time
                   ? `Continuar — ${formData.date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} às ${formData.time}`
-                  : "Selecione data e horário"}
+                  : "Selecione um horário"}
               </button>
             </CardContent>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <CardHeader className="bg-muted/50 border-b border-border">
                 <CardTitle>Revisar agendamento</CardTitle>
@@ -2324,7 +2360,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 <button
                   type="button"
                   data-testid="button-continue-to-payment"
-                  onClick={() => setStep(4)}
+                  onClick={() => setStep(5)}
                   className="w-full rounded-xl text-center font-semibold transition-opacity"
                   style={{
                     height: 52,
@@ -2339,7 +2375,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
 
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   data-testid="button-back-step3"
                   className="w-full text-sm transition-opacity hover:opacity-70"
                   style={{
@@ -2355,11 +2391,11 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             </>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <CardContent className="p-6 space-y-6">
               <button
                 type="button"
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 data-testid="button-back-step4"
                 className="flex items-center gap-1 text-sm transition-opacity hover:opacity-70"
                 style={{
