@@ -244,7 +244,7 @@ export default function ViewerScreen() {
             hasTVPreferredFocus
             testID="tv-logout-button"
           >
-            <Feather name="log-out" size={18} color={backFocused ? "#0c0c0c" : "#f5f5f5"} />
+            <Feather name="log-out" size={14} color={backFocused ? "#0c0c0c" : "#f5f5f5"} />
             <Text
               style={[styles.exitText, backFocused && styles.exitTextFocused]}
               numberOfLines={1}
@@ -406,7 +406,7 @@ export default function ViewerScreen() {
             >
               <Feather
                 name={isTV ? "log-out" : "arrow-left"}
-                size={isTV ? 18 : 16}
+                size={isTV ? 14 : 16}
                 color={backFocused ? "#0c0c0c" : "#f5f5f5"}
               />
               {isTV && (
@@ -476,17 +476,17 @@ const styles = StyleSheet.create({
     borderColor: "#333",
   },
   backBtnTv: {
-    left: 10,
-    width: 72,
-    minWidth: 72,
-    height: 34,
-    paddingHorizontal: 9,
-    borderRadius: 9,
+    left: 8,
+    width: 52,
+    minWidth: 52,
+    height: 28,
+    paddingHorizontal: 5,
+    borderRadius: 7,
     backgroundColor: "rgba(12,12,12,0.94)",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#555",
     flexDirection: "row",
-    gap: 5,
+    gap: 3,
   },
   backBtnFocused: {
     borderColor: "#f0cf63",
@@ -496,6 +496,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  exitText: { color: "#f5f5f5", fontSize: 12, fontWeight: "700", flexShrink: 0 },
+  exitText: { color: "#f5f5f5", fontSize: 10, fontWeight: "700", flexShrink: 0 },
   exitTextFocused: { color: "#0c0c0c" },
 });
