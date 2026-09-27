@@ -128,7 +128,9 @@ export default function HomeScreen() {
         <Feather name="lock" size={44} color="#c9a84c" />
         <Text style={styles.blockedTitle}>Assinatura expirada</Text>
         <Text style={styles.blockedText}>
-          A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
+          Para usar este sistema, é necessário manter a assinatura em dia. Acesse o AgendaPlay pelo
+          navegador ou pelo aplicativo no celular e renove a assinatura. Assim que o pagamento for
+          confirmado, a fila ao vivo voltará a funcionar na TV.
         </Text>
       </View>
     );
