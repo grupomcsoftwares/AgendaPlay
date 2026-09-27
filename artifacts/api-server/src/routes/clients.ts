@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, and, inArray } from "drizzle-orm";
+import { eq, ilike, and, inArray, isNull } from "drizzle-orm";
 import { db, clientsTable, appointmentsTable, queueTable, loyaltyPointsTable } from "@workspace/db";
 import {
   ListClientsQueryParams,
@@ -76,12 +76,32 @@ router.patch("/clients/:id", requireActiveAuth, async (req, res): Promise<void> 
   const userId = req.session.userId!;
 
   const client = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(clientsTable)
+      .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
+      .for("update");
+    if (!existing) return null;
+
+    // Keep the original subscriber identity before changing the client's phone.
+    // Existing snapshots are authoritative and must not be rewritten.
+    if (parsed.data.phone !== undefined && parsed.data.phone !== existing.phone) {
+      await tx
+        .update(appointmentsTable)
+        .set({ subscriberPhone: existing.phone })
+        .where(and(
+          eq(appointmentsTable.userId, userId),
+          eq(appointmentsTable.clientId, params.data.id),
+          eq(appointmentsTable.coveredByPlan, true),
+          isNull(appointmentsTable.subscriberPhone),
+        ));
+    }
+
     const [updated] = await tx
       .update(clientsTable)
       .set(parsed.data)
       .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
       .returning();
-    if (!updated) return null;
 
     // Propagate name change to all appointments and queue entries for this client
     if (parsed.data.name) {
@@ -126,19 +146,41 @@ router.delete("/clients/:id", requireActiveAuth, async (req, res): Promise<void>
     return;
   }
   const userId = req.session.userId!;
-  const [client] = await db.delete(clientsTable)
-    .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
-    .returning();
+  const client = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(clientsTable)
+      .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)))
+      .for("update");
+    if (!existing) return null;
+
+    // Snapshot the phone before the client row is removed. This preserves
+    // history for older plan appointments that predate subscriber_phone.
+    await tx
+      .update(appointmentsTable)
+      .set({ subscriberPhone: existing.phone })
+      .where(and(
+        eq(appointmentsTable.userId, userId),
+        eq(appointmentsTable.clientId, params.data.id),
+        eq(appointmentsTable.coveredByPlan, true),
+        isNull(appointmentsTable.subscriberPhone),
+      ));
+
+    await tx.delete(clientsTable)
+      .where(and(eq(clientsTable.id, params.data.id), eq(clientsTable.userId, userId)));
+
+    // Delete loyalty points so a re-registered client starts fresh.
+    await tx.delete(loyaltyPointsTable)
+      .where(and(
+        eq(loyaltyPointsTable.userId, userId),
+        eq(loyaltyPointsTable.clientPhone, existing.phone),
+      ));
+    return existing;
+  });
   if (!client) {
     res.status(404).json({ error: "Client not found" });
     return;
   }
-  // Delete loyalty points so a re-registered client starts fresh
-  await db.delete(loyaltyPointsTable)
-    .where(and(
-      eq(loyaltyPointsTable.userId, userId),
-      eq(loyaltyPointsTable.clientPhone, client.phone),
-    ));
   res.sendStatus(204);
 });
 

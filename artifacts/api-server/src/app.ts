@@ -128,11 +128,29 @@ sessionPool.query(SLUG_REDIRECTS_TABLE_SQL).catch((err: Error) => {
   logger.error({ err }, "Failed to create slug_redirects table");
 });
 
-// Add subscriber_phone to appointments if it doesn't exist yet (idempotent column migration).
-// This column stores the plan subscriber's phone at booking time so that cut counting is
-// reliable even when clientId is null (i.e. the client was not found in the clients table).
+// Ensure subscriber_phone exists and backfill older plan appointments. Snapshot phones
+// from linked clients first, then retain the phone in notes for appointments whose
+// client record had already been removed.
 const APPOINTMENTS_SUBSCRIBER_PHONE_SQL = `
 ALTER TABLE appointments ADD COLUMN IF NOT EXISTS subscriber_phone text;
+UPDATE appointments AS appointment
+SET subscriber_phone = client.phone
+FROM clients AS client
+WHERE client.id = appointment.client_id
+  AND client.user_id = appointment.user_id
+  AND appointment.covered_by_plan = true
+  AND appointment.subscriber_phone IS NULL;
+UPDATE appointments AS appointment
+SET subscriber_phone = regexp_replace(
+  substring(appointment.notes FROM 'Tel:[[:space:]]*([^.]+)'),
+  '[^0-9]',
+  '',
+  'g'
+)
+WHERE appointment.covered_by_plan = true
+  AND appointment.client_id IS NULL
+  AND appointment.subscriber_phone IS NULL
+  AND appointment.notes ~ 'Tel:[[:space:]]*[^.]*[0-9][^.]*';
 `;
 
 sessionPool.query(APPOINTMENTS_SUBSCRIBER_PHONE_SQL).catch((err: Error) => {

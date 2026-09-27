@@ -3,6 +3,7 @@ import { eq, and, gte, lt, sql } from "drizzle-orm";
 import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable, clientsTable, usersTable } from "@workspace/db";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 import { accountCanAccess } from "./accountStatus.js";
+import { countCoveredAppointmentsByPhone, sumCreditsUsedForPhone } from "../lib/subscriberUsage.js";
 
 const router: IRouter = Router();
 const TZ = "America/Sao_Paulo";
@@ -452,12 +453,7 @@ router.get("/subscriptions/usage", async (req, res): Promise<void> => {
       eq(appointmentsTable.coveredByPlan, true),
       gte(appointmentsTable.createdAt, sub.createdAt),
     ));
-  const totalUsed = usedAppointments.reduce((sum, appointment) => {
-    const phoneFromNotes = appointment.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
-    // Priority: subscriberPhone (most reliable) → clientsTable join → notes fallback
-    const appointmentPhone = normalizePhone(appointment.subscriberPhone || appointment.clientPhone || phoneFromNotes);
-    return appointmentPhone === phone ? sum + (appointment.creditsUsed ?? 0) : sum;
-  }, 0);
+  const totalUsed = sumCreditsUsedForPhone(usedAppointments, phone);
   res.json({
     active: true,
     creditsRemaining: sub.creditsRemaining ?? 0,
@@ -537,13 +533,7 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
       lt(appointmentsTable.scheduledAt, monthEnd),
     ));
 
-  const usageByPhone = new Map<string, number>();
-  for (const row of monthlyUsage) {
-    const phoneFromNotes = row.notes?.match(/Tel:\s*([^.]+)/)?.[1] ?? "";
-    // Priority: subscriberPhone (most reliable) → clientsTable join → notes fallback
-    const phone = normalizePhone(row.subscriberPhone || row.clientPhone || phoneFromNotes);
-    if (phone) usageByPhone.set(phone, (usageByPhone.get(phone) ?? 0) + 1);
-  }
+  const usageByPhone = countCoveredAppointmentsByPhone(monthlyUsage);
 
   res.json(subs.map(s => ({
     id: s.id,

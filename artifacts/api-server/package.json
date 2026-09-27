@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:appointment-recovery": "node --experimental-strip-types --test src/routes/appointmentRecovery.test.ts"
+    "test:appointment-recovery": "node --experimental-strip-types --test src/routes/appointmentRecovery.test.ts",
+    "test:subscriber-usage": "node --experimental-strip-types --test src/routes/subscriberUsage.test.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
