@@ -33,7 +33,7 @@ export type AuthUser = {
 type AuthState = {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
   register: (data: { email: string; password: string; barbershopName: string; ownerName: string; phone: string }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refresh: () => Promise<AuthUser | null>;
@@ -154,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user?.id]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<AuthUser> => {
     // Never let data from the previous account remain visible while logging in.
     clearAccountCache();
     const res = await fetch(`${BASE}/api/auth/login`, {
@@ -167,8 +167,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const err = await res.json();
       throw new Error(err.error || "Erro ao fazer login.");
     }
-    const data = await res.json();
+    const data = (await res.json()) as AuthUser;
     setUser(data);
+    return data;
   }, [clearAccountCache]);
 
   const register = useCallback(async (data: { email: string; password: string; barbershopName: string; ownerName: string; phone: string }) => {

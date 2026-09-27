@@ -17,8 +17,12 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await login(email, password);
-      setLocation("/dashboard");
+      const authenticatedUser = await login(email, password);
+      setLocation(
+        authenticatedUser.canAccess || authenticatedUser.isSystemAdmin
+          ? "/dashboard"
+          : "/subscribe",
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao fazer login.");
     } finally {
