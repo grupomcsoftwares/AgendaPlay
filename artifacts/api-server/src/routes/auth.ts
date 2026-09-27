@@ -161,10 +161,20 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     phone?: string;
   };
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedPassword = typeof password === "string" ? password : "";
+  const normalizedBarbershopName =
+    typeof barbershopName === "string" ? barbershopName.trim() : "";
+  const normalizedOwnerName = typeof ownerName === "string" ? ownerName.trim() : "";
   const normalizedPhone = normalizePhone(phone);
 
-  if (!normalizedEmail || !password || !barbershopName?.trim() || !ownerName?.trim() || !normalizedPhone) {
+  if (
+    !normalizedEmail ||
+    !normalizedPassword ||
+    !normalizedBarbershopName ||
+    !normalizedOwnerName ||
+    !normalizedPhone
+  ) {
     res.status(400).json({ error: "Todos os campos são obrigatórios." });
     return;
   }
@@ -174,7 +184,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  if (password.length < 6) {
+  if (normalizedPassword.length < 6) {
     res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres." });
     return;
   }
@@ -216,10 +226,29 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     .limit(1);
   const trialEligible = !formerPhone;
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  const passwordHash = await bcrypt.hash(normalizedPassword, 10);
+  const [user] = await db
+    .insert(usersTable)
+    .values({
+      email: normalizedEmail,
+      documentType: "phone",
+      passwordHash,
+      barbershopName: normalizedBarbershopName,
+      ownerName: normalizedOwnerName,
+      phone: normalizedPhone,
+      trialEligible,
+      // New accounts start without a public name-based link. The owner can
+      // choose a custom slug later from Settings.
+      slug: null,
+    })
+    .returning(userCols);
 
-  let status = getAccountStatus(user);
+  if (!user) {
+    res.status(500).json({ error: "Não foi possível criar a conta." });
+    return;
+  }
+
+  const status = getAccountStatus(user);
 
   const payload = {
     id: user.id,
@@ -238,34 +267,44 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     ...status,
   };
 
-  req.session.save((err) => {
-    if (err) {
-      req.log.error({ err }, "session.save failed on register");
+  req.session.regenerate((regenerateErr) => {
+    if (regenerateErr) {
+      req.log.error({ err: regenerateErr }, "session.regenerate failed on register");
       res.status(500).json({ error: "Erro ao salvar sessão." });
       return;
     }
-    res.status(201).json(payload);
+    req.session.userId = user.id;
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        req.log.error({ err: saveErr }, "session.save failed on register");
+        res.status(500).json({ error: "Erro ao salvar sessão." });
+        return;
+      }
+      res.status(201).json(payload);
+    });
   });
 });
 
 router.post("/auth/login", async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
 
-  if (!email || !password) {
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const normalizedPassword = typeof password === "string" ? password : "";
+
+  if (!normalizedEmail || !normalizedPassword) {
     res.status(400).json({ error: "E-mail e senha são obrigatórios." });
     return;
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
   await cleanupExpiredAccountByEmail(normalizedEmail);
 
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, normalizedEmail));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
   }
 
-  const valid = await bcrypt.compare(password, user.passwordHash);
+  const valid = await bcrypt.compare(normalizedPassword, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -280,8 +319,7 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
     if (reconciledUser) user = reconciledUser;
   }
 
-  req.session.userId = user.id;
-  let status = getAccountStatus(user);
+  const status = getAccountStatus(user);
 
   const payload = {
     id: user.id,

@@ -27,6 +27,7 @@
 - [Appointment recovery verification](appointment-recovery-verification.md) — recover only with an existing appointment token plus matching phone; phone alone must never reveal bookings.
 - [Native WebView session handoff](native-webview-session.md) — signed cookie handoff stays native-only; never label a disconnected TV session as an expired subscription.
 - [Persistent web session](persistent-web-session.md) — dashboard sessions persist across browser restarts for one year with rolling renewal, not an unlimited localStorage token.
+- [Credential-based account sessions](credential-based-account-sessions.md) — verify credentials before assigning session identity; registration must create the account first.
 - [Public booking price visibility](public-booking-price-visibility.md) — the setting hides prices only on the initial service-selection cards; later summaries and totals remain visible.
 - [Completed appointment availability](completed-appointment-availability.md) — completed queue appointments must not block future booking slots; pending and in-progress appointments still do.
 - [Booking availability by business hours](booking-availability-hours.md) — keep today selected with a highlighted no-slots message during open hours; advance only when the link opens outside hours.
