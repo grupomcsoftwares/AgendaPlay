@@ -139,7 +139,7 @@ function validateSlug(value: string): string | null {
   return null;
 }
 
-export default function Settings() {
+export default function Settings({ focusSubscription = false }: { focusSubscription?: boolean } = {}) {
   const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const updateSlug = useUpdateUserSlug();
@@ -152,6 +152,15 @@ export default function Settings() {
   const checkoutSessionId = subscriptionReturnParams.get("session_id");
   const returnedFromCustomerPortal = subscriptionReturnParams.get("portal_return") === "1";
   const [copied, setCopied] = useState(false);
+  const subscriptionSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!focusSubscription || isLoading) return;
+    const frame = window.requestAnimationFrame(() => {
+      subscriptionSectionRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusSubscription, isLoading]);
 
   const { data: combos } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
@@ -1177,7 +1186,12 @@ export default function Settings() {
       </div>
 
       {/* ── Row 2: Impressão de Comprovantes (sozinho, 1 coluna) ─ */}
-      <div className="max-w-7xl">
+      <div
+        ref={subscriptionSectionRef}
+        id="subscription"
+        className="max-w-7xl"
+        style={{ scrollMarginTop: 16 }}
+      >
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">

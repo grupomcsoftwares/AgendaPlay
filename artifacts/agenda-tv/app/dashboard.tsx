@@ -40,7 +40,7 @@ const MENU_ITEMS = [
   { id: "services",     label: "Servi\u00e7os",        icon: "scissors" as const,    url: `${PROD_BASE}/services` },
   { id: "barbers",      label: "Barbeiros",       icon: "users" as const,       url: `${PROD_BASE}/barbers` },
   { id: "finance",      label: "Financeiro",      icon: "credit-card" as const, url: `${PROD_BASE}/financial` },
-  { id: "subscription", label: "Assinatura",      icon: "credit-card" as const, url: `${PROD_BASE}/settings` },
+  { id: "subscription", label: "Assinatura",      icon: "credit-card" as const, url: `${PROD_BASE}/subscription` },
   { id: "settings",     label: "Configura\u00e7\u00f5es",   icon: "settings" as const,    url: `${PROD_BASE}/settings` },
 ];
 

@@ -139,6 +139,11 @@ function Router() {
           <Sidebar><Financial /></Sidebar>
         </ProtectedRoute>
       </Route>
+      <Route path="/subscription">
+        <ProtectedRoute>
+          <Sidebar><Settings focusSubscription /></Sidebar>
+        </ProtectedRoute>
+      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <Sidebar><Settings /></Sidebar>
