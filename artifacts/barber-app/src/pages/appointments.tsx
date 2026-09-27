@@ -57,6 +57,11 @@ const INITIAL_FORM = { clientId: "new", clientName: "", clientLastName: "", clie
 const INITIAL_EDIT = { date: new Date(), time: "" };
 const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
+function isEmbeddedMobileView() {
+  return typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("view") === "mobile";
+}
+
 export default function Appointments() {
   const { user: _user } = useAuth();
   // Date range for appointments list
@@ -72,7 +77,7 @@ export default function Appointments() {
     {
       query: {
         queryKey: getListAppointmentsQueryKey(rangeParams),
-        refetchInterval: 5000,
+        refetchInterval: isEmbeddedMobileView() ? 15_000 : 5000,
         refetchOnWindowFocus: true,
       },
     },
@@ -87,7 +92,7 @@ export default function Appointments() {
     {
       query: {
         queryKey: getListAppointmentsQueryKey(pendingPaymentParams),
-        refetchInterval: 5000,
+        refetchInterval: isEmbeddedMobileView() ? 15_000 : 5000,
         refetchOnWindowFocus: true,
       },
     },

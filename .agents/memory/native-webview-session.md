@@ -20,3 +20,9 @@ Subscription access and session presence are separate states on TV. Only show â€
 **Why:** An active account can still have a stale native cookie or cached `/auth/me` response. Treating that as billing failure misleads the operator and makes a valid subscription look blocked.
 
 **How to apply:** Request native and web account status with cache bypass, keep native blocked UI behind auth revalidation, and provide a way to refresh or reconnect without changing server-side access enforcement.
+
+The local browser preview does not carry the native WebView's signed cookie by default. Protected routes therefore redirect to login there, so this preview cannot reproduce an authenticated APK-only rendering failure.
+
+**Why:** The unauthenticated `/dashboard?view=mobile` preview returned the expected 401/login screen, while the reported black screen occurred in the signed-in native app.
+
+**How to apply:** Use the browser preview to check unauthenticated routing only. Validate authenticated native rendering on a device or with an explicit test session before attributing a black screen to the web route.

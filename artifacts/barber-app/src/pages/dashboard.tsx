@@ -10,6 +10,11 @@ import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
+function isEmbeddedMobileView() {
+  return typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("view") === "mobile";
+}
+
 export default function Dashboard() {
   const { user, refresh } = useAuth();
   const { toast } = useToast();
@@ -49,7 +54,7 @@ export default function Dashboard() {
   } = useGetDashboardSummary({
     query: {
       queryKey: getGetDashboardSummaryQueryKey(),
-      refetchInterval: 5000,
+      refetchInterval: isEmbeddedMobileView() ? 15_000 : 5000,
       refetchOnWindowFocus: true,
     },
   });

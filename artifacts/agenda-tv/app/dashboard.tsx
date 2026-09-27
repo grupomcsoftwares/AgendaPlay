@@ -69,6 +69,26 @@ function createMobileNavigationScript(route: string) {
   `;
 }
 
+function getSafeWebViewPath(rawUrl?: string | null) {
+  if (!rawUrl) return "unknown";
+  try {
+    return new URL(rawUrl).pathname;
+  } catch {
+    return "unknown";
+  }
+}
+
+function isCurrentDocumentUrl(requestUrl?: string | null, currentUrl?: string | null) {
+  if (!requestUrl || !currentUrl) return false;
+  try {
+    const request = new URL(requestUrl);
+    const current = new URL(currentUrl);
+    return request.origin === current.origin && request.pathname === current.pathname;
+  } catch {
+    return false;
+  }
+}
+
 // TV remote D-pad handler
 function useTVRemote(onEvent: (type: string) => void) {
   const onEventRef = useRef(onEvent);
@@ -111,12 +131,14 @@ export default function DashboardScreen() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [webViewError, setWebViewError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(isTablet || isTV);
   const webViewRef = useRef<WebView>(null);
   const webViewReadyRef = useRef(false);
   const pendingMobileRouteRef = useRef<string | null>(null);
   const currentWebViewUrlRef = useRef<string | null>(null);
   const billingBrowserOpenedRef = useRef(false);
+  const rendererCrashAttemptsRef = useRef(0);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : APP_MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
@@ -148,6 +170,8 @@ export default function DashboardScreen() {
 
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
+    rendererCrashAttemptsRef.current = 0;
+    setWebViewError(null);
     if (isPhone) {
       const route = getMobileRoute(item.url, isTV);
       if (!route) return;
@@ -189,6 +213,29 @@ export default function DashboardScreen() {
     openBillingUrl(targetUrl);
   }, [isTV, openBillingUrl]);
 
+  const retryWebView = useCallback(() => {
+    rendererCrashAttemptsRef.current = 0;
+    setWebViewError(null);
+    setLoading(true);
+    webViewRef.current?.reload();
+  }, []);
+
+  const handleRendererTermination = useCallback(() => {
+    console.warn("[AgendaPlay] WebView renderer terminated", {
+      path: getSafeWebViewPath(currentWebViewUrlRef.current),
+    });
+    if (rendererCrashAttemptsRef.current === 0) {
+      rendererCrashAttemptsRef.current = 1;
+      setLoading(true);
+      webViewRef.current?.reload();
+      return;
+    }
+    setLoading(false);
+    setWebViewError(
+      "Esta seção foi encerrada inesperadamente. Tente novamente; se o problema continuar, atualize o aplicativo.",
+    );
+  }, []);
+
   const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string; url?: string } }) => {
     if (
       !isTrustedWebViewMessageOrigin(
@@ -202,10 +249,7 @@ export default function DashboardScreen() {
     const webError = parseNativeWebError(event.nativeEvent.data);
     if (webError) {
       setLoading(false);
-      Alert.alert(
-        "Não foi possível abrir esta tela",
-        webError,
-      );
+      setWebViewError(webError);
       return;
     }
 
@@ -457,7 +501,8 @@ export default function DashboardScreen() {
               const nextUrl = event.nativeEvent.url as string | undefined;
               currentWebViewUrlRef.current =
                 typeof nextUrl === "string" && isAllowedAppUrl(nextUrl) ? nextUrl : null;
-               webViewReadyRef.current = false;
+              webViewReadyRef.current = false;
+              setWebViewError(null);
               setLoading(true);
             }}
             onNavigationStateChange={(navigationState: { url?: string }) => {
@@ -481,16 +526,28 @@ export default function DashboardScreen() {
              onLoadProgress={(event: any) => {
                if (event.nativeEvent.progress === 1) setLoading(false);
              }}
-             onError={() => setLoading(false)}
-             onHttpError={() => setLoading(false)}
-             onRenderProcessGone={() => {
-               setLoading(true);
-               webViewRef.current?.reload();
+              onError={(event: any) => {
+                const failedUrl = event.nativeEvent?.url as string | undefined;
+                console.warn("[AgendaPlay] WebView load error", {
+                  path: getSafeWebViewPath(failedUrl),
+                  description: event.nativeEvent?.description,
+                });
+                setLoading(false);
+                setWebViewError("Não foi possível carregar esta seção. Verifique a conexão e tente novamente.");
              }}
-             onContentProcessDidTerminate={() => {
-               setLoading(true);
-               webViewRef.current?.reload();
+              onHttpError={(event: any) => {
+                setLoading(false);
+                const { statusCode, url } = event.nativeEvent ?? {};
+                if (statusCode >= 400 && isCurrentDocumentUrl(url, currentWebViewUrlRef.current)) {
+                  console.warn("[AgendaPlay] WebView document returned an HTTP error", {
+                    path: getSafeWebViewPath(url),
+                    statusCode,
+                  });
+                  setWebViewError(`O servidor respondeu com erro ${statusCode}. Tente carregar esta seção novamente.`);
+                }
              }}
+              onRenderProcessGone={handleRendererTermination}
+              onContentProcessDidTerminate={handleRendererTermination}
               onShouldStartLoadWithRequest={handleShouldStartLoad}
               onOpenWindow={handleOpenWindow}
               originWhitelist={["https://*"]}
@@ -498,6 +555,21 @@ export default function DashboardScreen() {
             startInLoadingState={false}
           />
         )}
+         {webViewError && (
+           <View style={styles.webviewErrorOverlay} testID="webview-load-error">
+             <Feather name="alert-triangle" size={30} color="#c9a84c" />
+             <Text style={styles.webviewErrorTitle}>Não foi possível abrir esta tela</Text>
+             <Text style={styles.webviewErrorText}>{webViewError}</Text>
+             <Pressable
+               accessibilityRole="button"
+               style={styles.webviewRetryButton}
+               onPress={retryWebView}
+               testID="webview-retry"
+             >
+               <Text style={styles.webviewRetryButtonText}>Tentar novamente</Text>
+             </Pressable>
+           </View>
+         )}
       </View>
 
       <UpdateDialog
@@ -741,5 +813,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: 3,
+  },
+  webviewErrorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    backgroundColor: "#0c0c0c",
+    zIndex: 15,
+  },
+  webviewErrorTitle: {
+    color: "#f5f5f5",
+    fontSize: 18,
+    fontWeight: "700",
+    marginTop: 14,
+    textAlign: "center",
+  },
+  webviewErrorText: {
+    color: "#aaa",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+    maxWidth: 420,
+    textAlign: "center",
+  },
+  webviewRetryButton: {
+    backgroundColor: "#c9a84c",
+    borderRadius: 8,
+    marginTop: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  webviewRetryButtonText: {
+    color: "#0f0f0f",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
