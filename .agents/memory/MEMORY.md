@@ -27,6 +27,7 @@
 - [Multiple client appointments](multiple-client-appointments.md) — keep all active appointment tokens and show a chooser so each booking can be managed separately.
 - [Appointment recovery verification](appointment-recovery-verification.md) — recover only with an existing appointment token plus matching phone; phone alone must never reveal bookings.
 - [Native WebView session handoff](native-webview-session.md) — signed cookie handoff stays native-only; never label a disconnected TV session as an expired subscription.
+- [WebView Stripe billing links](native-webview-session.md) — open only exact HTTPS Stripe billing destinations externally; keep arbitrary links blocked and refresh on return.
 - [Persistent web session](persistent-web-session.md) — dashboard sessions persist across browser restarts for one year with rolling renewal, not an unlimited localStorage token.
 - [Credential-based account sessions](credential-based-account-sessions.md) — verify credentials before assigning session identity; registration must create the account first.
 - [Public booking price visibility](public-booking-price-visibility.md) — the setting hides prices only on the initial service-selection cards; later summaries and totals remain visible.

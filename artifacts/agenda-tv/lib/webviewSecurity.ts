@@ -23,6 +23,11 @@ export const PROD_HOSTNAME =
 export const PROD_BASE = `https://${PROD_HOSTNAME}`;
 
 const ALLOWED_HOSTNAMES = new Set([PROD_HOSTNAME]);
+const ALLOWED_BILLING_HOSTNAMES = new Set([
+  "billing.stripe.com",
+  "checkout.stripe.com",
+  "invoice.stripe.com",
+]);
 
 /**
  * Only allow HTTPS URLs that belong to AgendaPlay, and normalize aliases to
@@ -60,6 +65,22 @@ export function isAllowedAppUrl(rawUrl?: string | null): boolean {
   // provided. A missing URL is not a valid WebView navigation or message
   // source, however.
   return typeof rawUrl === "string" && rawUrl.length > 0 && normalizeAppUrl(rawUrl) !== null;
+}
+
+export function isAllowedBillingUrl(rawUrl?: unknown): rawUrl is string {
+  if (typeof rawUrl !== "string" || rawUrl.length === 0 || rawUrl.length > 2048) return false;
+  try {
+    const candidate = new URL(rawUrl);
+    return (
+      candidate.protocol === "https:" &&
+      ALLOWED_BILLING_HOSTNAMES.has(candidate.hostname.toLowerCase()) &&
+      (candidate.port === "" || candidate.port === "443") &&
+      candidate.username === "" &&
+      candidate.password === ""
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function isAllowedApkUrl(rawUrl?: unknown): rawUrl is string {

@@ -5,6 +5,7 @@ import {
   Image,
   StyleSheet,
   Platform,
+  AppState,
   ScrollView,
   Pressable,
   Dimensions,
@@ -23,12 +24,12 @@ import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@
 import { isTvDevice } from "@/lib/device";
 import {
   isAllowedAppUrl,
+  isAllowedBillingUrl,
   isTrustedWebViewMessageOrigin,
   normalizeAppUrl,
   parseNativePushMessage,
   parseNativeWebError,
   PROD_BASE,
-  PROD_HOSTNAME,
 } from "@/lib/webviewSecurity";
 
 const MENU_ITEMS = [
@@ -39,17 +40,19 @@ const MENU_ITEMS = [
   { id: "services",     label: "Servi\u00e7os",        icon: "scissors" as const,    url: `${PROD_BASE}/services` },
   { id: "barbers",      label: "Barbeiros",       icon: "users" as const,       url: `${PROD_BASE}/barbers` },
   { id: "finance",      label: "Financeiro",      icon: "credit-card" as const, url: `${PROD_BASE}/financial` },
+  { id: "subscription", label: "Assinatura",      icon: "credit-card" as const, url: `${PROD_BASE}/settings` },
   { id: "settings",     label: "Configura\u00e7\u00f5es",   icon: "settings" as const,    url: `${PROD_BASE}/settings` },
 ];
 
-const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings");
+const TV_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "settings" && i.id !== "subscription");
 const APP_MENU_ITEMS = MENU_ITEMS.filter(i => i.id !== "queue");
 
-function getMobileRoute(url: string) {
+function getMobileRoute(url: string, isTV = false) {
   const normalizedUrl = normalizeAppUrl(url);
   if (!normalizedUrl) return null;
   const nextUrl = new URL(normalizedUrl);
   nextUrl.searchParams.set("view", "mobile");
+  if (isTV) nextUrl.searchParams.set("tv", "1");
   return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
 }
 
@@ -95,7 +98,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { user, getSessionCookie, logout } = useAuth();
+  const { user, getSessionCookie, logout, refresh } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const isWeb = Platform.OS === "web";
   const topPad = isWeb ? 67 : insets.top;
@@ -113,9 +116,30 @@ export default function DashboardScreen() {
   const webViewReadyRef = useRef(false);
   const pendingMobileRouteRef = useRef<string | null>(null);
   const currentWebViewUrlRef = useRef<string | null>(null);
+  const billingBrowserOpenedRef = useRef(false);
 
   const activeMenu = isTV ? TV_MENU_ITEMS : APP_MENU_ITEMS;
   const selectedItem = activeMenu.find((i) => i.id === selectedId) ?? activeMenu[0];
+  const subscriptionStatus = user
+    ? {
+        title: user.hasActiveSubscription
+          ? "Assinatura ativa"
+          : user.hasEverPaid
+            ? "Assinatura encerrada"
+            : user.trialExpired
+              ? "Teste grátis encerrado"
+              : "Período de teste",
+        detail: user.hasActiveSubscription
+          ? user.subscriptionDaysLeft != null
+            ? `${user.subscriptionDaysLeft} ${user.subscriptionDaysLeft === 1 ? "dia" : "dias"} até a renovação`
+            : "Plano ativo"
+          : user.hasEverPaid
+            ? "Acesse Assinatura para renovar"
+            : user.trialExpired
+              ? "Escolha um plano para continuar"
+              : `${user.trialDaysLeft} ${user.trialDaysLeft === 1 ? "dia restante" : "dias restantes"} no teste`,
+      }
+    : null;
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -125,7 +149,7 @@ export default function DashboardScreen() {
   const handlePress = useCallback((item: (typeof MENU_ITEMS)[number]) => {
     setSelectedId(item.id);
     if (isPhone) {
-      const route = getMobileRoute(item.url);
+      const route = getMobileRoute(item.url, isTV);
       if (!route) return;
       pendingMobileRouteRef.current = route;
       if (webViewRef.current && webViewReadyRef.current) {
@@ -136,7 +160,34 @@ export default function DashboardScreen() {
       return;
     }
     setLoading(true);
-  }, [isPhone]);
+  }, [isPhone, isTV]);
+
+  const openBillingUrl = useCallback((url: string) => {
+    if (!isAllowedBillingUrl(url)) return;
+    billingBrowserOpenedRef.current = true;
+    void Linking.openURL(url).catch(() => {
+      billingBrowserOpenedRef.current = false;
+      Alert.alert("Não foi possível abrir a cobrança", "Tente novamente pela seção Assinatura.");
+    });
+  }, []);
+
+  const handleShouldStartLoad = useCallback((request: { url: string }) => {
+    if (isAllowedAppUrl(request.url)) return true;
+    if (isAllowedBillingUrl(request.url)) openBillingUrl(request.url);
+    return false;
+  }, [openBillingUrl]);
+
+  const handleOpenWindow = useCallback((event: { nativeEvent: { targetUrl: string } }) => {
+    const targetUrl = event.nativeEvent.targetUrl;
+    if (isAllowedAppUrl(targetUrl)) {
+      const route = getMobileRoute(targetUrl, isTV);
+      if (route) {
+        webViewRef.current?.injectJavaScript(createMobileNavigationScript(route));
+      }
+      return;
+    }
+    openBillingUrl(targetUrl);
+  }, [isTV, openBillingUrl]);
 
   const handleNativePushMessage = useCallback(async (event: { nativeEvent: { data: string; url?: string } }) => {
     if (
@@ -222,6 +273,16 @@ export default function DashboardScreen() {
       setSessionCookie(raw);
     });
   }, [getSessionCookie]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !billingBrowserOpenedRef.current) return;
+      billingBrowserOpenedRef.current = false;
+      void refresh();
+      webViewRef.current?.reload();
+    });
+    return () => subscription.remove();
+  }, [refresh]);
 
   const initialUrl = isPhone ? activeMenu[0]?.url : selectedItem?.url;
   const webViewSource = useMemo(() => {
@@ -326,6 +387,17 @@ export default function DashboardScreen() {
                 );
               })}
 
+              {menuOpen && !isTV && subscriptionStatus && (
+                <View style={styles.subscriptionStatus} testID="mobile-subscription-status">
+                  <View style={styles.subscriptionStatusHeading}>
+                    <Feather name="credit-card" size={14} color="#c9a84c" />
+                    <Text style={styles.subscriptionStatusLabel}>Status do plano</Text>
+                  </View>
+                  <Text style={styles.subscriptionStatusTitle}>{subscriptionStatus.title}</Text>
+                  <Text style={styles.subscriptionStatusDetail}>{subscriptionStatus.detail}</Text>
+                </View>
+              )}
+
               {menuOpen && !isTV && (
                 <Pressable
                   style={({ pressed }) => [styles.logoutMenuItem, pressed && styles.logoutMenuItemPressed]}
@@ -419,8 +491,9 @@ export default function DashboardScreen() {
                setLoading(true);
                webViewRef.current?.reload();
              }}
-             onShouldStartLoadWithRequest={(request: { url: string }) => isAllowedAppUrl(request.url)}
-             originWhitelist={[`https://${PROD_HOSTNAME}`]}
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+              onOpenWindow={handleOpenWindow}
+              originWhitelist={["https://*"]}
              mixedContentMode="never"
             startInLoadingState={false}
           />
@@ -636,5 +709,37 @@ const styles = StyleSheet.create({
   developerLogo: {
     width: 150,
     height: 64,
+  },
+  subscriptionStatus: {
+    marginTop: 10,
+    marginHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2a2010",
+    backgroundColor: "#14120d",
+  },
+  subscriptionStatusHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  subscriptionStatusLabel: {
+    color: "#c9a84c",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  subscriptionStatusTitle: {
+    color: "#f5f5f5",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 7,
+  },
+  subscriptionStatusDetail: {
+    color: "#aaa",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3,
   },
 });

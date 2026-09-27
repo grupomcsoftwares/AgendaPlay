@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   isAllowedAppUrl,
+  isAllowedBillingUrl,
   isTrustedWebViewMessageOrigin,
   normalizeAppUrl,
   parseNativePushMessage,
@@ -30,6 +31,25 @@ test("rejects insecure, off-origin, non-default-port, and credential-bearing URL
   assert.equal(normalizeAppUrl("not a URL"), null);
   assert.equal(isAllowedAppUrl(undefined), false);
   assert.equal(isAllowedAppUrl(""), false);
+});
+
+test("allows only secure Stripe billing destinations", () => {
+  assert.equal(isAllowedBillingUrl("https://checkout.stripe.com/c/pay/session"), true);
+  assert.equal(isAllowedBillingUrl("https://billing.stripe.com/p/session"), true);
+  assert.equal(isAllowedBillingUrl("https://invoice.stripe.com/i/session"), true);
+  assert.equal(isAllowedBillingUrl("https://checkout.stripe.com:443/c/pay/session"), true);
+
+  for (const url of [
+    "http://checkout.stripe.com/c/pay/session",
+    "https://checkout.stripe.com.evil.example/c/pay/session",
+    "https://evil.example/checkout.stripe.com",
+    "https://user:pass@billing.stripe.com/session",
+    "https://billing.stripe.com:8443/session",
+    "javascript:alert(1)",
+    "not a URL",
+  ]) {
+    assert.equal(isAllowedBillingUrl(url), false, url);
+  }
 });
 
 test("only trusts messages from the current AgendaPlay origin", () => {

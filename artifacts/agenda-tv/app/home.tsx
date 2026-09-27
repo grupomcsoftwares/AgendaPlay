@@ -120,7 +120,9 @@ export default function HomeScreen() {
     }
   });
 
-  if (subscriptionBlocked) {
+  // Phones and tablets must reach the authenticated WebView so the web app
+  // can show its existing renewal flow. Keep the TV queue blocked natively.
+  if (subscriptionBlocked && isTV) {
     return (
       <View style={[styles.root, styles.blockedRoot, { paddingTop: topPad, paddingBottom: botPad }]}>
         <Feather name="lock" size={44} color="#c9a84c" />
@@ -128,14 +130,6 @@ export default function HomeScreen() {
         <Text style={styles.blockedText}>
           A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou.
         </Text>
-        {!isTV && (
-          <Pressable
-            style={styles.blockedButton}
-            onPress={() => Linking.openURL(`${PROD_BASE}/subscribe`)}
-          >
-            <Text style={styles.blockedButtonText}>Reativar assinatura</Text>
-          </Pressable>
-        )}
       </View>
     );
   }

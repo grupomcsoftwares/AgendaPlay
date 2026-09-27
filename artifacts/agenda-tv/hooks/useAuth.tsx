@@ -39,6 +39,9 @@ export type AuthUser = {
   trialDaysLeft: number;
   trialExpired: boolean;
   hasActiveSubscription: boolean;
+  hasEverPaid: boolean;
+  subscriptionDueDate?: string | null;
+  subscriptionDaysLeft?: number | null;
   canAccess: boolean;
   isSystemAdmin?: boolean;
 };
