@@ -7,7 +7,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer, CreditCard, ExternalLink, RefreshCw } from "lucide-react";
+import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,8 +130,6 @@ function resizeImageToDataUrl(file: File, max = 256): Promise<string> {
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-
 function validateSlug(value: string): string | null {
   if (value.length < 3) return "Mínimo de 3 caracteres";
   if (value.length > 80) return "Máximo de 80 caracteres";
@@ -139,7 +137,7 @@ function validateSlug(value: string): string | null {
   return null;
 }
 
-export default function Settings({ focusSubscription = false }: { focusSubscription?: boolean } = {}) {
+export default function Settings() {
   const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const updateSlug = useUpdateUserSlug();
@@ -147,20 +145,7 @@ export default function Settings({ focusSubscription = false }: { focusSubscript
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user, refresh, logout } = useAuth();
-  const subscriptionReturnParams = new URLSearchParams(window.location.search);
-  const justSubscribed = subscriptionReturnParams.get("subscribed") === "1";
-  const checkoutSessionId = subscriptionReturnParams.get("session_id");
-  const returnedFromCustomerPortal = subscriptionReturnParams.get("portal_return") === "1";
   const [copied, setCopied] = useState(false);
-  const subscriptionSectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!focusSubscription || isLoading) return;
-    const frame = window.requestAnimationFrame(() => {
-      subscriptionSectionRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [focusSubscription, isLoading]);
 
   const { data: combos } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
@@ -228,128 +213,6 @@ export default function Settings({ focusSubscription = false }: { focusSubscript
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [nativePush, setNativePush] = useState(false);
-
-  // Subscription management
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [subscriptionSyncing, setSubscriptionSyncing] = useState(
-    justSubscribed || returnedFromCustomerPortal,
-  );
-
-  const { data: subscriptionStatus } = useQuery<{
-    hasActiveSubscription: boolean;
-    hasEverPaid: boolean;
-    subscriptionId: string | null;
-    stripePriceId: string | null;
-    maxBarbers: number | null;
-    trialDaysLeft: number;
-    trialExpired: boolean;
-    canAccess: boolean;
-    subscriptionDueDate: string | null;
-    subscriptionDaysLeft: number | null;
-    pastDue: boolean;
-  }>({
-    queryKey: ["stripe-subscription-status"],
-    queryFn: async () => {
-      const res = await fetch("/api/stripe/subscription-status", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!res.ok) throw new Error("Failed to fetch subscription status");
-      return res.json();
-    },
-    staleTime: 60_000,
-    refetchOnWindowFocus: true,
-  });
-
-  useEffect(() => {
-    if (!justSubscribed && !returnedFromCustomerPortal) return;
-
-    let cancelled = false;
-    setSubscriptionSyncing(true);
-
-    const syncSubscription = async () => {
-      const deadline = Date.now() + (justSubscribed ? 30_000 : 10_000);
-      const pollIntervalMs = 2_500;
-
-      while (!cancelled && Date.now() <= deadline) {
-        let syncResult: { hasSubscription?: boolean; pending?: boolean } = {};
-        try {
-          const res = await fetch(`${BASE}/api/stripe/sync-subscription`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ sessionId: checkoutSessionId || undefined }),
-          });
-          syncResult = await res.json().catch(() => ({})) as typeof syncResult;
-        } catch {
-          // Retry while Stripe finishes the checkout or the network recovers.
-        }
-
-        if (cancelled) return;
-
-        await Promise.all([
-          refresh(),
-          queryClient.invalidateQueries({ queryKey: ["stripe-subscription-status"] }),
-        ]);
-
-        // A portal return only needs one fresh read. Checkout redirects can
-        // arrive before Stripe has made the subscription visible, so retry.
-        if (returnedFromCustomerPortal || syncResult.hasSubscription === true) break;
-
-        const remainingMs = deadline - Date.now();
-        if (remainingMs <= 0) break;
-        await new Promise((resolve) => window.setTimeout(resolve, Math.min(pollIntervalMs, remainingMs)));
-      }
-
-      if (!cancelled) setSubscriptionSyncing(false);
-    };
-
-    void syncSubscription();
-    return () => {
-      cancelled = true;
-    };
-  }, [checkoutSessionId, justSubscribed, queryClient, refresh, returnedFromCustomerPortal]);
-
-  const { data: stripeePlans } = useQuery<{
-    data: Array<{ price_id: string; product_name: string; unit_amount: number; currency: string; maxBarbers: number | null }>;
-  }>({
-    queryKey: ["stripe-plans"],
-    queryFn: async () => {
-      const res = await fetch("/api/stripe/plans", { cache: "no-store" });
-      if (!res.ok) return { data: [] };
-      return res.json();
-    },
-    staleTime: 5 * 60_000,
-    enabled: !!subscriptionStatus?.hasActiveSubscription,
-  });
-
-  const displayedSubscriptionStatus = subscriptionSyncing ? undefined : subscriptionStatus;
-  const currentPlan = stripeePlans?.data?.find(
-    (p) => p.price_id === displayedSubscriptionStatus?.stripePriceId
-  );
-  const paymentFailed = !subscriptionSyncing && (subscriptionStatus?.pastDue ?? user?.pastDue ?? false);
-
-  const openCustomerPortal = async () => {
-    setPortalLoading(true);
-    try {
-      const res = await fetch("/api/stripe/customer-portal", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { error?: string };
-        toast({ title: data.error ?? "Erro ao abrir portal de assinatura", variant: "destructive" });
-        return;
-      }
-      const { url } = await res.json() as { url: string };
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch {
-      toast({ title: "Não foi possível abrir o portal. Tente novamente.", variant: "destructive" });
-    } finally {
-      setPortalLoading(false);
-    }
-  };
 
   const [formData, setFormData] = useState<{
     barbershopName: string;
@@ -1186,12 +1049,7 @@ export default function Settings({ focusSubscription = false }: { focusSubscript
       </div>
 
       {/* ── Row 2: Impressão de Comprovantes (sozinho, 1 coluna) ─ */}
-      <div
-        ref={subscriptionSectionRef}
-        id="subscription"
-        className="max-w-7xl"
-        style={{ scrollMarginTop: 16 }}
-      >
+      <div className="max-w-7xl">
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -1811,233 +1669,6 @@ export default function Settings({ focusSubscription = false }: { focusSubscript
         </CardContent>
       </Card>
       </div>{/* end Row 3 grid */}
-
-      {/* ── Minha Assinatura ───────────────────────────────── */}
-      <div className="max-w-7xl">
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Minha Assinatura</CardTitle>
-            </div>
-            <CardDescription className="text-xs">
-              Gerencie seu plano, faturas e dados de pagamento
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {paymentFailed && (
-              <div
-                role="alert"
-                className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-100"
-              >
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="font-semibold">Não foi possível processar a cobrança da sua assinatura</p>
-                  <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
-                    Atualize seu cartão agora para evitar a interrupção do acesso à AgendaPlay.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="mt-2 gap-1.5 border-amber-600/40 bg-background/60 text-amber-950 hover:bg-amber-500/15 dark:text-amber-100"
-                    onClick={openCustomerPortal}
-                    disabled={portalLoading}
-                  >
-                    {portalLoading ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    )}
-                    Atualizar cartão
-                  </Button>
-                </div>
-              </div>
-            )}
-            {/* Status badge */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                {displayedSubscriptionStatus?.hasActiveSubscription ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-500/15 text-green-500 border border-green-500/30">
-                        Ativa
-                      </span>
-                      {currentPlan && (
-                        <span className="text-sm font-semibold">
-                          {currentPlan.product_name}
-                        </span>
-                      )}
-                      {displayedSubscriptionStatus.maxBarbers != null && (
-                        <span className="text-xs text-muted-foreground">
-                          · Até {displayedSubscriptionStatus.maxBarbers} {displayedSubscriptionStatus.maxBarbers === 1 ? "profissional" : "profissionais"}
-                        </span>
-                      )}
-                    </div>
-                    {displayedSubscriptionStatus.subscriptionDueDate && (
-                      <p className="text-xs text-muted-foreground">
-                        Próxima cobrança:{" "}
-                        <span className="font-medium text-foreground">
-                          {new Date(displayedSubscriptionStatus.subscriptionDueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
-                        </span>
-                        {displayedSubscriptionStatus.subscriptionDaysLeft != null && (
-                          <span className="ml-1 text-muted-foreground">
-                            ({displayedSubscriptionStatus.subscriptionDaysLeft} {displayedSubscriptionStatus.subscriptionDaysLeft === 1 ? "dia" : "dias"})
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    {currentPlan && (
-                      <p className="text-xs text-muted-foreground">
-                        {(currentPlan.unit_amount / 100).toLocaleString("pt-BR", { style: "currency", currency: currentPlan.currency.toUpperCase() })}/mês
-                      </p>
-                    )}
-                  </>
-                ) : displayedSubscriptionStatus?.hasEverPaid ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive border border-destructive/30">
-                      Assinatura encerrada
-                    </span>
-                  </div>
-                ) : displayedSubscriptionStatus && !displayedSubscriptionStatus.trialExpired ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                        Período grátis
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {displayedSubscriptionStatus.trialDaysLeft === 1
-                        ? "Último dia de período grátis"
-                        : `${displayedSubscriptionStatus.trialDaysLeft} dias restantes no período grátis`}
-                    </p>
-                  </>
-                ) : displayedSubscriptionStatus?.trialExpired && !displayedSubscriptionStatus.hasActiveSubscription ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-destructive/15 text-destructive border border-destructive/30">
-                      Sem plano ativo
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {subscriptionSyncing ? "Atualizando assinatura..." : "Carregando..."}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {subscriptionSyncing ? null : displayedSubscriptionStatus?.hasActiveSubscription ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 h-8 text-xs"
-                    onClick={openCustomerPortal}
-                    disabled={portalLoading}
-                  >
-                    {portalLoading ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    )}
-                    Trocar plano
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 h-8 text-xs"
-                    onClick={openCustomerPortal}
-                    disabled={portalLoading}
-                  >
-                    <CreditCard className="h-3.5 w-3.5" />
-                    Ver faturas
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                    onClick={() => setCancelDialogOpen(true)}
-                    disabled={portalLoading}
-                  >
-                    Cancelar assinatura
-                  </Button>
-                </>
-              ) : displayedSubscriptionStatus?.hasEverPaid ? (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  onClick={() => window.location.href = "/subscribe"}
-                >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Renovar assinatura
-                </Button>
-              ) : !displayedSubscriptionStatus?.trialExpired ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  onClick={() => window.location.href = "/subscribe"}
-                >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Assinar agora
-                </Button>
-              ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  onClick={() => window.location.href = "/subscribe"}
-                >
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Escolher plano
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Cancel subscription confirmation dialog */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Cancelar assinatura
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed">
-              Você será redirecionado para o portal de assinatura do Stripe, onde poderá cancelar seu plano com segurança.
-              <br /><br />
-              Após o cancelamento, você ainda terá acesso até o fim do período já pago.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0 mt-2">
-            <Button
-              variant="outline"
-              onClick={() => setCancelDialogOpen(false)}
-              disabled={portalLoading}
-            >
-              Voltar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={portalLoading}
-              onClick={async () => {
-                setCancelDialogOpen(false);
-                await openCustomerPortal();
-              }}
-            >
-              {portalLoading ? "Abrindo..." : "Ir para o portal"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <div className="max-w-7xl flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
         <div className="flex items-center gap-2">

@@ -12,6 +12,7 @@ import Services from "./pages/services";
 import Barbers from "./pages/barbers";
 import Clients from "./pages/clients";
 import Settings from "./pages/settings";
+import Subscription from "./pages/subscription";
 import Queue from "./pages/queue";
 import Appointments from "./pages/appointments";
 import Financial from "./pages/financial";
@@ -141,7 +142,7 @@ function Router() {
       </Route>
       <Route path="/subscription">
         <ProtectedRoute>
-          <Sidebar><Settings focusSubscription /></Sidebar>
+          <Sidebar><Subscription /></Sidebar>
         </ProtectedRoute>
       </Route>
       <Route path="/settings">

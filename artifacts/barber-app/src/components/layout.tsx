@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Scissors,
   CreditCard,
+  BadgeDollarSign,
   Settings as SettingsIcon,
   LayoutDashboard,
   List,
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/services", label: "Serviços", icon: Scissors },
   { href: "/barbers", label: "Barbeiros", icon: Users },
   { href: "/financial", label: "Financeiro", icon: CreditCard },
+  { href: "/subscription", label: "Assinatura", icon: BadgeDollarSign },
   { href: "/settings", label: "Configurações", icon: SettingsIcon },
 ];
 
