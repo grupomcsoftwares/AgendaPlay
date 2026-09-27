@@ -178,7 +178,10 @@ export default function Settings() {
   const { data: subscriberUsage, isError: subscriberUsageError } = useQuery<SubscriberMonthlyUsage[]>({
     queryKey: ["subscriptions-monthly-usage"],
     queryFn: async () => {
-      const res = await fetch("/api/subscriptions/monthly-usage", { credentials: "include" });
+      const res = await fetch("/api/subscriptions/monthly-usage", {
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error("Não foi possível carregar o uso mensal dos assinantes.");
       return res.json();
     },
@@ -239,7 +242,10 @@ export default function Settings() {
   }>({
     queryKey: ["stripe-subscription-status"],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/subscription-status", { credentials: "include" });
+      const res = await fetch("/api/stripe/subscription-status", {
+        credentials: "include",
+        cache: "no-store",
+      });
       if (!res.ok) throw new Error("Failed to fetch subscription status");
       return res.json();
     },
@@ -301,7 +307,7 @@ export default function Settings() {
   }>({
     queryKey: ["stripe-plans"],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/plans");
+      const res = await fetch("/api/stripe/plans", { cache: "no-store" });
       if (!res.ok) return { data: [] };
       return res.json();
     },
@@ -624,7 +630,10 @@ export default function Settings() {
           setPushLoading(false);
           return;
         }
-        const res = await fetch("/api/push/vapid-public-key", { credentials: "include" });
+        const res = await fetch("/api/push/vapid-public-key", {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok) {
           toast({ title: "Erro ao buscar chave VAPID", variant: "destructive" });
           setPushLoading(false);
