@@ -21,35 +21,106 @@ import { playRescheduled } from "@/lib/sounds";
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
 
-function removePendingAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
+function getPendingTokenStorages(): Storage[] {
+  const storages: Storage[] = [];
   try {
-    const saved = localStorage.getItem(tokensKey);
-    const tokens = saved ? JSON.parse(saved) : [];
-    if (Array.isArray(tokens)) {
-      const remaining = tokens.filter((value): value is string => typeof value === "string" && value !== token);
-      if (remaining.length > 0) {
-        localStorage.setItem(tokensKey, JSON.stringify(remaining));
-      } else {
-        localStorage.removeItem(tokensKey);
-      }
-    }
-    if (localStorage.getItem(legacyKey) === token) {
-      localStorage.removeItem(legacyKey);
-    }
+    storages.push(localStorage);
   } catch {
-    // Local storage may be unavailable; the server-side cancellation still succeeds.
+    // Safari private browsing may deny local storage.
+  }
+  try {
+    storages.push(sessionStorage);
+  } catch {
+    // Keep working if session storage is also unavailable.
+  }
+  return storages;
+}
+
+function removePendingAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
+  for (const storage of getPendingTokenStorages()) {
+    try {
+      const saved = storage.getItem(tokensKey);
+      const tokens = saved ? JSON.parse(saved) : [];
+      if (Array.isArray(tokens)) {
+        const remaining = tokens.filter((value): value is string => typeof value === "string" && value !== token);
+        if (remaining.length > 0) {
+          storage.setItem(tokensKey, JSON.stringify(remaining));
+        } else {
+          storage.removeItem(tokensKey);
+        }
+      }
+      if (storage.getItem(legacyKey) === token) {
+        storage.removeItem(legacyKey);
+      }
+    } catch {
+      // Local storage may be unavailable; the server-side cancellation still succeeds.
+    }
   }
 }
 
 function saveRecoveredAppointmentTokens(tokensKey: string, legacyKey: string, tokens: string[]): void {
-  try {
-    const uniqueTokens = [...new Set(tokens.filter(Boolean))];
-    if (uniqueTokens.length > 0) {
-      localStorage.setItem(tokensKey, JSON.stringify(uniqueTokens));
+  const uniqueTokens = [...new Set(tokens.filter(Boolean))];
+  for (const storage of getPendingTokenStorages()) {
+    let tokenListSaved = false;
+    try {
+      if (uniqueTokens.length > 0) {
+        storage.setItem(tokensKey, JSON.stringify(uniqueTokens));
+      } else {
+        storage.removeItem(tokensKey);
+      }
+      tokenListSaved = true;
+    } catch {
+      // Try the other available storage.
     }
-    localStorage.removeItem(legacyKey);
-  } catch {
-    // Recovery still succeeds if this browser does not allow local storage.
+    if (tokenListSaved) {
+      try {
+        storage.removeItem(legacyKey);
+      } catch {
+        // Ignore legacy-key cleanup failures.
+      }
+    }
+  }
+}
+
+function rememberAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
+  const tokens = new Set<string>([token]);
+  for (const storage of getPendingTokenStorages()) {
+    try {
+      const storedTokens = storage.getItem(tokensKey);
+      if (storedTokens) {
+        const parsed: unknown = JSON.parse(storedTokens);
+        if (Array.isArray(parsed)) {
+          for (const value of parsed) {
+            if (typeof value === "string" && value) tokens.add(value);
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed token lists and check the other available storage.
+    }
+    try {
+      const legacyToken = storage.getItem(legacyKey);
+      if (legacyToken) tokens.add(legacyToken);
+    } catch {
+      // Continue with the other available storage.
+    }
+  }
+  const serializedTokens = JSON.stringify([...tokens]);
+  for (const storage of getPendingTokenStorages()) {
+    let tokenListSaved = false;
+    try {
+      storage.setItem(tokensKey, serializedTokens);
+      tokenListSaved = true;
+    } catch {
+      // Try the other available storage.
+    }
+    if (tokenListSaved) {
+      try {
+        storage.removeItem(legacyKey);
+      } catch {
+        // Ignore legacy-key cleanup failures.
+      }
+    }
   }
 }
 
@@ -101,6 +172,11 @@ export default function CancelBooking() {
   const tokensStorageKey = `barber_pending_tokens_${shopId ?? "admin"}`;
   const legacyStorageKey = `barber_pending_token_${shopId ?? "admin"}`;
   const loyaltyPhone = appointment?.notes?.match(/Tel:\s*([^.]+)/)?.[1]?.replace(/\D/g, "") ?? "";
+  useEffect(() => {
+    if (!appointment?.cancelToken) return;
+    rememberAppointmentToken(tokensStorageKey, legacyStorageKey, appointment.cancelToken);
+  }, [appointment?.cancelToken, legacyStorageKey, tokensStorageKey]);
+
   const loyaltyQueryParams = {
     ...(shopId ? { shopId } : {}),
     phone: loyaltyPhone,
@@ -504,7 +580,7 @@ export default function CancelBooking() {
                   Agendamento confirmado!
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Salve esta página nos favoritos para mudar o horário ou cancelar depois.
+                  Salve este link individual para consultar ou alterar seu horário depois. O link público da barbearia inicia uma nova reserva.
                 </p>
               </div>
             </div>

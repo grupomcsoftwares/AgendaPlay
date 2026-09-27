@@ -42,44 +42,74 @@ function parseBookingTime(value: string | undefined, fallback: number): number {
     : fallback;
 }
 
-function readPendingAppointmentTokens(tokensKey: string, legacyKey: string): string[] {
+function getPendingTokenStorages(): Storage[] {
+  const storages: Storage[] = [];
   try {
-    const savedTokens = localStorage.getItem(tokensKey);
-    if (savedTokens) {
-      const parsed = JSON.parse(savedTokens);
-      if (Array.isArray(parsed)) {
-        const tokens = parsed.filter((token): token is string => typeof token === "string" && token.length > 0);
-        if (tokens.length > 0) return [...new Set(tokens)];
-      }
-    }
-    const legacyToken = localStorage.getItem(legacyKey);
-    return legacyToken ? [legacyToken] : [];
+    storages.push(localStorage);
   } catch {
-    return [];
+    // Safari private browsing may deny local storage.
   }
+  try {
+    storages.push(sessionStorage);
+  } catch {
+    // Keep working if session storage is also unavailable.
+  }
+  return storages;
 }
 
-function savePendingAppointmentTokens(tokensKey: string, tokens: string[]): void {
-  try {
-    const uniqueTokens = [...new Set(tokens.filter(Boolean))];
-    if (uniqueTokens.length > 0) {
-      localStorage.setItem(tokensKey, JSON.stringify(uniqueTokens));
-    } else {
-      localStorage.removeItem(tokensKey);
+function readPendingAppointmentTokens(tokensKey: string, legacyKey: string): string[] {
+  const tokens = new Set<string>();
+  for (const storage of getPendingTokenStorages()) {
+    try {
+      const savedTokens = storage.getItem(tokensKey);
+      if (savedTokens) {
+        const parsed: unknown = JSON.parse(savedTokens);
+        if (Array.isArray(parsed)) {
+          for (const token of parsed) {
+            if (typeof token === "string" && token.length > 0) tokens.add(token);
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed token lists and check the other available storage.
     }
-  } catch {
-    // Local storage may be unavailable in private browsing; the booking still works.
+    try {
+      const legacyToken = storage.getItem(legacyKey);
+      if (legacyToken) tokens.add(legacyToken);
+    } catch {
+      // Continue with the other available storage.
+    }
+  }
+  return [...tokens];
+}
+
+function savePendingAppointmentTokens(tokensKey: string, legacyKey: string, tokens: string[]): void {
+  const uniqueTokens = [...new Set(tokens.filter(Boolean))];
+  for (const storage of getPendingTokenStorages()) {
+    let tokenListSaved = false;
+    try {
+      if (uniqueTokens.length > 0) {
+        storage.setItem(tokensKey, JSON.stringify(uniqueTokens));
+      } else {
+        storage.removeItem(tokensKey);
+      }
+      tokenListSaved = true;
+    } catch {
+      // Try the other available storage.
+    }
+    if (tokenListSaved) {
+      try {
+        storage.removeItem(legacyKey);
+      } catch {
+        // Ignore legacy-key cleanup failures.
+      }
+    }
   }
 }
 
 function addPendingAppointmentToken(tokensKey: string, legacyKey: string, token: string): void {
   const tokens = readPendingAppointmentTokens(tokensKey, legacyKey);
-  savePendingAppointmentTokens(tokensKey, [...tokens, token]);
-  try {
-    localStorage.removeItem(legacyKey);
-  } catch {
-    // Ignore storage cleanup failures.
-  }
+  savePendingAppointmentTokens(tokensKey, legacyKey, [...tokens, token]);
 }
 
 function formatPendingAppointmentDate(value: string): string {
@@ -430,12 +460,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
 
     if (activeTokens.length !== pendingTokens.length || activeTokens.some((token, index) => token !== pendingTokens[index])) {
       setPendingTokens(activeTokens);
-      savePendingAppointmentTokens(tokensStorageKey, activeTokens);
-      try {
-        localStorage.removeItem(storageKey);
-      } catch {
-        // Ignore storage cleanup failures.
-      }
+      savePendingAppointmentTokens(tokensStorageKey, storageKey, activeTokens);
     }
 
     if (activeAppointments.length !== 1) return;
@@ -688,8 +713,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         onSuccess: (created) => {
           // Keep every active token on the public booking page so the client can
           // choose which appointment to manage when returning to the link.
-          if (created?.cancelToken && !!shopId) {
-            addPendingAppointmentToken(tokensStorageKey, storageKey, created.cancelToken);
+          if (created?.cancelToken) {
+            if (shopId) {
+              addPendingAppointmentToken(tokensStorageKey, storageKey, created.cancelToken);
+            }
             setConfirmedToken(created.cancelToken);
           }
           // Persist name+phone so the client doesn't have to retype next visit
@@ -896,7 +923,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     if (!token) return;
     const timer = setTimeout(() => {
       window.location.replace(getAppointmentPath(token, shopId));
-    }, 1200);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [confirmed, confirmedToken, shopId, storageKey]);
   const loyaltyDiscountAmount = useLoyaltyPoints
@@ -1347,6 +1374,18 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 Informe seu nome e telefone para continuar com o agendamento.
               </p>
             </div>
+            {!isNewBooking && (
+              <p
+                className="rounded-xl px-4 py-3 text-sm"
+                style={{
+                  backgroundColor: "hsl(38 88% 55% / 0.08)",
+                  border: "1px solid hsl(38 88% 55% / 0.25)",
+                  color: "hsl(0 0% 72%)",
+                }}
+              >
+                Já tem um horário marcado? Abra o link individual exibido após a confirmação. Este link da barbearia inicia uma nova reserva.
+              </p>
+            )}
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name-step0" className="text-sm font-semibold">Nome</Label>
@@ -2621,6 +2660,27 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
             <p className="bk-fade-2 text-sm mt-3 max-w-xs" style={{ color: AMBER }}>
               {settings.bookingPageMessage}
             </p>
+          )}
+          {confirmedToken && (
+            <div className="bk-fade-2 mt-6 w-full max-w-xs space-y-3">
+              <button
+                type="button"
+                data-testid="button-view-confirmed-appointment"
+                onClick={() => window.location.assign(getAppointmentPath(confirmedToken, shopId))}
+                className="w-full rounded-xl px-4 py-3 text-sm font-semibold"
+                style={{
+                  backgroundColor: AMBER_DEEP,
+                  color: "hsl(0 0% 100%)",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Ver meu horário do corte
+              </button>
+              <p className="text-xs text-muted-foreground">
+                Guarde este link individual para consultar o horário depois. O link público da barbearia serve para novas reservas.
+              </p>
+            </div>
           )}
 
         </div>
