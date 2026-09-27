@@ -327,7 +327,12 @@ export async function customFetch<T = unknown>(
   options: CustomFetchOptions = {},
 ): Promise<T> {
   input = applyBaseUrl(input);
-  const { responseType = "auto", headers: headersInit, ...init } = options;
+  const {
+    responseType = "auto",
+    headers: headersInit,
+    cache = "no-store",
+    ...init
+  } = options;
 
   const method = resolveMethod(input, init.method);
 
@@ -360,7 +365,13 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { credentials: "include", ...init, method, headers });
+  const response = await fetch(input, {
+    credentials: "include",
+    ...init,
+    method,
+    headers,
+    cache,
+  });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
