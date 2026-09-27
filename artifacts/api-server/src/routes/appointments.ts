@@ -8,6 +8,10 @@ import { offerNextWaitlistForSlot } from "../waitlistService.js";
 import { broadcastQueueUpdate } from "./queue.js";
 import { accountCanAccess } from "./accountStatus.js";
 import {
+  createAppointmentRecoveryRouter,
+  RECOVERABLE_APPOINTMENT_STATUSES,
+} from "./appointmentRecovery.js";
+import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
   GetAppointmentParams,
@@ -404,14 +408,6 @@ function normalizePhone(value: string | null | undefined): string {
   return (value ?? "").replace(/\D/g, "");
 }
 
-function appointmentPhone(
-  appointment: typeof appointmentsTable.$inferSelect,
-  linkedClientPhone?: string | null,
-): string {
-  const notePhone = appointment.notes?.match(/Tel:\s*([^.]+)/i)?.[1];
-  return normalizePhone(notePhone || linkedClientPhone);
-}
-
 function isBlockingAppointment(status: string): boolean {
   return status !== "cancelled" && status !== "no_show" && status !== "payment_rejected" && status !== "completed";
 }
@@ -638,20 +634,42 @@ router.get("/appointments", requireActiveAuth, async (req, res): Promise<void> =
 // Public recovery is deliberately proof-based rather than phone-based. A
 // random existing cancel token plus the matching phone is required before any
 // related appointment (including its management token) can be returned.
-router.post("/appointments/recover", async (req, res): Promise<void> => {
-  const parsed = RecoverAppointmentsBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Informe o telefone e os dados de verificação." });
-    return;
-  }
-
-  const suppliedPhone = normalizePhone(parsed.data.phone);
-  if (suppliedPhone.length < 10) {
-    res.status(400).json({ error: "Informe um telefone válido." });
-    return;
-  }
-
-  const [verified] = await db
+router.use(createAppointmentRecoveryRouter({
+  parseBody: (body) => {
+    const parsed = RecoverAppointmentsBody.safeParse(body);
+    if (
+      !parsed.success ||
+      typeof parsed.data.shopId !== "string" ||
+      typeof parsed.data.phone !== "string" ||
+      typeof parsed.data.verificationToken !== "string"
+    ) {
+      return { success: false };
+    }
+    return {
+      success: true,
+      data: {
+        shopId: parsed.data.shopId,
+        phone: parsed.data.phone,
+        verificationToken: parsed.data.verificationToken,
+      },
+    };
+  },
+  findVerificationAppointment: async (shopId, verificationToken) => {
+    const [candidate] = await db
+      .select({
+        appointment: appointmentsTable,
+        linkedClientPhone: clientsTable.phone,
+      })
+      .from(appointmentsTable)
+      .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
+      .where(and(
+        eq(appointmentsTable.userId, shopId),
+        eq(appointmentsTable.cancelToken, verificationToken),
+      ))
+      .limit(1);
+    return candidate;
+  },
+  listActiveAppointments: async (shopId) => db
     .select({
       appointment: appointmentsTable,
       linkedClientPhone: clientsTable.phone,
@@ -659,41 +677,12 @@ router.post("/appointments/recover", async (req, res): Promise<void> => {
     .from(appointmentsTable)
     .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
     .where(and(
-      eq(appointmentsTable.userId, parsed.data.shopId),
-      eq(appointmentsTable.cancelToken, parsed.data.verificationToken),
+      eq(appointmentsTable.userId, shopId),
+      inArray(appointmentsTable.status, [...RECOVERABLE_APPOINTMENT_STATUSES]),
     ))
-    .limit(1);
-
-  // Keep every failed verification indistinguishable and free of appointment
-  // data so a phone number or token cannot be used for enumeration.
-  if (!verified || !isBlockingAppointment(verified.appointment.status) ||
-      appointmentPhone(verified.appointment, verified.linkedClientPhone) !== suppliedPhone) {
-    res.status(404).json({ error: "Não foi possível validar os dados informados." });
-    return;
-  }
-
-  const candidates = await db
-    .select({
-      appointment: appointmentsTable,
-      linkedClientPhone: clientsTable.phone,
-    })
-    .from(appointmentsTable)
-    .leftJoin(clientsTable, eq(appointmentsTable.clientId, clientsTable.id))
-    .where(and(
-      eq(appointmentsTable.userId, parsed.data.shopId),
-      sql`${appointmentsTable.status} IN ('pending', 'confirmed', 'pending_payment', 'in_progress')`,
-    ))
-    .orderBy(appointmentsTable.scheduledAt);
-
-  const recovered = candidates
-    .filter(({ appointment, linkedClientPhone }) =>
-      appointmentPhone(appointment, linkedClientPhone) === suppliedPhone &&
-      Boolean(appointment.cancelToken),
-    )
-    .map(({ appointment }) => formatAppointmentWithToken(appointment));
-
-  res.json(recovered);
-});
+    .orderBy(appointmentsTable.scheduledAt),
+  formatAppointment: formatAppointmentWithToken,
+}));
 
 router.get("/availability", async (req, res): Promise<void> => {
   const shopId = resolveShop(req);
