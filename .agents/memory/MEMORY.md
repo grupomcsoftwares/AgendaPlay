@@ -45,3 +45,4 @@
 - [No-show loyalty rule](no-show-loyalty.md) — only an explicit barber action zeros points; normal appointment completion must preserve the balance.
 - [Appointment and queue service sync](appointment-queue-service-sync.md) — changing an appointment service must update the linked queue snapshot and notify live queue clients.
 - [pnpm audit override compatibility](pnpm-audit-overrides.md) — keep vulnerability override targets within each parent package's supported major version.
+- [Artifact preview proxy checks](artifact-preview-proxy.md) — validate the routed dev domain as well as localhost before diagnosing an artifact port failure.
