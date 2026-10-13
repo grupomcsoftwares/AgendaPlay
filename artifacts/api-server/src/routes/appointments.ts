@@ -15,6 +15,7 @@ import {
   calculateBookingLoyaltyPoints,
   creditPendingPixLoyaltyPoints,
 } from "../lib/pixLoyalty.js";
+import { applyAppointmentLoyaltyOutcome } from "../lib/appointmentLoyaltyOutcome.js";
 import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
@@ -1895,6 +1896,10 @@ router.post("/appointments/:id/complete", requireActiveAuth, async (req, res): P
       .returning();
     if (!a) return null;
     await tx.delete(queueTable).where(eq(queueTable.appointmentId, params.data.id));
+    await applyAppointmentLoyaltyOutcome({
+      outcome: "completed",
+      changed: true,
+    });
     return a;
   });
   if (!appointment) {
@@ -1926,6 +1931,10 @@ router.post("/appointments/:id/no-show", requireActiveAuth, async (req, res): Pr
 
     if (!existing) return { error: "notfound" as const };
     if (existing.status === "no_show") {
+      await applyAppointmentLoyaltyOutcome({
+        outcome: "no_show",
+        changed: false,
+      });
       return { appointment: existing, changed: false };
     }
     if (existing.status !== "in_progress") {
@@ -1958,15 +1967,20 @@ router.post("/appointments/:id/no-show", requireActiveAuth, async (req, res): Pr
     const phoneMatch = existing.notes?.match(/Tel:\s*([^.]+)/);
     const loyaltyPhone = normalizePhone(linkedClient?.phone) ||
       (phoneMatch ? normalizePhone(phoneMatch[1]) : "");
-    if (loyaltyPhone) {
-      await tx
-        .update(loyaltyPointsTable)
-        .set({ points: 0, updatedAt: new Date() })
-        .where(and(
-          eq(loyaltyPointsTable.userId, userId),
-          eq(loyaltyPointsTable.clientPhone, loyaltyPhone),
-        ));
-    }
+    await applyAppointmentLoyaltyOutcome({
+      outcome: "no_show",
+      changed: true,
+      clientPhone: loyaltyPhone,
+      resetBalance: async (phone) => {
+        await tx
+          .update(loyaltyPointsTable)
+          .set({ points: 0, updatedAt: new Date() })
+          .where(and(
+            eq(loyaltyPointsTable.userId, userId),
+            eq(loyaltyPointsTable.clientPhone, phone),
+          ));
+      },
+    });
 
     return { appointment: updated, changed: true };
   });
