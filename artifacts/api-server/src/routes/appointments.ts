@@ -12,6 +12,10 @@ import {
   RECOVERABLE_APPOINTMENT_STATUSES,
 } from "./appointmentRecovery.js";
 import {
+  calculateBookingLoyaltyPoints,
+  creditPendingPixLoyaltyPoints,
+} from "../lib/pixLoyalty.js";
+import {
   ListAppointmentsQueryParams,
   CreateAppointmentBody,
   GetAppointmentParams,
@@ -1317,34 +1321,34 @@ router.post("/appointments", async (req, res): Promise<void> => {
     // Credit earned points inside the same transaction (durable — if appointment
     // creation fails the whole tx rolls back, so points are never credited on failure).
     // Points are only earned on client-initiated bookings (public link), not admin-panel bookings.
-    let pointsEarned = 0;
-    if (!isAdminBooking && loyaltyConfig?.enabled && loyaltyPhone) {
-      if (loyaltyConfig.pointsPerReal && loyaltyConfig.pointsPerReal > 0) {
-        pointsEarned = Math.floor(finalServicePrice * loyaltyConfig.pointsPerReal);
-      }
-      // The browser never supplies this value. It is read from the shop's
-      // server-side config and held as pending until Pix approval.
-      if (awaitingPayment && loyaltyPointsRedeemed === 0) {
-        const bonus = loyaltyConfig.prepaymentBonusPoints ?? 0;
-        if (Number.isSafeInteger(bonus) && bonus > 0) pointsEarned += bonus;
-      }
-      if (pointsEarned > 0 && !awaitingPayment) {
-        await tx
-          .insert(loyaltyPointsTable)
-          .values({ userId: shopId, clientPhone: loyaltyPhone, points: pointsEarned })
-          .onConflictDoUpdate({
-            target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-            set: { points: sql`${loyaltyPointsTable.points} + ${pointsEarned}`, updatedAt: new Date() },
-          });
-      }
+    const loyaltyPoints = calculateBookingLoyaltyPoints({
+      loyaltyConfig,
+      servicePrice: finalServicePrice,
+      isAdminBooking,
+      hasClientPhone: Boolean(loyaltyPhone),
+      awaitingPixApproval: awaitingPayment,
+      pointsRedeemed: loyaltyPointsRedeemed,
+    });
+    const pointsEarned = loyaltyPoints.pointsEarned;
+    if (loyaltyPoints.pointsToCreditImmediately > 0 && loyaltyPhone) {
+      await tx
+        .insert(loyaltyPointsTable)
+        .values({ userId: shopId, clientPhone: loyaltyPhone, points: loyaltyPoints.pointsToCreditImmediately })
+        .onConflictDoUpdate({
+          target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
+          set: {
+            points: sql`${loyaltyPointsTable.points} + ${loyaltyPoints.pointsToCreditImmediately}`,
+            updatedAt: new Date(),
+          },
+        });
     }
 
-    // Store loyalty point totals on the appointment so cancellation can reverse them.
+    // Keep points pending until Pix is approved; rejection/cancellation never credits them.
     if (awaitingPayment) {
-      if (pointsEarned > 0) {
+      if (loyaltyPoints.pendingPointsEarned > 0) {
         await tx
           .update(appointmentsTable)
-          .set({ pendingLoyaltyPointsEarned: pointsEarned })
+          .set({ pendingLoyaltyPointsEarned: loyaltyPoints.pendingPointsEarned })
           .where(eq(appointmentsTable.id, created.id));
       }
     } else if (loyaltyPointsRedeemed > 0 || pointsEarned > 0) {
@@ -1749,15 +1753,17 @@ router.post("/appointments/:id/approve-payment", requireActiveAuth, async (req, 
       if (deducted.length === 0) return { error: "credits" as const };
     }
 
-    if (pointsToEarn > 0 && loyaltyPhone) {
+    const pixPointsApplied = await creditPendingPixLoyaltyPoints(existing, async (points) => {
+      if (!loyaltyPhone) return;
       await tx
         .insert(loyaltyPointsTable)
-        .values({ userId, clientPhone: loyaltyPhone, points: pointsToEarn })
+        .values({ userId, clientPhone: loyaltyPhone, points })
         .onConflictDoUpdate({
           target: [loyaltyPointsTable.userId, loyaltyPointsTable.clientPhone],
-          set: { points: sql`${loyaltyPointsTable.points} + ${pointsToEarn}`, updatedAt: new Date() },
+          set: { points: sql`${loyaltyPointsTable.points} + ${points}`, updatedAt: new Date() },
         });
-    }
+    });
+    if (!pixPointsApplied) return { error: "state" as const };
 
     await tx.execute(sql`SELECT pg_advisory_xact_lock(${sql.raw("742001")})`);
     const [maxResult] = await tx
