@@ -18,6 +18,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
+import { getTvBlockedState, tvPageRequiresSession } from "@/lib/tvAccessState";
 import {
   isAllowedAppUrl,
   isTrustedWebViewMessageOrigin,
@@ -68,7 +69,14 @@ export default function ViewerScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const { user, loading: authLoading, getSessionCookie, logout, refresh } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    accountStatusValidated,
+    getSessionCookie,
+    logout,
+    refresh,
+  } = useAuth();
   const { hasUpdate, currentVersion, latestVersion, apkUrl, dismiss } = useUpdateCheck();
   const webViewRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
@@ -77,8 +85,14 @@ export default function ViewerScreen() {
   const [backFocused, setBackFocused] = useState(false);
   const exitInProgressRef = useRef(false);
   const isTV = isTvDevice(width);
-  const subscriptionBlocked = !authLoading && !!user && !user.canAccess;
   const targetUrl = normalizeAppUrl(url);
+  const tvBlockedState = getTvBlockedState({
+    isTv: isTV,
+    requiresSession: tvPageRequiresSession(targetUrl),
+    loading: authLoading,
+    user,
+    accountStatusValidated,
+  });
   const currentWebViewUrlRef = useRef<string | null>(null);
 
   const handleExit = useCallback(async () => {
@@ -226,7 +240,32 @@ export default function ViewerScreen() {
     );
   }
 
-  if (subscriptionBlocked) {
+  if (tvBlockedState === "session-disconnected") {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.center, { paddingHorizontal: 28 }]}>
+          <Feather name="wifi-off" size={48} color="#c9a84c" />
+          <Text style={[styles.msgText, { marginTop: 18, textAlign: "center" }]}>
+            Sessão da TV desconectada
+          </Text>
+          <Text style={[styles.loadingText, { textAlign: "center", marginTop: 10 }]}>
+            Entre novamente na conta para reconectar a fila da TV.
+          </Text>
+          <Pressable
+            style={[styles.retryBtn, { marginTop: 18 }]}
+            onPress={() => router.replace("/")}
+            focusable
+            hasTVPreferredFocus
+            testID="tv-reconnect-button"
+          >
+            <Text style={styles.retryText}>Entrar novamente</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  if (tvBlockedState === "subscription-expired") {
     return (
       <View style={styles.container}>
         {isTV && (

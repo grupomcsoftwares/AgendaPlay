@@ -49,6 +49,7 @@ export type AuthUser = {
 type AuthState = {
   user: AuthUser | null;
   loading: boolean;
+  accountStatusValidated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -60,6 +61,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accountStatusValidated, setAccountStatusValidated] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -77,9 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (cookie) {
         try {
           const res = await fetch(`${API_BASE}/auth/me`, {
+            cache: "no-store",
             headers: {
               Cookie: cookie,
-              "Cache-Control": "no-cache",
+              "Cache-Control": "no-store, no-cache, max-age=0",
               Pragma: "no-cache",
             },
           });
@@ -87,10 +90,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = await res.json();
             if (mounted) {
               setUser(data);
+              setAccountStatusValidated(true);
               await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
             }
           } else if (res.status === 401 && mounted) {
             setUser(null);
+            setAccountStatusValidated(true);
             await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
           }
         } catch {
@@ -136,9 +141,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Confirm the server accepts the exact cookie that will be handed to the
     // WebView. A native login must never finish in a half-authenticated state.
     const sessionCheck = await fetch(`${API_BASE}/auth/me`, {
+      cache: "no-store",
       headers: {
         Cookie: cookieHeader,
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-store, no-cache, max-age=0",
         Pragma: "no-cache",
       },
     });
@@ -151,28 +157,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
     }
 
-    const { sessionCookie: _sessionCookie, ...data } = responseData;
+    const data = await sessionCheck.json();
     setUser(data);
+    setAccountStatusValidated(true);
     await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
   }, []);
 
   const refresh = useCallback(async () => {
     const cookie = normalizeSessionCookie(await AsyncStorage.getItem(COOKIE_KEY));
-    if (!cookie) return;
+    if (!cookie) {
+      setUser(null);
+      setAccountStatusValidated(true);
+      await AsyncStorage.removeItem(USER_KEY);
+      return;
+    }
     try {
       const res = await fetch(`${API_BASE}/auth/me`, {
+        cache: "no-store",
         headers: {
           Cookie: cookie,
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-store, no-cache, max-age=0",
           Pragma: "no-cache",
         },
       });
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+        setAccountStatusValidated(true);
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(data));
       } else if (res.status === 401) {
         setUser(null);
+        setAccountStatusValidated(true);
         await AsyncStorage.multiRemove([USER_KEY, COOKIE_KEY]);
       }
     } catch {
@@ -225,6 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: cookie ? { Cookie: cookie } : undefined,
     }).catch(() => {});
     setUser(null);
+    setAccountStatusValidated(true);
     await AsyncStorage.removeItem(USER_KEY);
     await AsyncStorage.removeItem(COOKIE_KEY);
   }, []);
@@ -237,7 +253,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refresh, getSessionCookie }}>
+    <AuthContext.Provider
+      value={{ user, loading, accountStatusValidated, login, logout, refresh, getSessionCookie }}
+    >
       {children}
     </AuthContext.Provider>
   );

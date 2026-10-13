@@ -31,7 +31,7 @@ const PLAN_DESCRIPTIONS: Record<number, string> = {
 };
 
 export default function Subscribe() {
-  const { user, refresh } = useAuth();
+  const { user, loading: authLoading, refresh } = useAuth();
   const [, setLocation] = useLocation();
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -103,6 +103,10 @@ export default function Subscribe() {
   }, [justSubscribed, isTVView, checkoutSessionId, refresh, subscriptionCheckAttempt]);
 
   useEffect(() => {
+    if (isTVView && (user?.canAccess || user?.isSystemAdmin)) {
+      setLocation("/queue");
+      return;
+    }
     if (!isTVView && user?.hasActiveSubscription && !checkingSubscription) {
       setLocation("/dashboard");
     }
@@ -213,7 +217,19 @@ export default function Subscribe() {
   // A TV is a display-only endpoint. Never render checkout there, even when
   // the WebView session has not finished restoring its cookie yet.
   if (isTVView) {
+    if (authLoading || user?.canAccess || user?.isSystemAdmin) {
+      return (
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "hsl(0 0% 4%)" }}>
+          <div
+            className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin"
+            style={{ borderColor: "hsl(var(--sidebar-primary))", borderTopColor: "transparent" }}
+          />
+        </div>
+      );
+    }
+
     const sessionDisconnected = !user;
+    const subscriptionExpired = Boolean(user && !user.canAccess);
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center"
@@ -221,13 +237,35 @@ export default function Subscribe() {
       >
         <div className="text-5xl" aria-hidden="true">{sessionDisconnected ? "🔐" : "🔒"}</div>
         <h1 className="text-2xl font-bold">
-          {sessionDisconnected ? "Sessão da TV desconectada" : "Assinatura expirada"}
+          {sessionDisconnected
+            ? "Sessão da TV desconectada"
+            : subscriptionExpired
+              ? "Assinatura expirada"
+              : "Sessão da TV desconectada"}
         </h1>
         <p className="max-w-lg text-base" style={{ color: "hsl(0 0% 60%)" }}>
           {sessionDisconnected
             ? "Feche e abra o AgendaPlay TV para entrar novamente na conta."
-            : "A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou."}
+            : subscriptionExpired
+              ? "A fila ao vivo está bloqueada porque a assinatura desta barbearia expirou."
+              : "Entre novamente na conta para reconectar a fila da TV."}
         </p>
+        {subscriptionExpired && (
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="rounded-xl px-5 font-semibold transition-opacity hover:opacity-90"
+            style={{
+              height: 42,
+              backgroundColor: "hsl(var(--sidebar-primary))",
+              color: "hsl(var(--sidebar-primary-foreground))",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Atualizar status
+          </button>
+        )}
       </div>
     );
   }

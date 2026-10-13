@@ -377,6 +377,8 @@ router.post("/auth/logout", (req: Request, res: Response): void => {
 });
 
 router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
   if (!req.session.userId) {
     res.status(401).json({ error: "Não autenticado." });
     return;
