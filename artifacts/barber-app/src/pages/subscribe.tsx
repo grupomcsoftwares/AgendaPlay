@@ -49,7 +49,7 @@ export default function Subscribe() {
     (params.get("view") === "mobile" && window.innerWidth >= 900);
 
   useEffect(() => {
-    if (!justSubscribed) return;
+    if (!justSubscribed || isTVView) return;
 
     let cancelled = false;
     setCheckingSubscription(true);
@@ -100,13 +100,13 @@ export default function Subscribe() {
     return () => {
       cancelled = true;
     };
-  }, [justSubscribed, checkoutSessionId, refresh, subscriptionCheckAttempt]);
+  }, [justSubscribed, isTVView, checkoutSessionId, refresh, subscriptionCheckAttempt]);
 
   useEffect(() => {
-    if (user?.hasActiveSubscription && !checkingSubscription) {
+    if (!isTVView && user?.hasActiveSubscription && !checkingSubscription) {
       setLocation("/dashboard");
     }
-  }, [user, checkingSubscription, setLocation]);
+  }, [isTVView, user, checkingSubscription, setLocation]);
 
   const retrySubscriptionCheck = () => {
     setSubscriptionCheckTimedOut(false);
