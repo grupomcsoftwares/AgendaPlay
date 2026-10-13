@@ -44,3 +44,4 @@
 - [Vite and React typecheck quirks](vite-and-react-typecheck-quirks.md) — standalone builds need Vite defaults, and React 19 ref types need narrow compatibility handling.
 - [No-show loyalty rule](no-show-loyalty.md) — only an explicit barber action zeros points; normal appointment completion must preserve the balance.
 - [Appointment and queue service sync](appointment-queue-service-sync.md) — changing an appointment service must update the linked queue snapshot and notify live queue clients.
+- [pnpm audit override compatibility](pnpm-audit-overrides.md) — keep vulnerability override targets within each parent package's supported major version.
