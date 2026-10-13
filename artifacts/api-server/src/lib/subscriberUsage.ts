@@ -8,8 +8,61 @@ export interface SubscriberCreditUsageRow extends SubscriberUsagePhoneRow {
   creditsUsed: number | null;
 }
 
+export interface MonthlyUsageSubscriptionRow {
+  id: number;
+  userId: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  status: string;
+  expiresAt: Date | null;
+  planId: number;
+}
+
+export interface MonthlyUsagePlanRow {
+  id: number;
+  userId: string;
+  name: string;
+  maxAppointmentsPerMonth: number | null;
+}
+
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
+}
+
+export function buildMonthlyUsageResponse(
+  subscriptions: MonthlyUsageSubscriptionRow[],
+  plans: MonthlyUsagePlanRow[],
+  usageByPhone: ReadonlyMap<string, number>,
+  userId: string,
+) {
+  const planById = new Map(
+    plans
+      .filter((plan) => plan.userId === userId)
+      .map((plan) => [plan.id, plan]),
+  );
+
+  return subscriptions
+    .filter((subscription) => (
+      subscription.userId === userId
+      && (subscription.status === "active" || subscription.status === "expired")
+    ))
+    .map((subscription) => {
+      const plan = planById.get(subscription.planId);
+      return {
+        id: subscription.id,
+        clientName: subscription.clientName,
+        clientPhone: subscription.clientPhone,
+        clientEmail: subscription.clientEmail,
+        status: subscription.status,
+        expiresAt: subscription.expiresAt?.toISOString() ?? null,
+        renewedAt: null,
+        planId: subscription.planId,
+        planName: plan?.name ?? null,
+        maxAppointmentsPerMonth: plan?.maxAppointmentsPerMonth ?? null,
+        cutsUsedThisMonth: usageByPhone.get(normalizePhone(subscription.clientPhone)) ?? 0,
+      };
+    });
 }
 
 function resolveSubscriberPhone(row: SubscriberUsagePhoneRow): string {

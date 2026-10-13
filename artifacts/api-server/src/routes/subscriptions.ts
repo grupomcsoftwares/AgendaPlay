@@ -1,9 +1,9 @@
 import { Router, type IRouter, type Request } from "express";
-import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { eq, and, gte, lt, sql, inArray } from "drizzle-orm";
 import { db, subscriptionPlansTable, clientSubscriptionsTable, appointmentsTable, clientsTable, usersTable } from "@workspace/db";
 import { requireActiveAuth } from "../middleware/accountActive.js";
 import { accountCanAccess } from "./accountStatus.js";
-import { countCoveredAppointmentsByPhone, sumCreditsUsedForPhone } from "../lib/subscriberUsage.js";
+import { buildMonthlyUsageResponse, countCoveredAppointmentsByPhone, sumCreditsUsedForPhone } from "../lib/subscriberUsage.js";
 
 const router: IRouter = Router();
 const TZ = "America/Sao_Paulo";
@@ -483,30 +483,55 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
   const monthStart = saoPauloBoundary(currentYear, currentMonth, 1);
   const monthEnd = saoPauloBoundary(currentYear, currentMonth + 1, 1);
 
-  // All active + expired subscriptions joined with plan info
+  // Fetch this account's subscriptions first so a plan lookup cannot hide any
+  // subscription rows when a plan is missing or the joined query fails.
   const subs = await db
     .select({
       id: clientSubscriptionsTable.id,
+      userId: clientSubscriptionsTable.userId,
       clientName: clientSubscriptionsTable.clientName,
       clientPhone: clientSubscriptionsTable.clientPhone,
       clientEmail: clientSubscriptionsTable.clientEmail,
       status: clientSubscriptionsTable.status,
       expiresAt: clientSubscriptionsTable.expiresAt,
       planId: clientSubscriptionsTable.planId,
-      planName: subscriptionPlansTable.name,
-      maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
     })
     .from(clientSubscriptionsTable)
-    .leftJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, clientSubscriptionsTable.planId))
     .where(and(
       eq(clientSubscriptionsTable.userId, userId),
-      sql`${clientSubscriptionsTable.status} IN ('active', 'expired')`,
+      inArray(clientSubscriptionsTable.status, ["active", "expired"]),
     ))
     .orderBy(clientSubscriptionsTable.createdAt);
 
   if (subs.length === 0) {
     res.json([]);
     return;
+  }
+
+  // Resolve plan metadata separately and tenant-scope it. If plan metadata is
+  // unavailable, keep the subscription rows visible and return null metadata.
+  const planIds = [...new Set(subs.map((subscription) => subscription.planId))];
+  let plans: {
+    id: number;
+    userId: string;
+    name: string;
+    maxAppointmentsPerMonth: number | null;
+  }[] = [];
+  try {
+    plans = await db
+      .select({
+        id: subscriptionPlansTable.id,
+        userId: subscriptionPlansTable.userId,
+        name: subscriptionPlansTable.name,
+        maxAppointmentsPerMonth: subscriptionPlansTable.maxAppointmentsPerMonth,
+      })
+      .from(subscriptionPlansTable)
+      .where(and(
+        eq(subscriptionPlansTable.userId, userId),
+        inArray(subscriptionPlansTable.id, planIds),
+      ));
+  } catch (error) {
+    req.log.warn({ err: error }, "Could not load plan metadata for monthly subscription usage");
   }
 
   // Count this-month coveredByPlan appointments by phone.
@@ -536,19 +561,7 @@ router.get("/subscriptions/monthly-usage", requireActiveAuth, async (req, res): 
 
   const usageByPhone = countCoveredAppointmentsByPhone(monthlyUsage);
 
-  res.json(subs.map(s => ({
-    id: s.id,
-    clientName: s.clientName,
-    clientPhone: s.clientPhone,
-    clientEmail: s.clientEmail,
-    status: s.status,
-    expiresAt: s.expiresAt?.toISOString() ?? null,
-    renewedAt: null,
-    planId: s.planId,
-    planName: s.planName ?? null,
-    maxAppointmentsPerMonth: s.maxAppointmentsPerMonth ?? null,
-    cutsUsedThisMonth: usageByPhone.get(normalizePhone(s.clientPhone)) ?? 0,
-  })));
+  res.json(buildMonthlyUsageResponse(subs, plans, usageByPhone, userId));
 });
 
 export default router;
