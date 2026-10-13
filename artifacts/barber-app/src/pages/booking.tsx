@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import {
+  getEffectiveServicePrice as resolveEffectiveServicePrice,
+  getPromotionalServicePrice,
+  getServiceCardPriceDisplay,
+  getTotalServicePrice,
+} from "./bookingPricing";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueries } from "@tanstack/react-query";
@@ -802,26 +808,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     () => (services ?? []).filter(s => formData.serviceIds.includes(s.id)),
     [services, formData.serviceIds]
   );
-  const getPromotionalPrice = (service: typeof selectedServices[number], date?: Date) => {
-    const regularPrice = Number(service.price);
-    const lowerPrices = (service.dayPricing ?? [])
-      .filter(dayPrice => Number(dayPrice.price) < regularPrice)
-      .map(dayPrice => ({ dayOfWeek: dayPrice.dayOfWeek, price: Number(dayPrice.price) }))
-      .filter(dayPrice => Number.isFinite(dayPrice.price));
-
-    if (date) {
-      const dayPrice = lowerPrices.find(item => item.dayOfWeek === date.getDay());
-      return dayPrice?.price ?? null;
-    }
-
-    return lowerPrices.length > 0
-      ? Math.min(...lowerPrices.map(item => item.price))
-      : null;
-  };
   const getEffectiveServicePrice = (service: typeof selectedServices[number], date: Date) => {
-    const dayPrice = (service.dayPricing ?? []).find(item => item.dayOfWeek === date.getDay());
-    const price = dayPrice ? Number(dayPrice.price) : Number(service.price);
-    return Number.isFinite(price) ? price : Number(service.price);
+    return resolveEffectiveServicePrice(service, date);
   };
   const servicesWithDayDiscount = selectedServices.filter(service =>
     (service.dayPricing ?? []).some(dayPrice =>
@@ -829,7 +817,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     )
   );
   const servicesWithoutSelectedDayDiscount = servicesWithDayDiscount.filter(service =>
-    getPromotionalPrice(service, formData.date) === null
+    getPromotionalServicePrice(service, formData.date) === null
   );
   const dayDiscountMessage = servicesWithoutSelectedDayDiscount.length === 0
     ? null
@@ -838,7 +826,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       : "O desconto não se aplica a todos os serviços neste dia.";
 
   const totalDurationRaw = selectedServices.reduce((acc, s) => acc + s.durationMinutes, 0);
-  const totalPriceRaw = selectedServices.reduce((acc, s) => acc + getEffectiveServicePrice(s, formData.date), 0);
+  const totalPriceRaw = getTotalServicePrice(selectedServices, formData.date);
 
   // Pre-declare loyalty state for combo dependency
   const useLoyaltyPoints = redeemedServiceIds.length > 0;
@@ -1638,7 +1626,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               {eligibleServicesAll.map((service) => {
                 const isSelected = formData.serviceIds.includes(service.id);
                 const effectivePrice = getEffectiveServicePrice(service, formData.date);
-                const promotionalPrice = getPromotionalPrice(service, formData.date);
+                const cardPriceDisplay = getServiceCardPriceDisplay(service, formData.date, showServicePrices);
                 // This service can be redeemed with points (enough remaining budget to cover it fully).
                 const canRedeemNow = loyaltyBalance?.enabled && loyaltyRemainingDiscount >= service.price && service.price > 0;
                 // Points modal only triggers when a paid (non-redeemed) service is already in cart.
@@ -1701,20 +1689,20 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                               <Clock className="w-3.5 h-3.5" />
                               {service.durationMinutes} min
                             </span>
-                            {showServicePrices && (
+                            {cardPriceDisplay && (
                               <span
                                 className="flex items-center gap-1 font-semibold"
                                 style={{ color: AMBER, whiteSpace: "nowrap" }}
                               >
-                                {promotionalPrice !== null ? (
+                                {cardPriceDisplay.isPromotional ? (
                                   <span className="flex flex-col items-center gap-0.5">
                                     <span className="flex items-center gap-1">
                                       <span className="line-through opacity-60">
-                                        R$ {service.price.toFixed(2).replace(".", ",")}
+                                        R$ {cardPriceDisplay.regularPrice.toFixed(2).replace(".", ",")}
                                       </span>
                                       <span className="flex items-center gap-1" style={{ color: "hsl(142 71% 45%)" }}>
                                         <DollarSign className="w-3.5 h-3.5" />
-                                        R$ {promotionalPrice.toFixed(2).replace(".", ",")}
+                                        R$ {cardPriceDisplay.currentPrice.toFixed(2).replace(".", ",")}
                                       </span>
                                     </span>
                                      <span
@@ -1727,7 +1715,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                                 ) : (
                                   <>
                                     <DollarSign className="w-3.5 h-3.5" />
-                                    R$ {effectivePrice.toFixed(2).replace(".", ",")}
+                                    R$ {cardPriceDisplay.currentPrice.toFixed(2).replace(".", ",")}
                                   </>
                                 )}
                               </span>
@@ -1952,7 +1940,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                 >
                   {selectedServices.map(sv => {
                     const isFree = redeemedServiceIds.includes(sv.id);
-                    const selectedDayPromotionalPrice = getPromotionalPrice(sv, formData.date);
+                    const selectedDayPromotionalPrice = getPromotionalServicePrice(sv, formData.date);
                     return (
                       <div key={sv.id} className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5">
@@ -2265,7 +2253,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     {(() => {
                       return selectedServices.map(sv => {
                         const effectivePrice = getEffectiveServicePrice(sv, formData.date);
-                        const promotionalPrice = getPromotionalPrice(sv, formData.date);
+                        const promotionalPrice = getPromotionalServicePrice(sv, formData.date);
                         const isRedeemed = useLoyaltyPoints && loyaltyBalance?.enabled && redeemedServiceIds.includes(sv.id) && effectivePrice > 0;
                         const discountHere = isRedeemed ? effectivePrice : 0;
                         const finalPrice = effectivePrice - discountHere;
