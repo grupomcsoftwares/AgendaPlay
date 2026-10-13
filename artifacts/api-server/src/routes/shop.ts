@@ -57,6 +57,7 @@ router.get("/b/:slug", async (req, res): Promise<void> => {
   const [user] = await db
     .select({
       id: usersTable.id,
+      email: usersTable.email,
       barbershopName: usersTable.barbershopName,
       slug: usersTable.slug,
       trialStartedAt: usersTable.trialStartedAt,
@@ -135,6 +136,7 @@ router.get("/b/:slug/next-available", async (req, res): Promise<void> => {
   const [user] = await db
     .select({
       id: usersTable.id,
+      email: usersTable.email,
       trialStartedAt: usersTable.trialStartedAt,
       trialEligible: usersTable.trialEligible,
       hasEverPaid: usersTable.hasEverPaid,
@@ -280,6 +282,7 @@ router.get("/b/:slug/busyness", async (req, res): Promise<void> => {
   const [user] = await db
     .select({
       id: usersTable.id,
+      email: usersTable.email,
       trialStartedAt: usersTable.trialStartedAt,
       trialEligible: usersTable.trialEligible,
       hasEverPaid: usersTable.hasEverPaid,

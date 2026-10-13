@@ -31,6 +31,7 @@ type SubscriptionStatus = {
   trialDaysLeft: number;
   trialExpired: boolean;
   canAccess: boolean;
+  subscriptionExempt: boolean;
   subscriptionDueDate: string | null;
   subscriptionDaysLeft: number | null;
   pastDue: boolean;
@@ -144,6 +145,7 @@ export default function Subscription() {
   );
   const paymentFailed =
     !subscriptionSyncing && (subscriptionStatus?.pastDue ?? user?.pastDue ?? false);
+  const subscriptionExempt = displayedSubscriptionStatus?.subscriptionExempt === true;
 
   const openCustomerPortal = async () => {
     setPortalLoading(true);
@@ -187,7 +189,7 @@ export default function Subscription() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {paymentFailed && (
+            {paymentFailed && (!subscriptionExempt || displayedSubscriptionStatus?.hasActiveSubscription) && (
               <div
                 role="alert"
                 className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-amber-950 dark:text-amber-100"
@@ -196,7 +198,9 @@ export default function Subscription() {
                 <div className="min-w-0 flex-1 space-y-1">
                   <p className="font-semibold">Não foi possível processar a cobrança da sua assinatura</p>
                   <p className="text-sm text-amber-900/80 dark:text-amber-100/80">
-                    Atualize seu cartão agora para evitar a interrupção do acesso à AgendaPlay.
+                    {subscriptionExempt
+                      ? "A assinatura Stripe ativa ainda pode gerar cobranças. O acesso interno ao AgendaPlay não depende dela."
+                      : "Atualize seu cartão agora para evitar a interrupção do acesso à AgendaPlay."}
                   </p>
                   <Button
                     type="button"
@@ -261,6 +265,22 @@ export default function Subscription() {
                         /mês
                       </p>
                     )}
+                    {subscriptionExempt && (
+                      <p className="text-xs text-muted-foreground">
+                        O acesso interno gratuito continua mesmo que a assinatura Stripe termine. Cobranças existentes não foram alteradas.
+                      </p>
+                    )}
+                  </>
+                ) : subscriptionExempt ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full border border-green-500/30 bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-500">
+                        Acesso interno gratuito
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Esta conta pode usar o AgendaPlay sem mensalidade.
+                    </p>
                   </>
                 ) : displayedSubscriptionStatus?.hasEverPaid ? (
                   <div className="flex items-center gap-2">
@@ -354,7 +374,7 @@ export default function Subscription() {
                     Cancelar assinatura
                   </Button>
                 </>
-              ) : displayedSubscriptionStatus.hasEverPaid ? (
+              ) : subscriptionExempt ? null : displayedSubscriptionStatus.hasEverPaid ? (
                 <Button
                   variant="default"
                   size="sm"

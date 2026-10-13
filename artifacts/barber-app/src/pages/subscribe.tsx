@@ -232,6 +232,41 @@ export default function Subscribe() {
     );
   }
 
+  if (user?.subscriptionExempt) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-6"
+        style={{ backgroundColor: "hsl(0 0% 4%)", color: "hsl(0 0% 95%)" }}
+      >
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-2xl font-bold">Acesso interno gratuito</h1>
+          <p className="text-sm" style={{ color: "hsl(0 0% 65%)" }}>
+            Esta conta pode usar o AgendaPlay sem contratar um plano.
+          </p>
+          {user.hasActiveSubscription && (
+            <p className="text-sm" style={{ color: "hsl(0 0% 65%)" }}>
+              Há uma assinatura Stripe ativa nesta conta. A isenção não altera nem cancela cobranças existentes.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => window.location.assign("/")}
+            className="rounded-xl px-5 font-semibold"
+            style={{
+              height: 42,
+              backgroundColor: "hsl(var(--sidebar-primary))",
+              color: "hsl(var(--sidebar-primary-foreground))",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Voltar ao painel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const paidSubscriptionExpired = Boolean(user?.hasEverPaid && !user.hasActiveSubscription);
   const trialExpiredAndNoSub = Boolean(
     user && !user.hasEverPaid && user.trialExpired && !user.hasActiveSubscription,

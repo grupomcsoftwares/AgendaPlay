@@ -2,6 +2,7 @@ const TRIAL_DAYS = 30;
 const DELETION_GRACE_DAYS = 90;
 
 export type AccountBillingFields = {
+  email?: string | null;
   trialStartedAt: Date;
   trialEligible?: boolean;
   hasEverPaid?: boolean;
@@ -12,7 +13,14 @@ export type AccountBillingFields = {
   maxBarbers?: number | null;
 };
 
+const SUBSCRIPTION_EXEMPT_EMAILS = new Set(["barbeariaskinna@gmail.com"]);
+
+export function isSubscriptionExemptEmail(email: string | null | undefined): boolean {
+  return Boolean(email && SUBSCRIPTION_EXEMPT_EMAILS.has(email.trim().toLowerCase()));
+}
+
 export function getAccountStatus(user: AccountBillingFields) {
+  const subscriptionExempt = isSubscriptionExemptEmail(user.email);
   const trialStarted = new Date(user.trialStartedAt);
   const now = new Date();
   const msPerDay = 1000 * 60 * 60 * 24;
@@ -43,7 +51,8 @@ export function getAccountStatus(user: AccountBillingFields) {
     : null;
   const hasEverPaid = user.hasEverPaid === true;
   const firstMonthDiscountEligible =
-    trialExpired
+    !subscriptionExempt
+    && trialExpired
     && !hasActiveSubscription
     && !hasEverPaid
     && !user.firstMonthDiscountRedeemedAt;
@@ -52,7 +61,8 @@ export function getAccountStatus(user: AccountBillingFields) {
     : now.getTime();
   const deletionAtMs = deletionBaseMs + DELETION_GRACE_DAYS * msPerDay;
   const deletionScheduled =
-    !hasEverPaid
+    !subscriptionExempt
+    && !hasEverPaid
     && !hasActiveSubscription;
   const deletionScheduledAt = deletionScheduled
     ? new Date(deletionAtMs).toISOString()
@@ -63,6 +73,7 @@ export function getAccountStatus(user: AccountBillingFields) {
   const deletionDue = deletionScheduled && deletionAtMs <= now.getTime();
 
   return {
+    subscriptionExempt,
     trialEligible,
     returningCustomer: !trialEligible,
     trialDaysLeft,
@@ -70,7 +81,7 @@ export function getAccountStatus(user: AccountBillingFields) {
     hasActiveSubscription,
     // A paid account cannot fall back onto its unused trial after the paid
     // period ends. Only accounts that have never paid can access via trial.
-    canAccess: hasActiveSubscription || (!hasEverPaid && !trialExpired),
+    canAccess: subscriptionExempt || hasActiveSubscription || (!hasEverPaid && !trialExpired),
     // The free trial is intentionally unrestricted so the shop can test the
     // full product before choosing a paid barber-count plan.
     maxBarbers: hasActiveSubscription ? user.maxBarbers ?? null : null,

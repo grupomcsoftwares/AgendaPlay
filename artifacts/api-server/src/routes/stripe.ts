@@ -102,6 +102,12 @@ router.post("/stripe/checkout", requireAuth, async (req: Request, res: Response)
       }
 
       const status = getAccountStatus(user);
+      if (status.subscriptionExempt) {
+        throw new CheckoutRouteError(
+          403,
+          "Esta conta tem acesso interno gratuito e não precisa contratar um plano.",
+        );
+      }
       if (status.hasActiveSubscription) {
         throw new CheckoutRouteError(
           409,
@@ -335,6 +341,7 @@ router.get("/stripe/subscription-status", requireAuth, async (req: Request, res:
   }
 
   res.json({
+    subscriptionExempt: status.subscriptionExempt,
     hasActiveSubscription: status.hasActiveSubscription,
     hasEverPaid: user.hasEverPaid,
     subscriptionId: user.stripeSubscriptionId,

@@ -18,6 +18,7 @@ export type AuthUser = {
   hasEverPaid: boolean;
   hasActiveSubscription: boolean;
   canAccess: boolean;
+  subscriptionExempt?: boolean;
   subscriptionDueDate?: string | null;
   subscriptionDaysLeft?: number | null;
   stripeCustomerId?: string | null;

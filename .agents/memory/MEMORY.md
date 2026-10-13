@@ -3,6 +3,7 @@
 - [Stripe setup quirks](stripe-setup.md) — runMigrations breaks in esbuild bundle; run via raw Node; STRIPE_SECRET_KEY is primary key source.
 - [Stripe environment separation](stripe-environment-separation.md) — production must use the environment-aware live connection, not a shared test secret; verify live catalog after publishing.
 - [Subscription access enforcement](subscription-access-enforcement.md) — expired billing must be rejected server-side for public booking and queue, with clients only reflecting that decision.
+- [Internal complimentary access](internal-complimentary-access.md) — the developer account has an app-only subscription exemption; never cancel or alter Stripe billing as part of that exemption.
 - [Subscription plan limits](subscription-plan-limits.md) — barber-count limits require server enforcement; active subscribers upgrade the existing Stripe subscription instead of creating another.
 - [Stale TS declaration cache](ts-cache-stale.md) — lib .tsbuildinfo files can stale cache old declarations, causing "property does not exist" on newly added fields. Fix: `rm -f lib/*/.tsbuildinfo && pnpm run typecheck:libs`.
 - [API client HTTP cache](api-client-http-cache.md) — use no-store on generated and raw API reads; React Query owns caching, and bodyless 304s can fail queries.

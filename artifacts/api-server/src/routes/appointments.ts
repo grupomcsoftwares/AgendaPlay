@@ -531,6 +531,7 @@ async function autoAdvanceAppointmentsByTime(userId: string): Promise<void> {
 export async function canShopAutoAdvance(userId: string): Promise<boolean> {
   const [account] = await db
     .select({
+      email: usersTable.email,
       trialStartedAt: usersTable.trialStartedAt,
       trialEligible: usersTable.trialEligible,
       hasEverPaid: usersTable.hasEverPaid,
@@ -913,6 +914,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
   }
   const [account] = await db
     .select({
+      email: usersTable.email,
       trialStartedAt: usersTable.trialStartedAt,
       trialEligible: usersTable.trialEligible,
       hasEverPaid: usersTable.hasEverPaid,
@@ -2124,6 +2126,7 @@ router.post("/appointments/by-token/:token/reschedule", async (req, res): Promis
   }
   const [accountForValidation] = await db
     .select({
+      email: usersTable.email,
       trialStartedAt: usersTable.trialStartedAt,
       trialEligible: usersTable.trialEligible,
       hasEverPaid: usersTable.hasEverPaid,

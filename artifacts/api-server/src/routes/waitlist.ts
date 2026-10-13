@@ -55,6 +55,7 @@ router.post("/waitlist", async (req, res): Promise<void> => {
     return;
   }
   const [account] = await db.select({
+    email: usersTable.email,
     trialStartedAt: usersTable.trialStartedAt,
     trialEligible: usersTable.trialEligible,
     hasEverPaid: usersTable.hasEverPaid,
