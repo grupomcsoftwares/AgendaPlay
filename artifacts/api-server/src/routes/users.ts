@@ -121,6 +121,41 @@ router.patch("/users/slug", requireAuth, requireActiveAccount, async (req, res):
   }
 });
 
+router.delete("/users/slug", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.session.userId!;
+  let userFound = false;
+
+  await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .for("update")
+      .limit(1);
+
+    if (!current) return;
+    userFound = true;
+
+    // Release the active address and every historical alias atomically so
+    // another shop can claim any of them immediately after this transaction.
+    await tx
+      .update(usersTable)
+      .set({ slug: null, previousSlug: null })
+      .where(eq(usersTable.id, userId));
+
+    await tx
+      .delete(slugRedirectsTable)
+      .where(eq(slugRedirectsTable.userId, userId));
+  });
+
+  if (!userFound) {
+    res.status(404).json({ error: "Usuário não encontrado." });
+    return;
+  }
+
+  res.status(204).send();
+});
+
 router.delete("/users/account", requireAuth, async (req, res): Promise<void> => {
   const { email, password } = req.body as { email?: string; password?: string };
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";

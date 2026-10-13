@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  useGetSettings, useUpdateSettings, useUpdateUserSlug, getGetSettingsQueryKey,
+  useGetSettings, useUpdateSettings, useUpdateUserSlug, useDeleteUserSlug, getGetSettingsQueryKey,
   useListComboDiscounts, useCreateComboDiscount, useUpdateComboDiscount, useDeleteComboDiscount, getListComboDiscountsQueryKey,
   useListServices, getListServicesQueryKey,
   useListLoyaltyClients, getListLoyaltyClientsQueryKey,
@@ -141,6 +141,7 @@ export default function Settings() {
   const { data: settings, isLoading } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const updateSettings = useUpdateSettings();
   const updateSlug = useUpdateUserSlug();
+  const deleteUserSlug = useDeleteUserSlug();
   const deleteAccount = useDeleteAccount();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -160,6 +161,7 @@ export default function Settings() {
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
   const [slugError, setSlugError] = useState<string | null>(null);
+  const [deleteSlugDialogOpen, setDeleteSlugDialogOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoProcessing, setLogoProcessing] = useState(false);
@@ -650,6 +652,23 @@ export default function Settings() {
     );
   };
 
+  const handleDeleteSlug = () => {
+    deleteUserSlug.mutate(undefined, {
+      onSuccess: () => {
+        setSlugValue("");
+        setSlugEditMode(false);
+        setSlugError(null);
+        setDeleteSlugDialogOpen(false);
+        refresh();
+        toast({ title: "Link removido; endereço liberado para outra barbearia" });
+      },
+      onError: (e: unknown) => {
+        const msg = e instanceof Error ? e.message : "Erro ao excluir o link";
+        toast({ title: msg, variant: "destructive" });
+      },
+    });
+  };
+
   const handleComboToggleService = (sid: number) => {
     setComboForm((f) => ({
       ...f,
@@ -806,6 +825,21 @@ export default function Settings() {
                   <div className="flex gap-1.5">
                     <Input readOnly value={user.slug ? `https://agendaplay.net/b/${user.slug}` : "Nenhum link público definido"} className="font-mono text-xs bg-muted h-8" data-testid="display-booking-url" />
                     <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title="Editar" onClick={() => { setSlugValue(user.slug ?? ""); setSlugEditMode(true); setSlugError(null); }} data-testid="button-edit-slug"><Pencil className="h-3.5 w-3.5" /></Button>
+                    {user.slug && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                        title="Excluir e liberar endereço"
+                        aria-label="Excluir e liberar endereço"
+                        disabled={deleteUserSlug.isPending}
+                        onClick={() => setDeleteSlugDialogOpen(true)}
+                        data-testid="button-delete-slug"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0" title={user.slug ? "Copiar" : "Defina um endereço antes de copiar"} disabled={!user.slug} onClick={() => { if (!user.slug) return; const l = `https://agendaplay.net/b/${user.slug}`; navigator.clipboard.writeText(l); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
                       {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                     </Button>
@@ -1669,6 +1703,40 @@ export default function Settings() {
         </CardContent>
       </Card>
       </div>{/* end Row 3 grid */}
+
+      <Dialog open={deleteSlugDialogOpen} onOpenChange={(open) => {
+        if (!deleteUserSlug.isPending) setDeleteSlugDialogOpen(open);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Liberar endereço de agendamento?
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              O link atual e os endereços antigos que redirecionavam para ele deixarão de funcionar. Os endereços serão liberados para outra barbearia.
+              <br /><br />
+              Sua conta, seus agendamentos e os demais dados da barbearia não serão excluídos.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteSlugDialogOpen(false)}
+              disabled={deleteUserSlug.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteSlug}
+              disabled={deleteUserSlug.isPending}
+            >
+              {deleteUserSlug.isPending ? "Excluindo..." : "Excluir e liberar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="max-w-7xl flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
         <div className="flex items-center gap-2">

@@ -1,4 +1,5 @@
 export * from "./generated/api";
+export { GetNextAvailableParams, StartQueueEntryBody } from "./generated/api";
 export type {
   AccountDeletion,
   Appointment,
@@ -79,3 +80,4 @@ export {
   SubscriptionStatusUpdateStatus,
   WaitlistEntryStatus,
 } from "./generated/types";
+export * from './generated/types';

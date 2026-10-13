@@ -1038,6 +1038,15 @@ paths:
                 $ref: "#/components/schemas/UserSlugResponse"
         "409":
           description: Slug already taken
+    delete:
+      operationId: deleteUserSlug
+      tags: [settings]
+      summary: Release the barber's custom booking URL slug
+      responses:
+        "204":
+          description: Booking URL released
+        "401":
+          description: Not authenticated
 
   /settings:
     get:
