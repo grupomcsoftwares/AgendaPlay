@@ -14,3 +14,25 @@ export function getAccountPhoneHash(phone: string): string {
     .update(`agendaplay:former-account-phone:${phone}`)
     .digest("hex");
 }
+
+export async function isAccountPhoneTrialEligible(
+  value: unknown,
+  hasFormerPhoneHash: (phoneHash: string) => Promise<boolean>,
+): Promise<boolean> {
+  const phone = normalizeAccountPhone(value);
+  if (!phone) {
+    throw new Error("A valid phone is required to check trial eligibility");
+  }
+
+  return !(await hasFormerPhoneHash(getAccountPhoneHash(phone)));
+}
+
+export async function rememberFormerAccountPhone(
+  value: unknown,
+  savePhoneHash: (phoneHash: string) => Promise<void>,
+): Promise<void> {
+  const phone = normalizeAccountPhone(value);
+  if (!phone) return;
+
+  await savePhoneHash(getAccountPhoneHash(phone));
+}

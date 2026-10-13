@@ -8,7 +8,7 @@ import { getUncachableStripeClient } from "../stripeClient.js";
 import { getAccountStatus } from "./accountStatus.js";
 import { isSystemAdminEmail } from "../lib/systemAdmin.js";
 import { getStripePaymentFailureStatus } from "../lib/stripeSubscriptionStatus.js";
-import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.js";
+import { isAccountPhoneTrialEligible, normalizeAccountPhone } from "../lib/phoneHistory.js";
 import { cleanupExpiredAccountByEmail } from "../services/subscriptionCleanup.js";
 import { getNativeSessionCookie } from "../lib/nativeSessionCookie.js";
 
@@ -112,7 +112,7 @@ async function reconcileActiveSubscription(user: {
     const productId =
       typeof priceItem?.price?.product === "string"
         ? priceItem.price.product
-        : priceItem?.price?.product?.id ?? null;
+        : (priceItem?.price?.product?.id ?? null);
     let maxBarbers: number | null = null;
 
     if (productId) {
@@ -128,9 +128,7 @@ async function reconcileActiveSubscription(user: {
     const currentPeriodEndValue =
       (subscription as unknown as { current_period_end?: number }).current_period_end ??
       subscription.items.data[0]?.current_period_end;
-    const currentPeriodEnd = currentPeriodEndValue
-      ? new Date(currentPeriodEndValue * 1000)
-      : null;
+    const currentPeriodEnd = currentPeriodEndValue ? new Date(currentPeriodEndValue * 1000) : null;
     await db
       .update(usersTable)
       .set({
@@ -142,7 +140,6 @@ async function reconcileActiveSubscription(user: {
         stripePaymentFailing: false,
       })
       .where(eq(usersTable.id, user.id));
-
   } catch (error) {
     console.error("Stripe subscription reconciliation failed during login", {
       userId: user.id,
@@ -163,8 +160,7 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const normalizedPassword = typeof password === "string" ? password : "";
-  const normalizedBarbershopName =
-    typeof barbershopName === "string" ? barbershopName.trim() : "";
+  const normalizedBarbershopName = typeof barbershopName === "string" ? barbershopName.trim() : "";
   const normalizedOwnerName = typeof ownerName === "string" ? ownerName.trim() : "";
   const normalizedPhone = normalizePhone(phone);
 
@@ -203,14 +199,18 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
   let existingPhone = await db
     .select({ id: usersTable.id, email: usersTable.email })
     .from(usersTable)
-    .where(sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`)
+    .where(
+      sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`,
+    )
     .limit(1);
   if (existingPhone.length > 0) {
     await cleanupExpiredAccountByEmail(existingPhone[0]!.email);
     existingPhone = await db
       .select({ id: usersTable.id, email: usersTable.email })
       .from(usersTable)
-      .where(sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`)
+      .where(
+        sql`regexp_replace(coalesce(${usersTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`,
+      )
       .limit(1);
     if (existingPhone.length > 0) {
       res.status(409).json({ error: "Este telefone já está cadastrado em uma conta." });
@@ -218,13 +218,14 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
     }
   }
 
-  const phoneHash = getAccountPhoneHash(normalizedPhone);
-  const [formerPhone] = await db
-    .select({ id: formerAccountPhonesTable.id })
-    .from(formerAccountPhonesTable)
-    .where(eq(formerAccountPhonesTable.phoneHash, phoneHash))
-    .limit(1);
-  const trialEligible = !formerPhone;
+  const trialEligible = await isAccountPhoneTrialEligible(normalizedPhone, async (phoneHash) => {
+    const [formerPhone] = await db
+      .select({ id: formerAccountPhonesTable.id })
+      .from(formerAccountPhonesTable)
+      .where(eq(formerAccountPhonesTable.phoneHash, phoneHash))
+      .limit(1);
+    return Boolean(formerPhone);
+  });
 
   const passwordHash = await bcrypt.hash(normalizedPassword, 10);
   const [user] = await db
@@ -286,7 +287,10 @@ router.post("/auth/register", async (req: Request, res: Response): Promise<void>
 });
 
 router.post("/auth/login", async (req: Request, res: Response): Promise<void> => {
-  const { email, password } = req.body as { email?: string; password?: string };
+  const { email, password } = req.body as {
+    email?: string;
+    password?: string;
+  };
 
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   const normalizedPassword = typeof password === "string" ? password : "";
@@ -298,7 +302,10 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
 
   await cleanupExpiredAccountByEmail(normalizedEmail);
 
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.email, normalizedEmail));
+  let [user] = await db
+    .select(userCols)
+    .from(usersTable)
+    .where(eq(usersTable.email, normalizedEmail));
   if (!user) {
     res.status(401).json({ error: "E-mail ou senha incorretos." });
     return;
@@ -351,10 +358,10 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
         res.status(500).json({ error: "Erro ao salvar sessão." });
         return;
       }
-    const nativeSessionCookie =
-      req.get("x-agendaplay-native") === "1"
-        ? getNativeSessionCookie(req.sessionID, process.env.SESSION_SECRET)
-        : null;
+      const nativeSessionCookie =
+        req.get("x-agendaplay-native") === "1"
+          ? getNativeSessionCookie(req.sessionID, process.env.SESSION_SECRET)
+          : null;
       res.json({
         ...payload,
         ...(nativeSessionCookie ? { sessionCookie: nativeSessionCookie } : {}),
@@ -375,7 +382,10 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  let [user] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, req.session.userId));
+  let [user] = await db
+    .select(userCols)
+    .from(usersTable)
+    .where(eq(usersTable.id, req.session.userId));
   if (!user) {
     req.session.destroy(() => {});
     res.status(401).json({ error: "Não autenticado." });
@@ -402,15 +412,17 @@ router.get("/auth/me", async (req: Request, res: Response): Promise<void> => {
         const periodEndValue =
           (sub as unknown as { current_period_end?: number }).current_period_end ??
           sub.items.data[0]?.current_period_end;
-        const periodEnd = periodEndValue
-          ? new Date(periodEndValue * 1000)
-          : null;
+        const periodEnd = periodEndValue ? new Date(periodEndValue * 1000) : null;
         if (periodEnd) {
-          await db.update(usersTable)
+          await db
+            .update(usersTable)
             .set({ stripeCurrentPeriodEnd: periodEnd })
             .where(eq(usersTable.id, user.id));
           // Re-read the updated row so status reflects the new date
-          const [updated] = await db.select(userCols).from(usersTable).where(eq(usersTable.id, user.id));
+          const [updated] = await db
+            .select(userCols)
+            .from(usersTable)
+            .where(eq(usersTable.id, user.id));
           if (updated) user = updated;
         }
       }

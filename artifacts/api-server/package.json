@@ -11,7 +11,8 @@
     "test:appointment-recovery": "node --experimental-strip-types --test src/routes/appointmentRecovery.test.ts",
     "test:appointment-loyalty-outcome": "node --experimental-strip-types --test src/lib/appointmentLoyaltyOutcome.test.ts",
     "test:pix-loyalty": "node --experimental-strip-types --test src/lib/pixLoyalty.test.ts",
-    "test:subscriber-usage": "node --experimental-strip-types --test src/routes/subscriberUsage.test.ts"
+    "test:subscriber-usage": "node --experimental-strip-types --test src/routes/subscriberUsage.test.ts",
+    "test:phone-trial-history": "node --experimental-strip-types --test src/lib/phoneHistory.test.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

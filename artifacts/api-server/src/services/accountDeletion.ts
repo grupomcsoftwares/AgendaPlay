@@ -24,7 +24,7 @@ import {
 } from "@workspace/db";
 import { eq, inArray, sql } from "drizzle-orm";
 import type Stripe from "stripe";
-import { getAccountPhoneHash, normalizeAccountPhone } from "../lib/phoneHistory.js";
+import { normalizeAccountPhone, rememberFormerAccountPhone } from "../lib/phoneHistory.js";
 import { logger } from "../lib/logger.js";
 import { getAccountStatus } from "../routes/accountStatus.js";
 import { getUncachableStripeClient } from "../stripeClient.js";
@@ -55,9 +55,7 @@ async function prepareStripeForDeletion(
   options: DeleteAccountOptions,
 ): Promise<boolean> {
   const hasStripeReferences = Boolean(
-    user.stripeCustomerId
-    || user.stripeSubscriptionId
-    || user.firstMonthDiscountCheckoutSessionId,
+    user.stripeCustomerId || user.stripeSubscriptionId || user.firstMonthDiscountCheckoutSessionId,
   );
   if (!hasStripeReferences) return true;
 
@@ -75,9 +73,9 @@ async function prepareStripeForDeletion(
         await stripe.checkout.sessions.expire(checkoutSession.id);
       }
       if (
-        checkoutSession.status === "complete"
-        && !checkoutSession.subscription
-        && options.onlyIfDeletionDue
+        checkoutSession.status === "complete" &&
+        !checkoutSession.subscription &&
+        options.onlyIfDeletionDue
       ) {
         return false;
       }
@@ -85,7 +83,7 @@ async function prepareStripeForDeletion(
         const subscription =
           typeof checkoutSession.subscription === "string"
             ? await retrieveOrIgnoreMissing(() =>
-                stripe.subscriptions.retrieve(checkoutSession.subscription as string)
+                stripe.subscriptions.retrieve(checkoutSession.subscription as string),
               )
             : checkoutSession.subscription;
         if (subscription) subscriptions.set(subscription.id, subscription);
@@ -95,12 +93,11 @@ async function prepareStripeForDeletion(
 
     if (user.firstMonthDiscountCheckoutSessionId) {
       const checkoutSession = await retrieveOrIgnoreMissing(() =>
-        stripe.checkout.sessions.retrieve(
-          user.firstMonthDiscountCheckoutSessionId!,
-          { expand: ["subscription"] },
-        )
+        stripe.checkout.sessions.retrieve(user.firstMonthDiscountCheckoutSessionId!, {
+          expand: ["subscription"],
+        }),
       );
-      if (checkoutSession && !await inspectCheckoutSession(checkoutSession)) {
+      if (checkoutSession && !(await inspectCheckoutSession(checkoutSession))) {
         return false;
       }
     }
@@ -110,12 +107,12 @@ async function prepareStripeForDeletion(
         stripe.checkout.sessions.list({
           customer: user.stripeCustomerId!,
           limit: 100,
-        })
+        }),
       );
       for (const checkoutSession of checkoutSessions?.data ?? []) {
         if (
-          !inspectedCheckoutSessions.has(checkoutSession.id)
-          && !await inspectCheckoutSession(checkoutSession)
+          !inspectedCheckoutSessions.has(checkoutSession.id) &&
+          !(await inspectCheckoutSession(checkoutSession))
         ) {
           return false;
         }
@@ -127,7 +124,7 @@ async function prepareStripeForDeletion(
             customer: user.stripeCustomerId!,
             status: "paid",
             limit: 1,
-          })
+          }),
         );
         const paidInvoice = invoices?.data[0];
         if (paidInvoice) {
@@ -147,7 +144,7 @@ async function prepareStripeForDeletion(
           customer: user.stripeCustomerId!,
           status: "all",
           limit: 100,
-        })
+        }),
       );
       for (const subscription of customerSubscriptions?.data ?? []) {
         subscriptions.set(subscription.id, subscription);
@@ -156,7 +153,7 @@ async function prepareStripeForDeletion(
 
     if (user.stripeSubscriptionId && !subscriptions.has(user.stripeSubscriptionId)) {
       const storedSubscription = await retrieveOrIgnoreMissing(() =>
-        stripe.subscriptions.retrieve(user.stripeSubscriptionId!)
+        stripe.subscriptions.retrieve(user.stripeSubscriptionId!),
       );
       if (storedSubscription) {
         subscriptions.set(storedSubscription.id, storedSubscription);
@@ -165,8 +162,7 @@ async function prepareStripeForDeletion(
 
     const nonTerminalSubscriptions = [...subscriptions.values()].filter(
       (subscription) =>
-        subscription.status !== "canceled"
-        && subscription.status !== "incomplete_expired",
+        subscription.status !== "canceled" && subscription.status !== "incomplete_expired",
     );
 
     if (options.onlyIfDeletionDue && nonTerminalSubscriptions.length > 0) {
@@ -175,9 +171,7 @@ async function prepareStripeForDeletion(
 
     if (options.cancelStripeSubscriptions) {
       for (const subscription of nonTerminalSubscriptions) {
-        await retrieveOrIgnoreMissing(() =>
-          stripe.subscriptions.cancel(subscription.id)
-        );
+        await retrieveOrIgnoreMissing(() => stripe.subscriptions.cancel(subscription.id));
       }
     }
 
@@ -209,7 +203,7 @@ async function deleteAccountDataLocked(
   if (options.onlyIfDeletionDue && !getAccountStatus(previewUser).deletionDue) {
     return false;
   }
-  if (!await prepareStripeForDeletion(previewUser, options)) {
+  if (!(await prepareStripeForDeletion(previewUser, options))) {
     return false;
   }
 
@@ -226,9 +220,7 @@ async function deleteAccountDataLocked(
         'waitlist'
       )
   `);
-  const optionalTables = new Set(
-    optionalTableResult.rows.map((row) => row.tableName),
-  );
+  const optionalTables = new Set(optionalTableResult.rows.map((row) => row.tableName));
 
   return db.transaction(async (tx) => {
     const [user] = await tx
@@ -243,20 +235,16 @@ async function deleteAccountDataLocked(
       return false;
     }
 
-    const phone = normalizeAccountPhone(user.phone);
-    if (phone) {
-      const phoneHash = getAccountPhoneHash(phone);
+    await rememberFormerAccountPhone(user.phone, async (phoneHash) => {
+      const lastDeletedAt = new Date();
       await tx
         .insert(formerAccountPhonesTable)
-        .values({
-          phoneHash,
-          lastDeletedAt: new Date(),
-        })
+        .values({ phoneHash, lastDeletedAt })
         .onConflictDoUpdate({
           target: formerAccountPhonesTable.phoneHash,
-          set: { lastDeletedAt: new Date() },
+          set: { lastDeletedAt },
         });
-    }
+    });
 
     const accountAppointments = await tx
       .select({ cancelToken: appointmentsTable.cancelToken })
@@ -309,9 +297,7 @@ async function deleteAccountDataLocked(
     await tx.delete(comboDiscountsTable).where(eq(comboDiscountsTable.userId, userId));
     await tx.delete(serviceDayPricingTable).where(eq(serviceDayPricingTable.userId, userId));
     if (barberIds.length > 0) {
-      await tx
-        .delete(barberServicesTable)
-        .where(inArray(barberServicesTable.barberId, barberIds));
+      await tx.delete(barberServicesTable).where(inArray(barberServicesTable.barberId, barberIds));
     }
     if (serviceIds.length > 0) {
       await tx
@@ -337,8 +323,5 @@ export async function deleteAccountData(
   userId: string,
   options: DeleteAccountOptions = {},
 ): Promise<boolean> {
-  return withAccountLifecycleLock(
-    userId,
-    () => deleteAccountDataLocked(userId, options),
-  );
+  return withAccountLifecycleLock(userId, () => deleteAccountDataLocked(userId, options));
 }
