@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import {
   useGetAppointmentByToken,
@@ -17,6 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Calendar as CalendarIcon, Clock, User, Scissors, CheckCircle2, XCircle, AlertTriangle, CalendarClock, Bell, BellOff, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { playRescheduled } from "@/lib/sounds";
+import { buildRescheduleDays } from "./rescheduleWindow";
 
 const AMBER = "hsl(38 88% 55%)";
 const AMBER_SOFT = "hsl(38 88% 55% / 0.15)";
@@ -335,6 +336,7 @@ export default function CancelBooking() {
   };
 
   const serviceDuration = appointment?.serviceDuration ?? 0;
+  const maxBookingDays = Math.max(1, Math.floor(Number(settings?.maxBookingDays ?? 30)));
   const availParams = {
     ...(shopId ? { shopId } : {}),
     date: reschedDate,
@@ -775,6 +777,7 @@ export default function CancelBooking() {
           <ReschedulePanel
             date={reschedDate}
             setDate={setReschedDate}
+            maxBookingDays={maxBookingDays}
             time={reschedTime}
             setTime={setReschedTime}
             slots={availability?.slots ?? []}
@@ -919,6 +922,7 @@ export default function CancelBooking() {
 function ReschedulePanel({
   date,
   setDate,
+  maxBookingDays,
   time,
   setTime,
   slots,
@@ -929,6 +933,7 @@ function ReschedulePanel({
 }: {
   date: string;
   setDate: (d: string) => void;
+  maxBookingDays: number;
   time: string;
   setTime: (t: string) => void;
   slots: Array<{ time: string; available: boolean }>;
@@ -937,22 +942,18 @@ function ReschedulePanel({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  // Build a 14-day picker starting today (Brazil local).
   const availableSlots = slots.filter((slot) => slot.available);
-  const today = new Date();
-  const days: Array<{ key: string; weekday: string; dayNum: string }> = [];
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const y = d.getFullYear();
-    const m = (d.getMonth() + 1).toString().padStart(2, "0");
-    const dd = d.getDate().toString().padStart(2, "0");
-    days.push({
-      key: `${y}-${m}-${dd}`,
-      weekday: ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"][d.getDay()],
-      dayNum: dd,
-    });
-  }
+  const days = useMemo(
+    () => buildRescheduleDays(new Date(), maxBookingDays),
+    [maxBookingDays],
+  );
+
+  useEffect(() => {
+    if (days.length > 0 && !days.some((day) => day.key === date)) {
+      setDate(days[0].key);
+      setTime("");
+    }
+  }, [date, days, setDate, setTime]);
 
   return (
     <div className="space-y-4 bg-card border border-border rounded-2xl p-5">

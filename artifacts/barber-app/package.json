@@ -12,6 +12,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:booking-pricing": "node --experimental-strip-types --test src/pages/bookingPricing.test.ts",
+    "test:reschedule-window": "node --experimental-strip-types --test src/pages/rescheduleWindow.test.ts",
     "electron:dev": "NODE_ENV=development electron electron/main.js",
     "electron:build": "npm run build && electron-builder",
     "electron:build:win": "electron-builder --win",
