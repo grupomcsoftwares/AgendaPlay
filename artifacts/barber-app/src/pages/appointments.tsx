@@ -82,6 +82,10 @@ export default function Appointments() {
       },
     },
   );
+  const visibleAppointments = useMemo(
+    () => (appointments ?? []).filter((appointment) => appointment.status !== "cancelled"),
+    [appointments],
+  );
 
   // Pending Pix bookings must remain visible even when the barber is browsing
   // another day in the agenda. The date-filtered query is still used for the
@@ -1170,7 +1174,7 @@ export default function Appointments() {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : !appointments || appointments.length === 0 ? (
+        ) : visibleAppointments.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <CalendarIcon className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <h3 className="text-lg font-medium">Nenhum agendamento</h3>
@@ -1182,7 +1186,7 @@ export default function Appointments() {
           <>
             {/* Mobile cards */}
             <div className="md:hidden divide-y divide-border">
-              {[...(appointments ?? [])].sort((a,b) =>
+              {[...visibleAppointments].sort((a,b) =>
                 new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
               ).map((apt) => (
                 <div key={apt.id} className="px-4 py-3 space-y-2" data-testid={`row-appointment-${apt.id}`}>
@@ -1293,7 +1297,7 @@ export default function Appointments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {[...(appointments ?? [])].sort((a,b) =>
+                  {[...visibleAppointments].sort((a,b) =>
                     new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
                   ).map((apt) => (
                     <TableRow key={apt.id} data-testid={`row-appointment-${apt.id}`}>
