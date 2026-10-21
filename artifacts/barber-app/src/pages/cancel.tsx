@@ -164,7 +164,12 @@ export default function CancelBooking() {
     query: {
       queryKey: getGetAppointmentByTokenQueryKey(token),
       enabled: !!token,
-      refetchInterval: 5_000,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === "cancelled" || status === "completed" || status === "no_show"
+          ? false
+          : 5_000;
+      },
     },
   });
   // Older appointment links may not include shopId. The token response still

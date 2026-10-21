@@ -951,6 +951,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         const params = new URLSearchParams({ barberId: barber.id.toString() });
         const response = await fetch(
           `${BASE}/api/b/${encodeURIComponent(slugProp)}/busyness?${params.toString()}`,
+          { cache: "no-store" },
         );
         if (!response.ok) {
           throw new Error("Não foi possível consultar a disponibilidade");
@@ -960,7 +961,8 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
       enabled: Boolean(slugProp) && needsBarberStep,
       staleTime: 30_000,
       refetchInterval: BUSYNESS_REFRESH_INTERVAL_MS,
-      refetchIntervalInBackground: true,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
     })),
   });
   const barberBusynessById = React.useMemo(() => {
