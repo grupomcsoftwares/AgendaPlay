@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, gte, lt } from "drizzle-orm";
+import { eq, and, gte, lt, or, sql, desc } from "drizzle-orm";
 import { accountCanAccess } from "./accountStatus.js";
 import { db, usersTable, settingsTable, appointmentsTable, clientsTable, barbersTable, slugRedirectsTable, type DaySchedule, type WeeklySchedule } from "@workspace/db";
 
@@ -39,12 +39,43 @@ router.get("/b/client", async (req, res): Promise<void> => {
     res.json(null);
     return;
   }
+  const normalizedPhone = normalizePhone(phone);
+  if (normalizedPhone.length < 10) {
+    res.json(null);
+    return;
+  }
   const [client] = await db
     .select({ name: clientsTable.name })
     .from(clientsTable)
-    .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, normalizePhone(phone))))
+    .where(and(eq(clientsTable.userId, shopId), eq(clientsTable.phone, normalizedPhone)))
     .limit(1);
-  res.json(client ?? null);
+
+  const [noShow] = await db
+    .select({ id: appointmentsTable.id })
+    .from(appointmentsTable)
+    .leftJoin(
+      clientsTable,
+      and(
+        eq(clientsTable.id, appointmentsTable.clientId),
+        eq(clientsTable.userId, shopId),
+      ),
+    )
+    .where(and(
+      eq(appointmentsTable.userId, shopId),
+      eq(appointmentsTable.status, "no_show"),
+      or(
+        sql`regexp_replace(COALESCE(${clientsTable.phone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`,
+        sql`regexp_replace(COALESCE(${appointmentsTable.subscriberPhone}, ''), '[^0-9]', '', 'g') = ${normalizedPhone}`,
+        sql`regexp_replace(COALESCE(substring(${appointmentsTable.notes} from 'Tel:[[:space:]]*([^.]+)'), ''), '[^0-9]', '', 'g') = ${normalizedPhone}`,
+      ),
+    ))
+    .orderBy(desc(appointmentsTable.createdAt))
+    .limit(1);
+
+  res.json({
+    ...(client ?? {}),
+    noShowWarningId: noShow?.id ?? null,
+  });
 });
 
 router.get("/b/:slug", async (req, res): Promise<void> => {

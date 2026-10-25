@@ -519,6 +519,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     } catch { /* ignore */ }
     return 0;
   });
+  const [showNoShowWarning, setShowNoShowWarning] = useState(false);
+  const [noShowWarningSeconds, setNoShowWarningSeconds] = useState(10);
+  const [activeNoShowWarningId, setActiveNoShowWarningId] = useState<number | null>(null);
+  const checkedNoShowPhones = React.useRef(new Map<string, "checking" | "none" | "warning">());
   // Plays a celebratory check animation after a successful booking before
   // navigating to the confirmation page.
   const [confirmed, setConfirmed] = useState(false);
@@ -781,6 +785,77 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   );
 
   const normalizedPhone = formData.phone.replace(/\D/g, "");
+  const checkNoShowWarning = async (phone: string): Promise<boolean> => {
+    const digits = phone.replace(/\D/g, "");
+    if (!shopId || digits.length < 10 || adminUser) return false;
+    const checkKey = `${shopId}:${digits}`;
+    const previousCheck = checkedNoShowPhones.current.get(checkKey);
+    if (previousCheck) return previousCheck !== "none";
+    checkedNoShowPhones.current.set(checkKey, "checking");
+
+    try {
+      const params = new URLSearchParams({ phone: digits, shopId });
+      const response = await fetch(`${BASE}/api/b/client?${params}`, { cache: "no-store" });
+      if (!response.ok) {
+        checkedNoShowPhones.current.set(checkKey, "none");
+        return false;
+      }
+      const result = await response.json() as { noShowWarningId?: number | null } | null;
+      const warningId = result?.noShowWarningId;
+      if (!warningId) {
+        checkedNoShowPhones.current.set(checkKey, "none");
+        return false;
+      }
+
+      const acknowledgedKey = `barber_no_show_warning_${shopId}_${digits}`;
+      if (localStorage.getItem(acknowledgedKey) === String(warningId)) {
+        checkedNoShowPhones.current.set(checkKey, "none");
+        return false;
+      }
+
+      checkedNoShowPhones.current.set(checkKey, "warning");
+      setActiveNoShowWarningId(warningId);
+      setNoShowWarningSeconds(10);
+      setShowNoShowWarning(true);
+      return true;
+    } catch {
+      // Do not prevent a customer from booking if the optional warning check fails.
+      checkedNoShowPhones.current.set(checkKey, "none");
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (step > 0 && normalizedPhone.length >= 10) {
+      void checkNoShowWarning(formData.phone);
+    }
+  // Existing-client and child bookings can start after the contact step.
+  // The per-phone set prevents duplicate checks during the normal step flow.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, normalizedPhone, shopId, adminUser]);
+
+  useEffect(() => {
+    if (!showNoShowWarning) return;
+    if (noShowWarningSeconds <= 0) {
+      checkedNoShowPhones.current.set(`${shopId}:${normalizedPhone}`, "none");
+      if (activeNoShowWarningId !== null && shopId) {
+        try {
+          localStorage.setItem(
+            `barber_no_show_warning_${shopId}_${normalizedPhone}`,
+            String(activeNoShowWarningId),
+          );
+        } catch {
+          // Keep the booking available if browser storage is disabled.
+        }
+      }
+      setShowNoShowWarning(false);
+      setStep(1);
+      return;
+    }
+    const timeout = window.setTimeout(() => setNoShowWarningSeconds((remaining) => remaining - 1), 1000);
+    return () => window.clearTimeout(timeout);
+  }, [showNoShowWarning, noShowWarningSeconds, activeNoShowWarningId, shopId, normalizedPhone]);
+
   const loyaltyQueryParams = { ...(shopId ? { shopId } : {}), phone: normalizedPhone };
   // Pre-load loyalty and subscription data as soon as phone is valid so they're
   // ready when the user reaches step 1 — prevents the points modal from failing
@@ -1433,7 +1508,10 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               type="button"
               data-testid="button-continue-step0"
               disabled={!formData.name.trim() || !formData.lastName.trim() || formData.phone.replace(/\D/g, "").length < 10}
-              onClick={() => setStep(1)}
+              onClick={async () => {
+                const warningShown = await checkNoShowWarning(formData.phone);
+                if (!warningShown) setStep(1);
+              }}
               className="w-full rounded-xl text-center font-semibold transition-opacity"
               style={{
                 height: 52,
@@ -2773,6 +2851,39 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                   Agora não
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNoShowWarning && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="no-show-warning-title"
+          aria-describedby="no-show-warning-description"
+          data-testid="no-show-warning-dialog"
+        >
+          <div className="w-full max-w-md rounded-2xl border-2 border-amber-400 bg-zinc-950 p-6 text-center shadow-2xl shadow-amber-500/20">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <h2 id="no-show-warning-title" className="mb-3 text-xl font-extrabold text-amber-300">
+              Atenção: aviso sobre falta
+            </h2>
+            <p id="no-show-warning-description" className="text-base font-semibold leading-relaxed text-white">
+              Na próxima vez que você agendar e não comparecer, seu cadastro será bloqueado.
+            </p>
+            <p className="mt-3 text-sm text-zinc-300">
+              Este é apenas um aviso. Nenhum bloqueio ou alteração será feito no seu cadastro.
+            </p>
+            <div className="mt-5 rounded-xl bg-amber-500/10 px-4 py-3 text-amber-300">
+              A agenda será liberada em{" "}
+              <span className="inline-block min-w-6 text-lg font-black" aria-live="polite">
+                {noShowWarningSeconds}
+              </span>{" "}
+              segundo{noShowWarningSeconds === 1 ? "" : "s"}
             </div>
           </div>
         </div>
