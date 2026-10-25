@@ -520,7 +520,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
     return 0;
   });
   const [showNoShowWarning, setShowNoShowWarning] = useState(false);
-  const [noShowWarningSeconds, setNoShowWarningSeconds] = useState(10);
+  const [noShowWarningSeconds, setNoShowWarningSeconds] = useState(30);
   const [activeNoShowWarningId, setActiveNoShowWarningId] = useState<number | null>(null);
   const checkedNoShowPhones = React.useRef(new Map<string, "checking" | "none" | "warning">());
   // Plays a celebratory check animation after a successful booking before
@@ -815,7 +815,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
 
       checkedNoShowPhones.current.set(checkKey, "warning");
       setActiveNoShowWarningId(warningId);
-      setNoShowWarningSeconds(10);
+      setNoShowWarningSeconds(30);
       setShowNoShowWarning(true);
       return true;
     } catch {
