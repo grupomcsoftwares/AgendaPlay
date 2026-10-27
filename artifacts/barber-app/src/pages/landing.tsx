@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Download } from "lucide-react";
+import { Download, Smartphone, Tv } from "lucide-react";
 import logoUrl from "../assets/agenda-play-logo-v2.png";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -85,6 +85,35 @@ export default function Landing() {
                 <a href="#recursos" className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-3.5 font-semibold text-white/80 transition hover:border-white/30 hover:bg-white/5 hover:text-white">
                   Conhecer recursos
                 </a>
+              </div>
+              <div className="mt-5 max-w-xl rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.07] p-4 sm:p-5" data-testid="android-app-download-promo">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-300">
+                    <Smartphone className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white">Baixe o aplicativo AgendaPlay</p>
+                    <p className="mt-1 text-sm leading-6 text-white/65">
+                      Use o aplicativo no celular do barbeiro ou na TV para acompanhar a fila ao vivo.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-xs text-white/50">
+                    <Smartphone className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Tv className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>Android · celular e TV</span>
+                  </div>
+                  <a
+                    href={ANDROID_DOWNLOAD_URL}
+                    download="agenda-play.apk"
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-bold text-[#06100b] transition hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 sm:w-auto"
+                    data-testid="button-download-android"
+                  >
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    Baixar para Android
+                  </a>
+                </div>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-white/50">
                 <span>✓ 30 dias grátis</span>
