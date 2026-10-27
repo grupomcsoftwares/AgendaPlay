@@ -1132,26 +1132,25 @@ export default function Settings() {
       {/* ── Row 3: Combo + Fidelidade ─────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl">
       <Card className="bg-card border-border">
-        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={formData.combosEnabled}
-              onCheckedChange={(v) => {
-                setFormData(prev => ({ ...prev, combosEnabled: v }));
-                updateSettings.mutate({ data: { combosEnabled: v } as any });
-              }}
-            />
-            <div>
-              <CardTitle className="text-base">Descontos por Combo</CardTitle>
-              <CardDescription className="text-xs">
-                Desconto automático ao escolher 2+ serviços juntos
-              </CardDescription>
-            </div>
+        <CardHeader className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3 pb-3 md:flex md:items-start md:justify-between">
+          <Switch
+            className="order-2 md:order-none"
+            checked={formData.combosEnabled}
+            onCheckedChange={(v) => {
+              setFormData(prev => ({ ...prev, combosEnabled: v }));
+              updateSettings.mutate({ data: { combosEnabled: v } as any });
+            }}
+          />
+          <div className="order-1 col-span-2 md:order-none md:col-span-1 md:flex md:items-center md:gap-3">
+            <CardTitle className="text-base">Descontos por Combo</CardTitle>
+            <CardDescription className="text-xs">
+              Desconto automático ao escolher 2+ serviços juntos
+            </CardDescription>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 shrink-0 h-8 text-xs"
+            className="order-3 justify-self-end gap-1.5 shrink-0 h-8 text-xs md:order-none"
             onClick={() => {
               setEditingComboId(null);
               setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
@@ -1342,26 +1341,25 @@ export default function Settings() {
 
       {/* Service Exclusions */}
       <Card className="bg-card border-border">
-        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={formData.serviceRestrictionsEnabled}
-              onCheckedChange={(v) => {
-                setFormData(prev => ({ ...prev, serviceRestrictionsEnabled: v }));
-                updateSettings.mutate({ data: { serviceRestrictionsEnabled: v } as any });
-              }}
-            />
-            <div>
-              <CardTitle className="text-base">Restrições de Serviços</CardTitle>
-              <CardDescription className="text-xs">
-                Impedir que certos serviços sejam agendados juntos
-              </CardDescription>
-            </div>
+        <CardHeader className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-3 pb-3 md:flex md:items-start md:justify-between">
+          <Switch
+            className="order-2 md:order-none"
+            checked={formData.serviceRestrictionsEnabled}
+            onCheckedChange={(v) => {
+              setFormData(prev => ({ ...prev, serviceRestrictionsEnabled: v }));
+              updateSettings.mutate({ data: { serviceRestrictionsEnabled: v } as any });
+            }}
+          />
+          <div className="order-1 col-span-2 md:order-none md:col-span-1 md:flex md:items-center md:gap-3">
+            <CardTitle className="text-base">Restrições de Serviços</CardTitle>
+            <CardDescription className="text-xs">
+              Impedir que certos serviços sejam agendados juntos
+            </CardDescription>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 shrink-0 h-8 text-xs"
+            className="order-3 justify-self-end gap-1.5 shrink-0 h-8 text-xs md:order-none"
             onClick={() => {
               setExclusionForm({ id1: null, id2: null });
               setExclusionOpen(true);
