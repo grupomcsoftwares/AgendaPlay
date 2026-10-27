@@ -7,7 +7,7 @@ import {
   useDeleteAccount,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Bell, BellOff, Printer } from "lucide-react";
+import { Upload, Trash2, Scissors, Link, Copy, Check, Pencil, Plus, X, Gift, AlertTriangle, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1002,30 +1002,24 @@ export default function Settings() {
             {/* Notificações Push (dentro de Regras) */}
             <div className="pt-2 border-t border-border space-y-3">
               <p className="text-sm font-medium">Notificações Push</p>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
-                <div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border px-3 py-2.5">
+                <div className="min-w-0">
                   <p className="text-sm font-medium">Receber alertas no dispositivo</p>
                   <p className="text-xs text-muted-foreground">
-                    {pushEnabled
+                    {pushLoading
+                      ? "Atualizando notificações..."
+                      : pushEnabled
                       ? "Você receberá notificações de novos agendamentos e reagendamentos"
                       : "Ative para receber notificações de novos agendamentos e reagendamentos"}
                   </p>
                 </div>
-                <Button
-                  variant={pushEnabled ? "default" : "outline"}
-                  size="sm"
-                  className="w-full shrink-0 gap-1.5 h-8 text-xs sm:w-auto"
+                <Switch
+                  checked={pushEnabled}
                   disabled={pushLoading}
-                  onClick={handlePushToggle}
-                >
-                  {pushLoading ? (
-                    <span className="animate-pulse">…</span>
-                  ) : pushEnabled ? (
-                    <><BellOff className="h-3.5 w-3.5" /> Desativar</>
-                  ) : (
-                    <><Bell className="h-3.5 w-3.5" /> Ativar</>
-                  )}
-                </Button>
+                  aria-label="Receber alertas no dispositivo"
+                  data-testid="switch-push-notifications"
+                  onCheckedChange={() => void handlePushToggle()}
+                />
               </div>
               <div className="rounded-lg border border-border p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
