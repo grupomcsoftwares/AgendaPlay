@@ -582,13 +582,13 @@ export default function Barbers() {
         </Dialog>
 
         <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-          <DialogContent className="sm:max-w-2xl">
+          <DialogContent className="w-[calc(100%-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain p-4 sm:max-w-2xl sm:p-6">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
+              <DialogTitle className="flex items-center gap-2 pr-7 text-base sm:text-lg">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 sm:h-5 sm:w-5" />
                 Limite de barbeiros atingido
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs sm:text-sm">
                 Seu plano atual permite até {subscriptionStatus?.maxBarbers ?? activeBarberCount}{" "}
                 {subscriptionStatus?.maxBarbers === 1 ? "profissional" : "profissionais"}.
                 Escolha um plano maior para cadastrar outro barbeiro.
@@ -601,7 +601,7 @@ export default function Barbers() {
                 Carregando planos...
               </div>
             ) : upgradePlans?.data?.length ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
                 {upgradePlans.data.map((plan) => {
                   const isCurrent = plan.price_id === subscriptionStatus?.stripePriceId;
                   const barberLabel = plan.maxBarbers == null || plan.maxBarbers === 0
@@ -610,7 +610,7 @@ export default function Barbers() {
                   return (
                     <div
                       key={plan.price_id}
-                      className={`rounded-xl border p-4 ${isCurrent ? "border-primary/70 bg-primary/5" : "border-border bg-muted/20"}`}
+                      className={`rounded-xl border p-3 sm:p-4 ${isCurrent ? "border-primary/70 bg-primary/5" : "border-border bg-muted/20"}`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -621,7 +621,7 @@ export default function Barbers() {
                           <Badge variant="secondary" className="shrink-0">Plano atual</Badge>
                         )}
                       </div>
-                      <p className="mt-3 text-xl font-bold">
+                      <p className="mt-2 text-lg font-bold sm:mt-3 sm:text-xl">
                         {(plan.unit_amount / 100).toLocaleString("pt-BR", {
                           style: "currency",
                           currency: plan.currency.toUpperCase(),
@@ -629,7 +629,7 @@ export default function Barbers() {
                         <span className="ml-1 text-xs font-normal text-muted-foreground">/mês</span>
                       </p>
                       <Button
-                        className="mt-4 w-full gap-2"
+                        className="mt-3 min-h-10 w-full gap-2 sm:mt-4"
                         variant={isCurrent ? "outline" : "default"}
                         disabled={isCurrent || changingPlanId !== null}
                         onClick={() => handleChangePlan(plan.price_id)}
