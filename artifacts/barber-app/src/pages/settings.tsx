@@ -869,7 +869,7 @@ export default function Settings() {
             {/* Formas de Pagamento (dentro de Informações Gerais) */}
             <div className="pt-2 border-t border-border space-y-3">
               <p className="text-sm font-medium">Formas de Pagamento</p>
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+              <div className="flex flex-col items-stretch gap-3 rounded-lg border border-border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium">Pagar agora (Pix)</p>
                   <p className="text-xs text-muted-foreground">Cliente paga no momento do agendamento</p>
@@ -1014,7 +1014,7 @@ export default function Settings() {
                 <Button
                   variant={pushEnabled ? "default" : "outline"}
                   size="sm"
-                  className="shrink-0 gap-1.5 h-8 text-xs"
+                  className="w-full shrink-0 gap-1.5 h-8 text-xs sm:w-auto"
                   disabled={pushLoading}
                   onClick={handlePushToggle}
                 >
