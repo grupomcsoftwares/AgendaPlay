@@ -1,5 +1,9 @@
 import { Link } from "wouter";
+import { Download } from "lucide-react";
 import logoUrl from "../assets/agenda-play-logo-v2.png";
+
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const ANDROID_DOWNLOAD_URL = `${BASE}/api/app-download.apk`;
 
 const features = [
   {
@@ -43,6 +47,16 @@ export default function Landing() {
             <a href="#para-quem" className="transition-colors hover:text-white">Para sua barbearia</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href={ANDROID_DOWNLOAD_URL}
+              download="agenda-play.apk"
+              aria-label="Baixar AgendaPlay para Android"
+              title="Baixar AgendaPlay para Android"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-400/30 text-emerald-300 transition hover:bg-emerald-400/10 hover:text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+              data-testid="link-download-android"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+            </a>
             <Link href="/login" className="shrink-0 text-xs font-medium text-white/70 transition-colors hover:text-white sm:text-sm">Entrar</Link>
             <Link href="/register" className="shrink-0 whitespace-nowrap rounded-lg bg-emerald-400 px-3 py-2 text-xs font-bold text-[#06100b] transition hover:bg-emerald-300 sm:px-4 sm:text-sm">Começar grátis</Link>
           </div>
