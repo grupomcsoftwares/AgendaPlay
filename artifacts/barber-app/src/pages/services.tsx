@@ -13,6 +13,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
+const MAX_SERVICE_DURATION_MINUTES = 24 * 60;
+const MAX_SERVICE_PRICE = 100_000;
+
+function isValidServicePrice(value: string): boolean {
+  const trimmed = value.trim();
+  const amount = Number(trimmed);
+  return /^\d+(?:\.\d{1,2})?$/.test(trimmed)
+    && Number.isFinite(amount)
+    && amount >= 0
+    && amount <= MAX_SERVICE_PRICE;
+}
+
 function ServiceImageUpload({
   imageUrl,
   onPick,
@@ -180,10 +192,38 @@ export default function Services() {
   };
 
   const handleSave = () => {
+    const durationMinutes = Number(formData.durationMinutes);
+    if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > MAX_SERVICE_DURATION_MINUTES) {
+      toast({
+        title: "Duração fora do limite",
+        description: "Informe um valor entre 1 e 1.440 minutos.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidServicePrice(formData.price)) {
+      toast({
+        title: "Preço fora do limite",
+        description: "Informe um valor entre R$ 0,00 e R$ 100.000,00, com até duas casas decimais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.dayPricingEnabled && formData.dayPrices.some((value) => value.trim() !== "" && !isValidServicePrice(value))) {
+      toast({
+        title: "Preço por dia fora do limite",
+        description: "Use valores entre R$ 0,00 e R$ 100.000,00, com até duas casas decimais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const payload = {
       name: formData.name,
       description: formData.description,
-      durationMinutes: parseInt(formData.durationMinutes),
+      durationMinutes,
       price: parseFloat(formData.price),
       imageUrl: formData.imageUrl || undefined,
       dayPricing: getDayPricingPayload(),
@@ -329,32 +369,40 @@ export default function Services() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                <div className="min-w-0 space-y-1.5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <Label htmlFor="duration" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Duração
                   </Label>
-                  <div className="relative min-w-0">
+                  <div className="relative">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                     <Input
                       id="duration"
                       data-testid="input-service-duration"
                       type="number"
                       min={1}
+                      max={MAX_SERVICE_DURATION_MINUTES}
+                      step={1}
                       value={formData.durationMinutes}
-                      onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                      className="h-11 w-full min-w-0 pl-9 pr-12 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || (/^\d{1,4}$/.test(value) && Number(value) <= MAX_SERVICE_DURATION_MINUTES)) {
+                          setFormData((current) => ({ ...current, durationMinutes: value }));
+                        }
+                      }}
+                      className="h-11 pl-9 pr-12 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                       min
                     </span>
                   </div>
+                  <p className="text-[11px] text-muted-foreground">Máximo: 1.440 min (24 h)</p>
                 </div>
-                <div className="min-w-0 space-y-1.5">
+                <div className="space-y-1.5">
                   <Label htmlFor="price" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Preço
                   </Label>
-                  <div className="relative min-w-0">
+                  <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                       R$
                     </span>
@@ -364,11 +412,18 @@ export default function Services() {
                       type="number"
                       step="0.01"
                       min={0}
+                      max={MAX_SERVICE_PRICE}
                       value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="h-11 w-full min-w-0 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || (/^\d{0,6}(?:\.\d{0,2})?$/.test(value) && Number(value) <= MAX_SERVICE_PRICE)) {
+                          setFormData((current) => ({ ...current, price: value }));
+                        }
+                      }}
+                      className="h-11 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
                   </div>
+                  <p className="text-[11px] text-muted-foreground">Máximo: R$ 100.000,00</p>
                 </div>
               </div>
 
@@ -402,11 +457,16 @@ export default function Services() {
                             type="number"
                             step="0.01"
                             min={0}
+                            max={MAX_SERVICE_PRICE}
                             placeholder={formData.price}
                             value={formData.dayPrices[i]}
                             onChange={(e) => {
+                              const value = e.target.value;
+                              if (value !== "" && (!/^\d{0,6}(?:\.\d{0,2})?$/.test(value) || Number(value) > MAX_SERVICE_PRICE)) {
+                                return;
+                              }
                               const next = [...formData.dayPrices];
-                              next[i] = e.target.value;
+                              next[i] = value;
                               setFormData({ ...formData, dayPrices: next });
                             }}
                             className="h-9 pl-6 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums text-sm"

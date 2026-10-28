@@ -5,17 +5,25 @@
  * BarberApp API
  * OpenAPI spec version: 0.1.0
  */
-import type { ServiceDayPricing } from './serviceDayPricing';
+import type { ServiceDayPricingInput } from './serviceDayPricingInput';
 
 export interface ServiceUpdate {
   name?: string;
   /** @nullable */
   description?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 1440
+     */
   durationMinutes?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
   price?: number;
   /** @nullable */
   imageUrl?: string | null;
   sortOrder?: number;
   barberIds?: number[];
-  dayPricing?: ServiceDayPricing[];
+  dayPricing?: ServiceDayPricingInput[];
 }

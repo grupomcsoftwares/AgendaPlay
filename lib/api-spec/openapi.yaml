@@ -1547,8 +1547,13 @@ components:
           type: string
         durationMinutes:
           type: integer
+          minimum: 1
+          maximum: 1440
         price:
           type: number
+          minimum: 0
+          maximum: 100000
+          multipleOf: 0.01
         imageUrl:
           type: string
         sortOrder:
@@ -1560,7 +1565,7 @@ components:
         dayPricing:
           type: array
           items:
-            $ref: "#/components/schemas/ServiceDayPricing"
+            $ref: "#/components/schemas/ServiceDayPricingInput"
 
     ServiceUpdate:
       type: object
@@ -1571,8 +1576,13 @@ components:
           type: ["string", "null"]
         durationMinutes:
           type: integer
+          minimum: 1
+          maximum: 1440
         price:
           type: number
+          minimum: 0
+          maximum: 100000
+          multipleOf: 0.01
         imageUrl:
           type: ["string", "null"]
         sortOrder:
@@ -1584,7 +1594,21 @@ components:
         dayPricing:
           type: array
           items:
-            $ref: "#/components/schemas/ServiceDayPricing"
+            $ref: "#/components/schemas/ServiceDayPricingInput"
+
+    ServiceDayPricingInput:
+      type: object
+      required: [dayOfWeek, price]
+      properties:
+        dayOfWeek:
+          type: integer
+          minimum: 0
+          maximum: 6
+        price:
+          type: number
+          minimum: 0
+          maximum: 100000
+          multipleOf: 0.01
 
     Barber:
       type: object

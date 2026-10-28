@@ -106,28 +106,57 @@ export interface Service {
   dayPricing?: ServiceDayPricing[];
 }
 
+export interface ServiceDayPricingInput {
+  /**
+     * @minimum 0
+     * @maximum 6
+     */
+  dayOfWeek: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  price: number;
+}
+
 export interface ServiceInput {
   name: string;
   description?: string;
+  /**
+     * @minimum 1
+     * @maximum 1440
+     */
   durationMinutes: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
   price: number;
   imageUrl?: string;
   sortOrder?: number;
   barberIds?: number[];
-  dayPricing?: ServiceDayPricing[];
+  dayPricing?: ServiceDayPricingInput[];
 }
 
 export interface ServiceUpdate {
   name?: string;
   /** @nullable */
   description?: string | null;
+  /**
+     * @minimum 1
+     * @maximum 1440
+     */
   durationMinutes?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
   price?: number;
   /** @nullable */
   imageUrl?: string | null;
   sortOrder?: number;
   barberIds?: number[];
-  dayPricing?: ServiceDayPricing[];
+  dayPricing?: ServiceDayPricingInput[];
 }
 
 export interface DaySchedule {

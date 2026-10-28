@@ -137,22 +137,32 @@ export const ListServicesResponse = zod.array(ListServicesResponseItem)
 /**
  * @summary Create a service
  */
+export const createServiceBodyDurationMinutesMax = 1440;
+
+export const createServiceBodyPriceMin = 0;
+export const createServiceBodyPriceMax = 100000;
+export const createServiceBodyPriceMultipleOf = 0.01;
+
 export const createServiceBodyDayPricingItemDayOfWeekMin = 0;
 export const createServiceBodyDayPricingItemDayOfWeekMax = 6;
+
+export const createServiceBodyDayPricingItemPriceMin = 0;
+export const createServiceBodyDayPricingItemPriceMax = 100000;
+export const createServiceBodyDayPricingItemPriceMultipleOf = 0.01;
 
 
 
 export const CreateServiceBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
-  "durationMinutes": zod.number().int(),
-  "price": zod.number(),
+  "durationMinutes": zod.number().int().min(1).max(createServiceBodyDurationMinutesMax),
+  "price": zod.number().min(createServiceBodyPriceMin).max(createServiceBodyPriceMax).multipleOf(createServiceBodyPriceMultipleOf),
   "imageUrl": zod.string().optional(),
   "sortOrder": zod.number().int().optional(),
   "barberIds": zod.array(zod.number().int()).optional(),
   "dayPricing": zod.array(zod.object({
-  "dayOfWeek": zod.number().int().min(createServiceBodyDayPricingItemDayOfWeekMin).max(createServiceBodyDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
-  "price": zod.number()
+  "dayOfWeek": zod.number().int().min(createServiceBodyDayPricingItemDayOfWeekMin).max(createServiceBodyDayPricingItemDayOfWeekMax),
+  "price": zod.number().min(createServiceBodyDayPricingItemPriceMin).max(createServiceBodyDayPricingItemPriceMax).multipleOf(createServiceBodyDayPricingItemPriceMultipleOf)
 })).optional()
 })
 
@@ -212,22 +222,32 @@ export const UpdateServiceParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateServiceBodyDurationMinutesMax = 1440;
+
+export const updateServiceBodyPriceMin = 0;
+export const updateServiceBodyPriceMax = 100000;
+export const updateServiceBodyPriceMultipleOf = 0.01;
+
 export const updateServiceBodyDayPricingItemDayOfWeekMin = 0;
 export const updateServiceBodyDayPricingItemDayOfWeekMax = 6;
+
+export const updateServiceBodyDayPricingItemPriceMin = 0;
+export const updateServiceBodyDayPricingItemPriceMax = 100000;
+export const updateServiceBodyDayPricingItemPriceMultipleOf = 0.01;
 
 
 
 export const UpdateServiceBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().nullish(),
-  "durationMinutes": zod.number().int().optional(),
-  "price": zod.number().optional(),
+  "durationMinutes": zod.number().int().min(1).max(updateServiceBodyDurationMinutesMax).optional(),
+  "price": zod.number().min(updateServiceBodyPriceMin).max(updateServiceBodyPriceMax).multipleOf(updateServiceBodyPriceMultipleOf).optional(),
   "imageUrl": zod.string().nullish(),
   "sortOrder": zod.number().int().optional(),
   "barberIds": zod.array(zod.number().int()).optional(),
   "dayPricing": zod.array(zod.object({
-  "dayOfWeek": zod.number().int().min(updateServiceBodyDayPricingItemDayOfWeekMin).max(updateServiceBodyDayPricingItemDayOfWeekMax).describe('0 = Sunday, 1 = Monday, ... 6 = Saturday'),
-  "price": zod.number()
+  "dayOfWeek": zod.number().int().min(updateServiceBodyDayPricingItemDayOfWeekMin).max(updateServiceBodyDayPricingItemDayOfWeekMax),
+  "price": zod.number().min(updateServiceBodyDayPricingItemPriceMin).max(updateServiceBodyDayPricingItemPriceMax).multipleOf(updateServiceBodyDayPricingItemPriceMultipleOf)
 })).optional()
 })
 
