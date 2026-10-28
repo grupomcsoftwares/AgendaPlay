@@ -25,6 +25,26 @@ function isValidServicePrice(value: string): boolean {
     && amount <= MAX_SERVICE_PRICE;
 }
 
+function formatCurrencyInput(value: string): string {
+  if (value === "") return "";
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "";
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function parseCurrencyInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  return (Number(digits) / 100).toFixed(2);
+}
+
+function currencyInputCents(value: string): number {
+  return Math.round(Number(value) * 100);
+}
+
 function ServiceImageUpload({
   imageUrl,
   onPick,
@@ -409,21 +429,21 @@ export default function Services() {
                     <Input
                       id="price"
                       data-testid="input-service-price"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={MAX_SERVICE_PRICE}
-                      value={formData.price}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(formData.price)}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "" || (/^\d{0,6}(?:\.\d{0,2})?$/.test(value) && Number(value) <= MAX_SERVICE_PRICE)) {
+                        const value = parseCurrencyInput(e.currentTarget.value);
+                        if (value === "" || currencyInputCents(value) <= MAX_SERVICE_PRICE * 100) {
                           setFormData((current) => ({ ...current, price: value }));
                         }
                       }}
                       className="h-11 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
                   </div>
-                  <p className="text-[11px] text-muted-foreground">Máximo: R$ 100.000,00</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    A vírgula é automática (30000 = R$ 300,00). Máximo: R$ 100.000,00
+                  </p>
                 </div>
               </div>
 
@@ -454,15 +474,13 @@ export default function Services() {
                             R$
                           </span>
                           <Input
-                            type="number"
-                            step="0.01"
-                            min={0}
-                            max={MAX_SERVICE_PRICE}
-                            placeholder={formData.price}
-                            value={formData.dayPrices[i]}
+                            type="text"
+                            inputMode="numeric"
+                            placeholder={formatCurrencyInput(formData.price)}
+                            value={formatCurrencyInput(formData.dayPrices[i])}
                             onChange={(e) => {
-                              const value = e.target.value;
-                              if (value !== "" && (!/^\d{0,6}(?:\.\d{0,2})?$/.test(value) || Number(value) > MAX_SERVICE_PRICE)) {
+                              const value = parseCurrencyInput(e.currentTarget.value);
+                              if (value !== "" && currencyInputCents(value) > MAX_SERVICE_PRICE * 100) {
                                 return;
                               }
                               const next = [...formData.dayPrices];
@@ -478,7 +496,7 @@ export default function Services() {
                 )}
                 {formData.dayPricingEnabled && (
                   <p className="text-xs text-muted-foreground">
-                    Deixe em branco para usar o preço base. Preencha apenas os dias com preço diferente.
+                    A vírgula é automática (2500 = R$ 25,00). Deixe em branco para usar o preço base.
                   </p>
                 )}
               </div>
@@ -548,7 +566,7 @@ export default function Services() {
                       </>
                     ) : (
                       <>
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(service.id); const dayPrices = ["","","","","","",""]; const hasDayPricing = (service.dayPricing?.length ?? 0) > 0; if (service.dayPricing) { for (const dp of service.dayPricing) { if (dp.dayOfWeek >= 0 && dp.dayOfWeek <= 6) dayPrices[dp.dayOfWeek] = dp.price.toString(); } } setFormData({ name: service.name, description: service.description || "", durationMinutes: service.durationMinutes.toString(), price: service.price.toString(), imageUrl: service.imageUrl || "", dayPricingEnabled: hasDayPricing, dayPrices }); setIsCreateOpen(true); }}><Pencil className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingId(service.id); const dayPrices = ["","","","","","",""]; const hasDayPricing = (service.dayPricing?.length ?? 0) > 0; if (service.dayPricing) { for (const dp of service.dayPricing) { if (dp.dayOfWeek >= 0 && dp.dayOfWeek <= 6) dayPrices[dp.dayOfWeek] = dp.price.toFixed(2); } } setFormData({ name: service.name, description: service.description || "", durationMinutes: service.durationMinutes.toString(), price: service.price.toFixed(2), imageUrl: service.imageUrl || "", dayPricingEnabled: hasDayPricing, dayPrices }); setIsCreateOpen(true); }}><Pencil className="h-4 w-4" /></Button>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(service.id)}><Trash2 className="h-4 w-4" /></Button>
                       </>
                     )}
@@ -620,7 +638,7 @@ export default function Services() {
                             if (service.dayPricing) {
                               for (const dp of service.dayPricing) {
                                 if (dp.dayOfWeek >= 0 && dp.dayOfWeek <= 6) {
-                                  dayPrices[dp.dayOfWeek] = dp.price.toString();
+                                  dayPrices[dp.dayOfWeek] = dp.price.toFixed(2);
                                 }
                               }
                             }
@@ -628,7 +646,7 @@ export default function Services() {
                               name: service.name,
                               description: service.description || "",
                               durationMinutes: service.durationMinutes.toString(),
-                              price: service.price.toString(),
+                              price: service.price.toFixed(2),
                               imageUrl: service.imageUrl || "",
                               dayPricingEnabled: hasDayPricing,
                               dayPrices,
