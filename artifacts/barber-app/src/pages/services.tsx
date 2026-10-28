@@ -329,12 +329,12 @@ export default function Services() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="min-w-0 space-y-1.5">
                   <Label htmlFor="duration" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Duração
                   </Label>
-                  <div className="relative">
+                  <div className="relative min-w-0">
                     <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
                     <Input
                       id="duration"
@@ -343,18 +343,18 @@ export default function Services() {
                       min={1}
                       value={formData.durationMinutes}
                       onChange={(e) => setFormData({ ...formData, durationMinutes: e.target.value })}
-                      className="h-11 pl-9 pr-12 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
+                      className="h-11 w-full min-w-0 pl-9 pr-12 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
                       min
                     </span>
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label htmlFor="price" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Preço
                   </Label>
-                  <div className="relative">
+                  <div className="relative min-w-0">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
                       R$
                     </span>
@@ -366,7 +366,7 @@ export default function Services() {
                       min={0}
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="h-11 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
+                      className="h-11 w-full min-w-0 pl-10 bg-muted/40 border-border/60 focus-visible:bg-background tabular-nums"
                     />
                   </div>
                 </div>
