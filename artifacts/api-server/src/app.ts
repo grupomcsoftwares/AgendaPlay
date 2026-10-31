@@ -24,6 +24,15 @@ if (!process.env.DATABASE_URL) {
 app.use(
   pinoHttp({
     logger,
+    customLogLevel: (req, res, error) => {
+      // An SSE response intentionally stays open; its lifetime is not API response latency.
+      if (req.url?.split("?")[0] === "/api/queue/subscribe" && res.statusCode === 200) {
+        return "silent";
+      }
+      if (error || res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "info";
+    },
     serializers: {
       req(req) {
         const rawPath = req.url?.split("?")[0] ?? "";

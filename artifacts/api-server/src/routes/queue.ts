@@ -50,6 +50,7 @@ function removeSseClient(userId: string, res: Response): void {
 
 router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void> => {
   const userId = req.session.userId!;
+  const streamStartedAt = Date.now();
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -60,6 +61,7 @@ router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void
   res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
 
   addSseClient(userId, res);
+  req.log.info({ event: "queue_sse_open" }, "Queue event stream opened");
 
   const heartbeat = setInterval(() => {
     res.write(`:ping\n\n`);
@@ -68,6 +70,10 @@ router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void
   req.on("close", () => {
     clearInterval(heartbeat);
     removeSseClient(userId, res);
+    req.log.info(
+      { event: "queue_sse_close", durationMs: Date.now() - streamStartedAt },
+      "Queue event stream closed",
+    );
   });
 });
 
