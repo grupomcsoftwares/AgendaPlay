@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
 export const APP_VERSION = "1.0.19";
@@ -36,6 +37,15 @@ router.get("/app-download.apk", async (req, res): Promise<void> => {
       headers: range ? { Range: range } : undefined,
     });
     if (!upstream.ok || !upstream.body) {
+      if (upstream.status === 404) {
+        res.status(404).json({ error: "Nenhuma atualização disponível." });
+        return;
+      }
+
+      console.error("APK download source unavailable", {
+        status: upstream.status,
+        hasBody: Boolean(upstream.body),
+      });
       res.status(502).json({ error: "Não foi possível obter a atualização." });
       return;
     }
@@ -50,7 +60,10 @@ router.get("/app-download.apk", async (req, res): Promise<void> => {
     const contentRange = upstream.headers.get("content-range");
     if (contentRange) res.setHeader("Content-Range", contentRange);
 
-    Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]).pipe(res);
+    await pipeline(
+      Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]),
+      res,
+    );
   } catch (error) {
     console.error("APK download proxy failed", {
       message: error instanceof Error ? error.message : "unknown error",
