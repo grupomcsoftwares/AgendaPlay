@@ -156,7 +156,7 @@ export default function Settings() {
 
   const [comboOpen, setComboOpen] = useState(false);
   const [editingComboId, setEditingComboId] = useState<number | null>(null);
-  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: 10, discountType: "percent" as "percent" | "value", timeDiscountMinutes: 0 });
+  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: "", discountType: "percent" as "percent" | "value", timeDiscountMinutes: "" });
 
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
@@ -681,9 +681,23 @@ export default function Settings() {
       toast({ title: "Selecione pelo menos 2 serviços para o combo", variant: "destructive" });
       return;
     }
+    const discountAmount = Number(comboForm.discountPercent);
+    if (!comboForm.discountPercent.trim() || !Number.isFinite(discountAmount) || discountAmount <= 0) {
+      toast({ title: "Informe um valor de desconto maior que zero", variant: "destructive" });
+      return;
+    }
+    if (comboForm.discountType === "percent" && discountAmount > 100) {
+      toast({ title: "O desconto percentual não pode passar de 100%", variant: "destructive" });
+      return;
+    }
+    const timeDiscountMinutes = comboForm.timeDiscountMinutes.trim() === "" ? 0 : Number(comboForm.timeDiscountMinutes);
+    if (!Number.isInteger(timeDiscountMinutes) || timeDiscountMinutes < 0) {
+      toast({ title: "Informe uma economia de tempo válida em minutos", variant: "destructive" });
+      return;
+    }
     const autoName = comboForm.name.trim() ||
       comboForm.serviceIds.map((id) => services?.find((s) => s.id === id)?.name || `#${id}`).join(" + ");
-    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: comboForm.discountPercent, discountType: comboForm.discountType, timeDiscountMinutes: comboForm.timeDiscountMinutes };
+    const payload = { name: autoName, serviceIds: comboForm.serviceIds, discountPercent: discountAmount, discountType: comboForm.discountType, timeDiscountMinutes };
     if (editingComboId) {
       updateComboMut.mutate(
         { id: editingComboId, data: payload },
@@ -692,7 +706,7 @@ export default function Settings() {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
             setEditingComboId(null);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
+            setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
             toast({ title: "Combo atualizado" });
           },
         },
@@ -704,7 +718,7 @@ export default function Settings() {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
-            setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
+            setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
             toast({ title: "Combo criado" });
           },
         },
@@ -1147,7 +1161,7 @@ export default function Settings() {
             className="order-3 justify-self-end gap-1.5 shrink-0 h-8 text-xs md:order-none"
             onClick={() => {
               setEditingComboId(null);
-              setComboForm({ name: "", serviceIds: [], discountPercent: 10, discountType: "percent", timeDiscountMinutes: 0 });
+              setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
               setComboOpen(true);
             }}
           >
@@ -1188,9 +1202,9 @@ export default function Settings() {
                           setComboForm({
                             name: c.name,
                             serviceIds: c.serviceIds as number[],
-                            discountPercent: c.discountPercent,
+                            discountPercent: String(c.discountPercent),
                             discountType: (c.discountType as "percent" | "value") ?? "percent",
-                            timeDiscountMinutes: c.timeDiscountMinutes ?? 0,
+                            timeDiscountMinutes: c.timeDiscountMinutes == null ? "" : String(c.timeDiscountMinutes),
                           });
                           setComboOpen(true);
                         }}
@@ -1254,7 +1268,11 @@ export default function Settings() {
                 <div className="flex rounded-md overflow-hidden border border-border">
                   <button
                     type="button"
-                    onClick={() => setComboForm({ ...comboForm, discountType: "percent" })}
+                    onClick={() => setComboForm((current) => ({
+                      ...current,
+                      discountType: "percent",
+                      discountPercent: current.discountType === "percent" ? current.discountPercent : "",
+                    }))}
                     className={`flex-1 py-2 text-sm font-medium transition-colors ${
                       comboForm.discountType === "percent"
                         ? "bg-primary text-primary-foreground"
@@ -1265,7 +1283,11 @@ export default function Settings() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setComboForm({ ...comboForm, discountType: "value" })}
+                    onClick={() => setComboForm((current) => ({
+                      ...current,
+                      discountType: "value",
+                      discountPercent: current.discountType === "value" ? current.discountPercent : "",
+                    }))}
                     className={`flex-1 py-2 text-sm font-medium transition-colors ${
                       comboForm.discountType === "value"
                         ? "bg-primary text-primary-foreground"
@@ -1291,7 +1313,7 @@ export default function Settings() {
                     max={comboForm.discountType === "percent" ? "100" : undefined}
                     step={comboForm.discountType === "value" ? "0.50" : "1"}
                     value={comboForm.discountPercent}
-                    onChange={(e) => setComboForm({ ...comboForm, discountPercent: Number(e.target.value) })}
+                    onChange={(e) => setComboForm((current) => ({ ...current, discountPercent: e.target.value }))}
                     className="h-9 pl-9"
                   />
                 </div>
@@ -1308,9 +1330,8 @@ export default function Settings() {
                     min="0"
                     step="1"
                     value={comboForm.timeDiscountMinutes}
-                    onChange={(e) => setComboForm({ ...comboForm, timeDiscountMinutes: Number(e.target.value) })}
+                    onChange={(e) => setComboForm((current) => ({ ...current, timeDiscountMinutes: e.target.value }))}
                     className="h-9 pl-10"
-                    placeholder="0"
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground">
