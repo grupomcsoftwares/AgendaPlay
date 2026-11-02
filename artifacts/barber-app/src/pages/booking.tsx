@@ -2042,7 +2042,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                       </div>
                     );
                   })}
-                  {appliedCombo && (
+                  {appliedCombo && discountAmount > 0 && (
                     <div className="flex items-center justify-between text-xs pt-1 border-t" style={{ borderColor: "hsl(0 0% 14%)" }}>
                       <span className="text-muted-foreground">🎉 Desconto combo</span>
                       <span style={{ color: "hsl(142 71% 45%)", fontWeight: 600 }}>
@@ -2369,7 +2369,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                         );
                       });
                     })()}
-                    {appliedCombo && (
+                    {appliedCombo && discountAmount > 0 && (
                       <div className="flex items-center justify-between text-sm" style={{ color: "hsl(142 71% 45%)" }}>
                         <span>🎉 Desconto combo{appliedCombo.discountType === "percent" ? ` (${appliedCombo.discountPercent}%)` : ""}</span>
                         <span className="font-semibold">- R$ {discountAmount.toFixed(2).replace(".", ",")}</span>
