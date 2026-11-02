@@ -222,22 +222,30 @@ export default function Appointments() {
   const editCombinedPriceRaw = editSelectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
   const editCombinedDurationRaw = editSelectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
 
-  const editBestCombo = useMemo(() => {
-    if ((settings as any)?.combosEnabled === false) return null;
-    if (!comboDiscounts || editSelectedServices.length < 2) return null;
+  const editMatchingCombos = useMemo(() => {
+    if ((settings as any)?.combosEnabled === false) return [];
+    if (!comboDiscounts || editSelectedServices.length < 2) return [];
     const selectedIds = editServiceIdsState;
-    const matches = comboDiscounts.filter(c =>
+    return comboDiscounts.filter(c =>
       c.enabled !== false &&
       (c.serviceIds as number[]).length >= 2 &&
       (c.serviceIds as number[]).every(id => selectedIds.includes(id.toString()))
     );
-    if (matches.length === 0) return null;
-    return matches.sort((a, b) => {
+  }, [comboDiscounts, editServiceIdsState, editSelectedServices.length, settings]);
+
+  const editBestCombo = useMemo(() => {
+    if (!editMatchingCombos.length) return null;
+    return [...editMatchingCombos].sort((a, b) => {
       const va = a.discountType === "value" ? Number(a.discountPercent) : (editCombinedPriceRaw * Number(a.discountPercent)) / 100;
       const vb = b.discountType === "value" ? Number(b.discountPercent) : (editCombinedPriceRaw * Number(b.discountPercent)) / 100;
       return vb - va;
     })[0];
-  }, [comboDiscounts, editServiceIdsState, editSelectedServices.length, editCombinedPriceRaw, settings]);
+  }, [editMatchingCombos, editCombinedPriceRaw]);
+
+  const editBestTimeCombo = useMemo(
+    () => [...editMatchingCombos].sort((a, b) => (b.timeDiscountMinutes ?? 0) - (a.timeDiscountMinutes ?? 0))[0] ?? null,
+    [editMatchingCombos],
+  );
 
   const editComboServicesPrice = editBestCombo
     ? editSelectedServices.filter(s => (editBestCombo.serviceIds as number[]).includes(s.id)).reduce((acc, s) => acc + parseFloat(String(s.price)), 0)
@@ -247,7 +255,7 @@ export default function Appointments() {
       ? Number(editBestCombo.discountPercent)
       : (editComboServicesPrice * Number(editBestCombo.discountPercent)) / 100
     : 0;
-  const editComboTimeDiscount = editBestCombo?.timeDiscountMinutes ?? 0;
+  const editComboTimeDiscount = editBestTimeCombo?.timeDiscountMinutes ?? 0;
   const editCombinedPrice = Math.max(0, editCombinedPriceRaw - editComboDiscountAmount);
   const editCombinedDuration = Math.max(5, editCombinedDurationRaw - editComboTimeDiscount);
 
@@ -386,22 +394,30 @@ export default function Appointments() {
   const combinedPriceRaw = selectedServices.reduce((sum, s) => sum + parseFloat(String(s.price)), 0);
   const combinedDurationRaw = selectedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
 
-  const bestCombo = useMemo(() => {
-    if ((settings as any)?.combosEnabled === false) return null;
-    if (!comboDiscounts || selectedServices.length < 2) return null;
+  const matchingCombos = useMemo(() => {
+    if ((settings as any)?.combosEnabled === false) return [];
+    if (!comboDiscounts || selectedServices.length < 2) return [];
     const selectedIds = formData.serviceIds;
-    const matches = comboDiscounts.filter(c =>
+    return comboDiscounts.filter(c =>
       c.enabled !== false &&
       (c.serviceIds as number[]).length >= 2 &&
       (c.serviceIds as number[]).every(id => selectedIds.includes(id.toString()))
     );
-    if (matches.length === 0) return null;
-    return matches.sort((a, b) => {
+  }, [comboDiscounts, formData.serviceIds, selectedServices.length, settings]);
+
+  const bestCombo = useMemo(() => {
+    if (!matchingCombos.length) return null;
+    return [...matchingCombos].sort((a, b) => {
       const va = a.discountType === "value" ? Number(a.discountPercent) : (combinedPriceRaw * Number(a.discountPercent)) / 100;
       const vb = b.discountType === "value" ? Number(b.discountPercent) : (combinedPriceRaw * Number(b.discountPercent)) / 100;
       return vb - va;
     })[0];
-  }, [comboDiscounts, formData.serviceIds, selectedServices.length, combinedPriceRaw, settings]);
+  }, [matchingCombos, combinedPriceRaw]);
+
+  const bestTimeCombo = useMemo(
+    () => [...matchingCombos].sort((a, b) => (b.timeDiscountMinutes ?? 0) - (a.timeDiscountMinutes ?? 0))[0] ?? null,
+    [matchingCombos],
+  );
 
   const comboServicesPrice = bestCombo
     ? selectedServices.filter(s => (bestCombo.serviceIds as number[]).includes(s.id)).reduce((acc, s) => acc + parseFloat(String(s.price)), 0)
@@ -411,7 +427,7 @@ export default function Appointments() {
       ? Number(bestCombo.discountPercent)
       : (comboServicesPrice * Number(bestCombo.discountPercent)) / 100
     : 0;
-  const comboTimeDiscount = bestCombo?.timeDiscountMinutes ?? 0;
+  const comboTimeDiscount = bestTimeCombo?.timeDiscountMinutes ?? 0;
   const combinedPrice = Math.max(0, combinedPriceRaw - comboDiscountAmount);
   const combinedDuration = Math.max(5, combinedDurationRaw - comboTimeDiscount);
 

@@ -353,7 +353,8 @@ export async function resolveAuthoritativeBooking(
         combo.enabled &&
         combo.serviceIds.length >= 2 &&
         combo.serviceIds.every((id) => requestedIds.includes(id)),
-      )
+      );
+    const priceCombo = [...applicable]
       .sort((a, b) => {
         const aValue = a.discountType === "value"
           ? parseFloat(a.discountPercent)
@@ -363,14 +364,15 @@ export async function resolveAuthoritativeBooking(
           : (b.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0) * parseFloat(b.discountPercent)) / 100;
         return bValue - aValue;
       })[0];
-    if (applicable) {
-      const comboPrice = applicable.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0);
-      const discount = applicable.discountType === "value"
-        ? parseFloat(applicable.discountPercent)
-        : (comboPrice * parseFloat(applicable.discountPercent)) / 100;
+    const timeCombo = [...applicable].sort((a, b) => b.timeDiscountMinutes - a.timeDiscountMinutes)[0];
+    if (priceCombo) {
+      const comboPrice = priceCombo.serviceIds.reduce((sum, id) => sum + (basePrices.get(id) ?? 0), 0);
+      const discount = priceCombo.discountType === "value"
+        ? parseFloat(priceCombo.discountPercent)
+        : (comboPrice * parseFloat(priceCombo.discountPercent)) / 100;
       price = Math.max(0, totalBasePrice - discount);
-      duration = Math.max(5, totalBaseDuration - applicable.timeDiscountMinutes);
     }
+    if (timeCombo) duration = Math.max(5, totalBaseDuration - timeCombo.timeDiscountMinutes);
   }
   return {
     serviceId: requestedIds.length === 1 ? requestedIds[0]! : null,
