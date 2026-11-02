@@ -781,7 +781,14 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const comboParams = shopId ? { shopId } : {};
   const { data: comboDiscounts } = useListComboDiscounts(
     comboParams,
-    { query: { queryKey: getListComboDiscountsQueryKey(comboParams) } }
+    {
+      query: {
+        queryKey: getListComboDiscountsQueryKey(comboParams),
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+        refetchInterval: 30_000,
+      },
+    }
   );
 
   const normalizedPhone = formData.phone.replace(/\D/g, "");
