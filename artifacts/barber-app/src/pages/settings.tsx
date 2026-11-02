@@ -156,7 +156,15 @@ export default function Settings() {
 
   const [comboOpen, setComboOpen] = useState(false);
   const [editingComboId, setEditingComboId] = useState<number | null>(null);
-  const [comboForm, setComboForm] = useState({ name: "", serviceIds: [] as number[], discountPercent: "", discountType: "percent" as "percent" | "value", timeDiscountMinutes: "" });
+  const [comboForm, setComboForm] = useState({
+    name: "",
+    serviceIds: [] as number[],
+    discountEnabled: false,
+    discountPercent: "",
+    discountType: "percent" as "percent" | "value",
+    timeDiscountEnabled: false,
+    timeDiscountMinutes: "",
+  });
 
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
@@ -681,8 +689,12 @@ export default function Settings() {
       toast({ title: "Selecione pelo menos 2 serviços para o combo", variant: "destructive" });
       return;
     }
-    const discountAmount = Number(comboForm.discountPercent);
-    if (!comboForm.discountPercent.trim() || !Number.isFinite(discountAmount) || discountAmount <= 0) {
+    if (!comboForm.discountEnabled && !comboForm.timeDiscountEnabled) {
+      toast({ title: "Escolha um desconto no valor ou uma economia de tempo", variant: "destructive" });
+      return;
+    }
+    const discountAmount = comboForm.discountEnabled ? Number(comboForm.discountPercent) : 0;
+    if (comboForm.discountEnabled && (!comboForm.discountPercent.trim() || !Number.isFinite(discountAmount) || discountAmount <= 0)) {
       toast({ title: "Informe um valor de desconto maior que zero", variant: "destructive" });
       return;
     }
@@ -690,9 +702,9 @@ export default function Settings() {
       toast({ title: "O desconto percentual não pode passar de 100%", variant: "destructive" });
       return;
     }
-    const timeDiscountMinutes = comboForm.timeDiscountMinutes.trim() === "" ? 0 : Number(comboForm.timeDiscountMinutes);
-    if (!Number.isInteger(timeDiscountMinutes) || timeDiscountMinutes < 0) {
-      toast({ title: "Informe uma economia de tempo válida em minutos", variant: "destructive" });
+    const timeDiscountMinutes = comboForm.timeDiscountEnabled ? Number(comboForm.timeDiscountMinutes) : 0;
+    if (comboForm.timeDiscountEnabled && (!comboForm.timeDiscountMinutes.trim() || !Number.isInteger(timeDiscountMinutes) || timeDiscountMinutes <= 0)) {
+      toast({ title: "Informe uma economia de tempo maior que zero", variant: "destructive" });
       return;
     }
     const autoName = comboForm.name.trim() ||
@@ -706,7 +718,7 @@ export default function Settings() {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
             setEditingComboId(null);
-            setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
+            setComboForm({ name: "", serviceIds: [], discountEnabled: false, discountPercent: "", discountType: "percent", timeDiscountEnabled: false, timeDiscountMinutes: "" });
             toast({ title: "Combo atualizado" });
           },
         },
@@ -718,7 +730,7 @@ export default function Settings() {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListComboDiscountsQueryKey() });
             setComboOpen(false);
-            setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
+            setComboForm({ name: "", serviceIds: [], discountEnabled: false, discountPercent: "", discountType: "percent", timeDiscountEnabled: false, timeDiscountMinutes: "" });
             toast({ title: "Combo criado" });
           },
         },
@@ -1152,7 +1164,7 @@ export default function Settings() {
           <div className="order-1 col-span-2 md:order-none md:col-span-1 md:flex md:items-center md:gap-3">
             <CardTitle className="text-base">Descontos por Combo</CardTitle>
             <CardDescription className="text-xs">
-              Desconto automático ao escolher 2+ serviços juntos
+              Desconto no valor e/ou economia de tempo em 2+ serviços
             </CardDescription>
           </div>
           <Button
@@ -1161,7 +1173,7 @@ export default function Settings() {
             className="order-3 justify-self-end gap-1.5 shrink-0 h-8 text-xs md:order-none"
             onClick={() => {
               setEditingComboId(null);
-              setComboForm({ name: "", serviceIds: [], discountPercent: "", discountType: "percent", timeDiscountMinutes: "" });
+              setComboForm({ name: "", serviceIds: [], discountEnabled: false, discountPercent: "", discountType: "percent", timeDiscountEnabled: false, timeDiscountMinutes: "" });
               setComboOpen(true);
             }}
           >
@@ -1179,6 +1191,15 @@ export default function Settings() {
                 const names = (c.serviceIds as number[]).map(
                   (id) => services?.find((s) => s.id === id)?.name || `#${id}`
                 ).join(" + ");
+                const benefits: string[] = [];
+                if (Number(c.discountPercent) > 0) {
+                  benefits.push(c.discountType === "value"
+                    ? `R$ ${Number(c.discountPercent).toFixed(2)} de desconto`
+                    : `${c.discountPercent}% de desconto`);
+                }
+                if ((c.timeDiscountMinutes ?? 0) > 0) {
+                  benefits.push(`Economia de ${c.timeDiscountMinutes} min`);
+                }
                 return (
                   <div
                     key={c.id}
@@ -1187,10 +1208,7 @@ export default function Settings() {
                     <div>
                       <p className="text-sm font-medium">{names}</p>
                       <p className="text-xs text-muted-foreground">
-                        {c.discountType === "value"
-                          ? `R$ ${Number(c.discountPercent).toFixed(2)} de desconto`
-                          : `${c.discountPercent}% de desconto`}
-                        {(c.timeDiscountMinutes ?? 0) > 0 ? ` · Economia de ${c.timeDiscountMinutes} min` : ""}
+                        {benefits.join(" · ") || "Sem benefício configurado"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1202,8 +1220,10 @@ export default function Settings() {
                           setComboForm({
                             name: c.name,
                             serviceIds: c.serviceIds as number[],
+                            discountEnabled: Number(c.discountPercent) > 0,
                             discountPercent: String(c.discountPercent),
                             discountType: (c.discountType as "percent" | "value") ?? "percent",
+                            timeDiscountEnabled: (c.timeDiscountMinutes ?? 0) > 0,
                             timeDiscountMinutes: c.timeDiscountMinutes == null ? "" : String(c.timeDiscountMinutes),
                           });
                           setComboOpen(true);
@@ -1263,81 +1283,122 @@ export default function Settings() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">Tipo de desconto</Label>
-                <div className="flex rounded-md overflow-hidden border border-border">
-                  <button
-                    type="button"
-                    onClick={() => setComboForm((current) => ({
-                      ...current,
-                      discountType: "percent",
-                      discountPercent: current.discountType === "percent" ? current.discountPercent : "",
-                    }))}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                      comboForm.discountType === "percent"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    % Porcentagem
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setComboForm((current) => ({
-                      ...current,
-                      discountType: "value",
-                      discountPercent: current.discountType === "value" ? current.discountPercent : "",
-                    }))}
-                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                      comboForm.discountType === "value"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    R$ Valor fixo
-                  </button>
+              <div className="rounded-md border border-border px-3 py-3 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="combo-discount-enabled" className="text-sm">Aplicar desconto no preço</Label>
+                  <p className="text-xs text-muted-foreground">Reduz o valor cobrado pelos serviços.</p>
                 </div>
+                <Switch
+                  id="combo-discount-enabled"
+                  data-testid="switch-combo-discount-enabled"
+                  checked={comboForm.discountEnabled}
+                  onCheckedChange={(checked) => setComboForm((current) => ({
+                    ...current,
+                    discountEnabled: checked,
+                    discountPercent: checked ? current.discountPercent : "",
+                  }))}
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">
-                  {comboForm.discountType === "value" ? "Valor do desconto (R$)" : "Desconto (%)"}
-                </Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                    {comboForm.discountType === "value" ? "R$" : "%"}
-                  </span>
-                  <Input
-                    type="number"
-                    min="0.01"
-                    max={comboForm.discountType === "percent" ? "100" : undefined}
-                    step={comboForm.discountType === "value" ? "0.50" : "1"}
-                    value={comboForm.discountPercent}
-                    onChange={(e) => setComboForm((current) => ({ ...current, discountPercent: e.target.value }))}
-                    className="h-9 pl-9"
-                  />
+              {comboForm.discountEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Tipo de desconto</Label>
+                    <div className="flex rounded-md overflow-hidden border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setComboForm((current) => ({
+                          ...current,
+                          discountType: "percent",
+                          discountPercent: current.discountType === "percent" ? current.discountPercent : "",
+                        }))}
+                        className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                          comboForm.discountType === "percent"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        % Porcentagem
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setComboForm((current) => ({
+                          ...current,
+                          discountType: "value",
+                          discountPercent: current.discountType === "value" ? current.discountPercent : "",
+                        }))}
+                        className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                          comboForm.discountType === "value"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        R$ Valor fixo
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs">
+                      {comboForm.discountType === "value" ? "Valor do desconto (R$)" : "Desconto (%)"}
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                        {comboForm.discountType === "value" ? "R$" : "%"}
+                      </span>
+                      <Input
+                        type="number"
+                        min="0.01"
+                        max={comboForm.discountType === "percent" ? "100" : undefined}
+                        step={comboForm.discountType === "value" ? "0.50" : "1"}
+                        value={comboForm.discountPercent}
+                        onChange={(e) => setComboForm((current) => ({ ...current, discountPercent: e.target.value }))}
+                        className="h-9 pl-9"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="rounded-md border border-border px-3 py-3 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="combo-time-discount-enabled" className="text-sm">Economia de tempo</Label>
+                  <p className="text-xs text-muted-foreground">Diminui a duração do agendamento.</p>
                 </div>
+                <Switch
+                  id="combo-time-discount-enabled"
+                  data-testid="switch-combo-time-discount-enabled"
+                  checked={comboForm.timeDiscountEnabled}
+                  onCheckedChange={(checked) => setComboForm((current) => ({
+                    ...current,
+                    timeDiscountEnabled: checked,
+                    timeDiscountMinutes: checked ? current.timeDiscountMinutes : "",
+                  }))}
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs">Economia de tempo (minutos)</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                    min
-                  </span>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={comboForm.timeDiscountMinutes}
-                    onChange={(e) => setComboForm((current) => ({ ...current, timeDiscountMinutes: e.target.value }))}
-                    className="h-9 pl-10"
-                  />
+              {comboForm.timeDiscountEnabled && (
+                <div className="space-y-2">
+                  <Label className="text-xs" htmlFor="combo-time-discount-minutes">Minutos de economia</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                      min
+                    </span>
+                    <Input
+                      id="combo-time-discount-minutes"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={comboForm.timeDiscountMinutes}
+                      onChange={(e) => setComboForm((current) => ({ ...current, timeDiscountMinutes: e.target.value }))}
+                      className="h-9 pl-10"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Ex: corte 35 min + barba 25 min = 60 min. Economia de 5 min = 55 min no agendamento.
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Ex: corte 35 min + barba 25 min = 60 min. Economia de 5 min = 55 min no agendamento.
-                </p>
-              </div>
+              )}
 
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setComboOpen(false)}>Cancelar</Button>
