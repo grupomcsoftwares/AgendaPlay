@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.19";
+export const APP_VERSION = "1.0.22";
 
 // Keep the EAS artifact as the server-side source, but expose a same-origin
 // download endpoint to Android/Fire TV browsers. EAS first redirects through
