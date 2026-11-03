@@ -58,6 +58,9 @@ router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
+  // Keep each SSE request short so deployment request-latency metrics do not
+  // treat the intentionally open stream as a multi-minute API response.
+  res.write("retry: 3000\n\n");
   res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
 
   addSseClient(userId, res);
@@ -66,9 +69,13 @@ router.get("/queue/subscribe", requireActiveAuth, async (req, res): Promise<void
   const heartbeat = setInterval(() => {
     res.write(`:ping\n\n`);
   }, 30000);
+  const maxStreamDuration = setTimeout(() => {
+    res.end();
+  }, 2000);
 
   req.on("close", () => {
     clearInterval(heartbeat);
+    clearTimeout(maxStreamDuration);
     removeSseClient(userId, res);
     req.log.info(
       { event: "queue_sse_close", durationMs: Date.now() - streamStartedAt },

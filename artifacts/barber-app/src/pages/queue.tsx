@@ -194,12 +194,20 @@ function QueueContent() {
     const apiBase = import.meta.env.VITE_API_URL || "";
     const sseUrl = `${apiBase}/api/queue/subscribe`;
     const source = new EventSource(sseUrl, { withCredentials: true });
+    let hasConnectedOnce = false;
 
     source.addEventListener("message", (e) => {
       try {
         const data = JSON.parse(e.data);
         if (data.type === "queue_updated") {
           queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
+        } else if (data.type === "connected") {
+          // SSE streams are intentionally short-lived; refresh on reconnect so
+          // updates during the brief reconnect window are not missed.
+          if (hasConnectedOnce) {
+            queryClient.invalidateQueries({ queryKey: getListQueueQueryKey() });
+          }
+          hasConnectedOnce = true;
         }
       } catch {
         // ignore malformed
