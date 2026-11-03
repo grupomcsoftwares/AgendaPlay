@@ -18,7 +18,7 @@
 - [Editable settings contracts](settings-input-contracts.md) — editable fields must exist in the request schema, not only the response schema, or updates can be silently discarded.
 - [Booking day pricing and combos](booking-day-pricing-combos.md) — combo totals must use each service's effective price for the selected day, not its base price.
 - [GitHub source-control connection](github-source-control-connection.md) — GitHub OAuth integration and Replit Git push credentials are separate; EAS GitHub builds need the latter.
-- [EAS monorepo .easignore](eas-monorepo-easignore.md) — EAS archives from repo root; root .easignore rules, and workspace deps (lib/) must stay in the archive.
+- [EAS monorepo builds](eas-monorepo-easignore.md) — EAS archives from repo root; keep workspace deps and use pnpm 10.26+ `allowBuilds` for approved install scripts.
 - [APK release versioning](apk-release-versioning.md) — changing the app version after a build does not update installed APKs; bump versionCode and release a fresh artifact before updating the server link.
 - [Expo/EAS version alignment](expo-eas-version-alignment.md) — keep Expo native modules on the same SDK major and use one authoritative Expo version before EAS builds.
 - [Queue state source](queue-state-source.md) — reading the live queue must be side-effect-free; only an explicit barber action may start an entry.
