@@ -1,6 +1,4 @@
 import { Router, type IRouter } from "express";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
 export const APP_VERSION = "1.0.23";
@@ -30,50 +28,9 @@ router.get("/app-download.apk", async (req, res): Promise<void> => {
     return;
   }
 
-  try {
-    const range = typeof req.headers.range === "string" ? req.headers.range : undefined;
-    const upstream = await fetch(APK_SOURCE_URL, {
-      redirect: "follow",
-      headers: range ? { Range: range } : undefined,
-    });
-    if (!upstream.ok || !upstream.body) {
-      if (upstream.status === 404) {
-        res.status(404).json({ error: "Nenhuma atualização disponível." });
-        return;
-      }
-
-      console.error("APK download source unavailable", {
-        status: upstream.status,
-        hasBody: Boolean(upstream.body),
-      });
-      res.status(502).json({ error: "Não foi possível obter a atualização." });
-      return;
-    }
-
-    res.status(upstream.status === 206 ? 206 : 200);
-    res.setHeader("Content-Type", "application/vnd.android.package-archive");
-    res.setHeader("Content-Disposition", 'attachment; filename="agenda-play.apk"');
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.setHeader("Accept-Ranges", "bytes");
-    const contentLength = upstream.headers.get("content-length");
-    if (contentLength) res.setHeader("Content-Length", contentLength);
-    const contentRange = upstream.headers.get("content-range");
-    if (contentRange) res.setHeader("Content-Range", contentRange);
-
-    await pipeline(
-      Readable.fromWeb(upstream.body as Parameters<typeof Readable.fromWeb>[0]),
-      res,
-    );
-  } catch (error) {
-    console.error("APK download proxy failed", {
-      message: error instanceof Error ? error.message : "unknown error",
-    });
-    if (!res.headersSent) {
-      res.status(502).json({ error: "Não foi possível obter a atualização." });
-    } else {
-      res.destroy(error instanceof Error ? error : undefined);
-    }
-  }
+  // Do not proxy the 88 MB APK through the API process: the long response was
+  // ending as a premature-close 5xx. Let the browser download from Expo's CDN.
+  res.redirect(302, APK_SOURCE_URL);
 });
 
 export default router;
