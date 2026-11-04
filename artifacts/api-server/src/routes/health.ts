@@ -3,10 +3,8 @@ import { HealthCheckResponse } from "@workspace/api-zod";
 
 export const APP_VERSION = "1.0.23";
 
-// Keep the EAS artifact as the server-side source, but expose a same-origin
-// download endpoint to Android/Fire TV browsers. EAS first redirects through
-// expo.dev and then to a temporary signed CDN URL, which Silk Browser can fail
-// to follow as an APK download.
+// Keep the app-facing download URL stable, but redirect the browser to EAS's
+// CDN so the API process does not relay the large APK body.
 export const APK_SOURCE_URL: string | null =
   "https://expo.dev/artifacts/eas/1eX9GL2MjmHDbe-WYqjGb1Hr9twlHxVqarGKlAHqo4c.apk";
 export const APK_URL: string | null = "https://agendaplay.net/api/app-download.apk";
