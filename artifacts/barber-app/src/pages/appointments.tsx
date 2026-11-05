@@ -112,8 +112,16 @@ export default function Appointments() {
 
   const { data: services } = useListServices(undefined, { query: { queryKey: getListServicesQueryKey() } });
   const { data: clients } = useListClients({}, { query: { queryKey: getListClientsQueryKey({}) } });
-  const { data: barbers } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
-  const { data: settings } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
+  const {
+    data: barbers,
+    isLoading: barbersLoading,
+    isError: barbersError,
+  } = useListBarbers(undefined, { query: { queryKey: getListBarbersQueryKey() } });
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+  } = useGetSettings(undefined, { query: { queryKey: getGetSettingsQueryKey() } });
   const { data: comboDiscounts } = useListComboDiscounts(undefined, { query: { queryKey: getListComboDiscountsQueryKey() } });
 
   // Subscriber monthly cut usage — used to warn barber when a client is at their limit
@@ -335,6 +343,15 @@ export default function Appointments() {
   // Settings, starting today and showing exactly that many days.
   const agendaDayOptions = useMemo(() => {
     const selectedBarber = barbers?.find((barber) => barber.id.toString() === formData.barberId);
+    const hasBarberSchedule = selectedBarber?.weeklySchedule != null;
+    const scheduleLoading = formData.barberId
+      ? barbersLoading || (!hasBarberSchedule && settingsLoading)
+      : settingsLoading;
+    const scheduleFailed = formData.barberId
+      ? (barbersError && !barbers) || (!hasBarberSchedule && settingsError && !settings)
+      : settingsError && !settings;
+    if (scheduleLoading || scheduleFailed) return [];
+
     const weeklySchedule = (selectedBarber?.weeklySchedule ?? settings?.weeklySchedule) as
       | Partial<Record<typeof WEEKDAY_KEYS[number], { closed?: boolean }>>
       | null
@@ -344,7 +361,25 @@ export default function Appointments() {
       d.setDate(bookingWindowStart.getDate() + i);
       return d;
     }).filter((day) => !weeklySchedule?.[WEEKDAY_KEYS[day.getDay()]]?.closed);
-  }, [barbers, bookingWindowStart, formData.barberId, maxBookingDays, settings?.weeklySchedule]);
+  }, [
+    barbers,
+    barbersError,
+    barbersLoading,
+    bookingWindowStart,
+    formData.barberId,
+    maxBookingDays,
+    settings,
+    settingsError,
+    settingsLoading,
+  ]);
+  const selectedBarber = barbers?.find((barber) => barber.id.toString() === formData.barberId);
+  const hasBarberSchedule = selectedBarber?.weeklySchedule != null;
+  const isAgendaScheduleLoading = formData.barberId
+    ? barbersLoading || (!hasBarberSchedule && settingsLoading)
+    : settingsLoading;
+  const hasAgendaScheduleError = formData.barberId
+    ? (barbersError && !barbers) || (!hasBarberSchedule && settingsError && !settings)
+    : settingsError && !settings;
   // The create-appointment picker uses the same configured window as the
   // agenda strip and updates when settings finish loading.
   const dayOptions = agendaDayOptions;
@@ -353,7 +388,7 @@ export default function Appointments() {
   // still starts at today and would leave every visible day unselected. Once
   // the schedule is known, move the agenda to the first open day instead.
   useEffect(() => {
-    if (!settings || agendaDayOptions.length === 0) return;
+    if (isAgendaScheduleLoading || hasAgendaScheduleError || agendaDayOptions.length === 0) return;
 
     const selectedDayIsOpen = agendaDayOptions.some(
       (day) => sameDay(day, dateStart) && sameDay(day, dateEnd),
@@ -364,7 +399,7 @@ export default function Appointments() {
     if (!nextOpenDay) return;
     setDateStart(nextOpenDay);
     setDateEnd(nextOpenDay);
-  }, [agendaDayOptions, dateEnd, dateStart, settings]);
+  }, [agendaDayOptions, dateEnd, dateStart, hasAgendaScheduleError, isAgendaScheduleLoading]);
 
   const selectAgendaDay = (day: Date) => {
     setDateStart(day);
@@ -1032,7 +1067,15 @@ export default function Appointments() {
           <span className="text-sm font-medium text-foreground">Data</span>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-          {agendaDayOptions.map((day) => {
+          {isAgendaScheduleLoading ? (
+            <span className="py-2 text-sm text-muted-foreground" role="status">
+              Carregando dias de funcionamento…
+            </span>
+          ) : hasAgendaScheduleError ? (
+            <span className="py-2 text-sm text-destructive" role="alert">
+              Não foi possível carregar os dias de funcionamento.
+            </span>
+          ) : agendaDayOptions.map((day) => {
             const selected = sameDay(day, dateStart) && sameDay(day, dateEnd);
             const today = sameDay(day, new Date());
             return (
