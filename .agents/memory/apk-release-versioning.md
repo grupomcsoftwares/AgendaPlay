@@ -9,8 +9,8 @@ The update dialog displays the version bundled into the installed APK, not the v
 
 **How to apply:** Before distributing an APK, validate the resolved Expo config, increment Android `versionCode`, build a fresh artifact, verify its EAS metadata, then update the server's APK URL. Publish the server change before asking users to install the update.
 
-For Amazon Fire TV, do not expose the Expo artifact URL directly to the update button. Proxy the APK through the published AgendaPlay API with Android download headers and byte-range support.
+Keep the app-facing APK URL on AgendaPlay, but redirect the browser to the EAS CDN instead of streaming the APK through the API.
 
-**Why:** Silk Browser can fail when following Expo's redirect chain to its temporary signed CDN URL, especially for large APK downloads or resumed transfers.
+**Why:** Proxying the 84 MB APK produced premature stream closures and 5xx responses on full downloads; the original EAS artifact was intact, and a full CDN download matched it.
 
-**How to apply:** Keep the EAS URL server-side, return a same-origin `/api/app-download.apk` URL from `/api/app-version`, and preserve `Content-Disposition`, `Content-Length`, `Accept-Ranges`, and `Content-Range`.
+**How to apply:** Return a stable same-origin `/api/app-download.apk` URL from `/api/app-version`, then redirect that endpoint to the current EAS artifact URL. Verify a complete download and test the target Android browser, since device-level redirect behavior is not covered by server tests.
