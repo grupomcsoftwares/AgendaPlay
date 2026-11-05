@@ -342,38 +342,69 @@ function AppointmentChooser({
   );
 }
 
-function StepIndicator({ current, labels }: { current: number; labels: readonly string[] }) {
+function StepIndicator({
+  current,
+  labels,
+  compactOnMobile = false,
+}: {
+  current: number;
+  labels: readonly string[];
+  compactOnMobile?: boolean;
+}) {
   return (
-    <div
-      className="grid gap-3 w-full"
-      style={{ gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))` }}
-    >
-      {labels.map((label, i) => {
-        const idx = i + 1;
-        const isActive = idx <= current;
-        return (
-          <div key={label} className="flex flex-col items-stretch gap-2">
-            <div
-              style={{
-                height: 2,
-                borderRadius: 2,
-                backgroundColor: isActive ? AMBER : "hsl(0 0% 22%)",
-                transition: "background-color 0.2s",
-              }}
-            />
-            <span
-              className="text-center text-xs"
-              style={{
-                color: isActive ? "hsl(var(--foreground))" : "hsl(0 0% 45%)",
-                fontWeight: idx === current ? 600 : 400,
-              }}
-            >
-              {label}
-            </span>
+    <>
+      {compactOnMobile && (
+        <div className="space-y-2 sm:hidden" aria-label={`Etapa ${current} de ${labels.length}`}>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-muted-foreground">Etapa {current} de {labels.length}</span>
+            <span className="font-semibold text-foreground">{labels[current - 1]}</span>
           </div>
-        );
-      })}
-    </div>
+          <div
+            className="h-1.5 overflow-hidden rounded-full bg-white/10"
+            role="progressbar"
+            aria-valuemin={1}
+            aria-valuemax={labels.length}
+            aria-valuenow={current}
+            aria-label="Progresso do agendamento"
+          >
+            <div
+              className="h-full rounded-full transition-[width] duration-300"
+              style={{ width: `${(current / labels.length) * 100}%`, backgroundColor: AMBER }}
+            />
+          </div>
+        </div>
+      )}
+      <div
+        className={`${compactOnMobile ? "hidden sm:grid" : "grid"} gap-3 w-full`}
+        style={{ gridTemplateColumns: `repeat(${labels.length}, minmax(0, 1fr))` }}
+      >
+        {labels.map((label, i) => {
+          const idx = i + 1;
+          const isActive = idx <= current;
+          return (
+            <div key={label} className="flex flex-col items-stretch gap-2">
+              <div
+                style={{
+                  height: 2,
+                  borderRadius: 2,
+                  backgroundColor: isActive ? AMBER : "hsl(0 0% 22%)",
+                  transition: "background-color 0.2s",
+                }}
+              />
+              <span
+                className="text-center text-xs"
+                style={{
+                  color: isActive ? "hsl(var(--foreground))" : "hsl(0 0% 45%)",
+                  fontWeight: idx === current ? 600 : 400,
+                }}
+              >
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -1083,6 +1114,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   const indicatorStep = needsBarberStep
     ? (step === 0 ? 1 : pickingBarber ? 2 : step === 1 ? 3 : step + 2)
     : step + 1;
+  const isDaySelectionScreen = step === 1 && !pickingBarber;
 
   // Auto-select the single barber (or none) and skip the picker.
   useEffect(() => {
@@ -1351,14 +1383,14 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground py-10 px-4 flex flex-col items-center">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center space-y-4">
+    <div className={`min-h-screen bg-background text-foreground px-4 flex flex-col items-center ${isDaySelectionScreen ? "py-6 sm:py-10" : "py-10"}`}>
+      <div className={`max-w-md w-full ${isDaySelectionScreen ? "space-y-5 sm:space-y-8" : "space-y-8"}`}>
+        <div className={`text-center ${isDaySelectionScreen ? "space-y-2" : "space-y-4"}`}>
           <div
             className="mx-auto rounded-full flex items-center justify-center overflow-hidden"
             style={{
-              width: 88,
-              height: 88,
+              width: isDaySelectionScreen ? 64 : 88,
+              height: isDaySelectionScreen ? 64 : 88,
               backgroundColor: AMBER_SOFT,
               border: `2px solid ${AMBER}`,
               color: AMBER,
@@ -1375,7 +1407,9 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
               <Scissors className="w-9 h-9" />
             )}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">{settings?.barbershopName || "Barbearia"}</h1>
+          <h1 className={`${isDaySelectionScreen ? "text-xl sm:text-2xl" : "text-2xl"} font-bold tracking-tight`}>
+            {settings?.barbershopName || "Barbearia"}
+          </h1>
         </div>
 
         {/* Link desativado pelo dono da barbearia */}
@@ -1392,7 +1426,13 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
           </div>
         )}
 
-        {(settings as any)?.bookingEnabled !== false && <StepIndicator current={indicatorStep} labels={stepLabels} />}
+        {(settings as any)?.bookingEnabled !== false && (
+          <StepIndicator
+            current={indicatorStep}
+            labels={stepLabels}
+            compactOnMobile={isDaySelectionScreen}
+          />
+        )}
 
         {(settings as any)?.bookingEnabled !== false && activeWaitlistEntry && (
           <div
@@ -1909,7 +1949,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
         {(settings as any)?.bookingEnabled !== false && <Card className="border-border bg-card shadow-2xl overflow-hidden" style={{ display: (step === 0 || step === 2 || (step === 1 && pickingBarber)) ? "none" : "block" }}>
 
           {step === 1 && !pickingBarber && (
-            <CardContent className="p-6 space-y-6">
+            <CardContent className={`space-y-4 p-4 sm:space-y-6 sm:p-6`}>
               <button
                 type="button"
                 onClick={() => {
@@ -1933,8 +1973,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
 
               <div className="space-y-3">
                 <div
-                  className="flex gap-2 overflow-x-auto pb-2"
-                  style={{ scrollbarWidth: "thin" }}
+                  className="date-scroller flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1"
                   data-testid="date-scroller"
                 >
                   {bookingDayOptions.map((day, index) => {
@@ -1947,28 +1986,31 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                         type="button"
                         onClick={() => setFormData((previous) => ({ ...previous, date: day, time: "" }))}
                         data-testid={`button-date-${index}`}
-                        className="flex flex-col items-center justify-center rounded-xl flex-shrink-0"
+                        className="flex snap-start flex-col items-center justify-center rounded-xl flex-shrink-0 transition-colors"
+                        aria-pressed={isSelected}
+                        aria-label={`${weekdays[day.getDay()]}, ${day.getDate()} de ${months[day.getMonth()]}${index === 0 ? ", hoje" : ""}`}
                         style={{
                           width: 68,
                           paddingTop: 12,
                           paddingBottom: 12,
-                          backgroundColor: "hsl(0 0% 9%)",
+                          backgroundColor: isSelected ? AMBER : "hsl(0 0% 9%)",
                           border: `1px solid ${isSelected ? AMBER : "hsl(0 0% 14%)"}`,
+                          color: isSelected ? "hsl(0 0% 10%)" : "hsl(var(--foreground))",
                           cursor: "pointer",
                         }}
                       >
-                        <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", color: "hsl(0 0% 75%)" }}>
+                        <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", color: isSelected ? "hsl(0 0% 15%)" : "hsl(0 0% 75%)" }}>
                           {weekdays[day.getDay()]}
                         </span>
                         {index === 0 && (
-                          <span style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.05em", color: AMBER, marginTop: 2 }}>
+                          <span style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.05em", color: isSelected ? "hsl(0 0% 15%)" : AMBER, marginTop: 2 }}>
                             HOJE
                           </span>
                         )}
                         <span style={{ fontSize: "1.4rem", fontWeight: 700, marginTop: index === 0 ? 2 : 6, lineHeight: 1 }}>
                           {day.getDate()}
                         </span>
-                        <span style={{ fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.05em", color: "hsl(0 0% 55%)", marginTop: 4 }}>
+                        <span style={{ fontSize: "0.6rem", fontWeight: 600, letterSpacing: "0.05em", color: isSelected ? "hsl(0 0% 20%)" : "hsl(0 0% 55%)", marginTop: 4 }}>
                           {months[day.getMonth()]}
                         </span>
                       </button>
@@ -1980,9 +2022,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
                     Não há dias de atendimento disponíveis neste período.
                   </p>
                 ) : (
-                  <p className="text-center text-xs" style={{ color: "hsl(0 0% 45%)", letterSpacing: "0.05em" }}>
-                    ARRASTE PARA VER MAIS
-                  </p>
+                  <p className="sr-only">Deslize horizontalmente para ver outras datas.</p>
                 )}
               </div>
 

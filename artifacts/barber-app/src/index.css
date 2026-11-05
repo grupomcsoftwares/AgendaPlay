@@ -167,6 +167,16 @@
   transform-origin: center;
 }
 
+.date-scroller {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.date-scroller::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .promotion-badge {
     animation: none;
