@@ -48,21 +48,23 @@ export default function LoginScreen() {
 
   if (loading) {
     return (
-      <View style={styles.launchLoading}>
+      <View style={[styles.launchLoading, isTV && styles.tvLaunchLoading]}>
         <Image
           source={require("../assets/images/logo.png")}
-          style={styles.launchLogo}
+          style={[styles.launchLogo, isTV && styles.tvLaunchLogo]}
           resizeMode="contain"
           accessibilityLabel="Logo AgendaPlay"
         />
-        <Text style={styles.launchBrand}>AgendaPlay</Text>
+        <Text style={[styles.launchBrand, isTV && styles.tvLaunchBrand]}>AgendaPlay</Text>
         <ActivityIndicator
           size="large"
           color="#c9a84c"
-          style={styles.launchSpinner}
+          style={[styles.launchSpinner, isTV && styles.tvLaunchSpinner]}
           accessibilityLabel="Carregando"
         />
-        <Text style={styles.launchMessage}>Carregando seu sistema...</Text>
+        <Text style={[styles.launchMessage, isTV && styles.tvLaunchMessage]}>
+          Carregando seu sistema...
+        </Text>
       </View>
     );
   }
@@ -196,20 +198,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#0c0c0c",
     paddingHorizontal: 24,
   },
+  tvLaunchLoading: { paddingHorizontal: 48 },
   launchLogo: { width: 220, height: 220 },
+  tvLaunchLogo: { width: 320, height: 320 },
   launchBrand: {
     color: "#f5f5f5",
     fontSize: 22,
     fontWeight: "700",
     marginTop: 4,
   },
+  tvLaunchBrand: { fontSize: 30 },
   launchSpinner: { marginTop: 28 },
+  tvLaunchSpinner: { marginTop: 36 },
   launchMessage: {
     color: "#999",
     fontSize: 14,
     marginTop: 14,
     textAlign: "center",
   },
+  tvLaunchMessage: { fontSize: 18 },
   scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   tvScroll: { paddingVertical: 12 },
   logo: { width: 200, height: 200, marginBottom: 16 },
