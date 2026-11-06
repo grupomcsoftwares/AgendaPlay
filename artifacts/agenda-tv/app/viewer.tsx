@@ -273,7 +273,7 @@ export default function ViewerScreen() {
             style={[
               styles.backBtn,
               styles.backBtnTv,
-              { top: isTV ? 8 : insets.top + 8 },
+              { top: isTV ? 2 : insets.top + 8 },
               backFocused && styles.backBtnFocused,
             ]}
             onPress={() => void handleExit()}
@@ -433,7 +433,7 @@ export default function ViewerScreen() {
               style={[
                 styles.backBtn,
                 isTV && styles.backBtnTv,
-                { top: isTV ? 8 : insets.top + 12 },
+                { top: isTV ? 2 : insets.top + 12 },
                 backFocused && styles.backBtnFocused,
               ]}
               onPress={() => (isTV ? void handleExit() : router.back())}
@@ -515,10 +515,10 @@ const styles = StyleSheet.create({
     borderColor: "#333",
   },
   backBtnTv: {
-    left: 8,
+    left: 14,
     width: 52,
     minWidth: 52,
-    height: 28,
+    height: 24,
     paddingHorizontal: 5,
     borderRadius: 7,
     backgroundColor: "rgba(12,12,12,0.94)",
