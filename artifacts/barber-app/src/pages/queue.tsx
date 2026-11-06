@@ -406,16 +406,21 @@ function QueueContent() {
         className="flex items-center justify-between"
         style={{ height: "3em", padding: "0 1.5em", borderBottom: "1px solid hsl(0 0% 10%)", flexShrink: 0 }}
       >
-        <div className="flex items-center" style={{ gap: "0.75em" }}>
-          <Link href="/">
-            <button
-              className="flex items-center opacity-40 hover:opacity-70 transition-opacity"
-              style={{ color: "hsl(var(--foreground))", background: "none", border: "none", cursor: "pointer", marginRight: "0.75em" }}
-              data-testid="button-back-queue"
-            >
-              <ArrowLeft style={{ width: "0.9em", height: "0.9em" }} />
-            </button>
-          </Link>
+        <div
+          className="flex items-center"
+          style={{ gap: "0.75em", marginLeft: tvView ? "5.5em" : undefined }}
+        >
+          {!tvView && (
+            <Link href="/">
+              <button
+                className="flex items-center opacity-40 hover:opacity-70 transition-opacity"
+                style={{ color: "hsl(var(--foreground))", background: "none", border: "none", cursor: "pointer", marginRight: "0.75em" }}
+                data-testid="button-back-queue"
+              >
+                <ArrowLeft style={{ width: "0.9em", height: "0.9em" }} />
+              </button>
+            </Link>
+          )}
           <Scissors style={{ width: "1em", height: "1em", color: "hsl(var(--sidebar-primary))" }} />
           <span style={{ fontWeight: 700, fontSize: "0.85em", letterSpacing: "0.08em", textTransform: "uppercase" }}>
             Fila ao Vivo
