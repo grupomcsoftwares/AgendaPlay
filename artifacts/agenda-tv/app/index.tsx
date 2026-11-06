@@ -46,6 +46,27 @@ export default function LoginScreen() {
     }
   }, [user, loading, isTV, router]);
 
+  if (loading) {
+    return (
+      <View style={styles.launchLoading}>
+        <Image
+          source={require("../assets/images/logo.png")}
+          style={styles.launchLogo}
+          resizeMode="contain"
+          accessibilityLabel="Logo AgendaPlay"
+        />
+        <Text style={styles.launchBrand}>AgendaPlay</Text>
+        <ActivityIndicator
+          size="large"
+          color="#c9a84c"
+          style={styles.launchSpinner}
+          accessibilityLabel="Carregando"
+        />
+        <Text style={styles.launchMessage}>Carregando seu sistema...</Text>
+      </View>
+    );
+  }
+
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;
     setError("");
@@ -168,6 +189,27 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0c0c0c" },
+  launchLoading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0c0c0c",
+    paddingHorizontal: 24,
+  },
+  launchLogo: { width: 220, height: 220 },
+  launchBrand: {
+    color: "#f5f5f5",
+    fontSize: 22,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  launchSpinner: { marginTop: 28 },
+  launchMessage: {
+    color: "#999",
+    fontSize: 14,
+    marginTop: 14,
+    textAlign: "center",
+  },
   scroll: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   tvScroll: { paddingVertical: 12 },
   logo: { width: 200, height: 200, marginBottom: 16 },
