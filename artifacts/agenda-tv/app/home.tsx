@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { isTvDevice } from "@/lib/device";
+import { downloadAndInstallApk } from "@/lib/apkInstaller";
 import { PROD_BASE } from "@/lib/webviewSecurity";
 
 const MODES = [
@@ -225,7 +226,9 @@ export default function HomeScreen() {
         latestVersion={latestVersion}
         apkUrl={apkUrl ?? undefined}
         onDismiss={dismiss}
-        onUpdate={() => apkUrl && Linking.openURL(apkUrl)}
+        onUpdate={(onProgress) =>
+          apkUrl ? downloadAndInstallApk(apkUrl, onProgress) : Promise.resolve()
+        }
       />
     </View>
   );

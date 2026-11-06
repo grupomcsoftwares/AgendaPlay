@@ -55,6 +55,8 @@
   },
   "dependencies": {
     "expo": "~54.0.37",
+    "expo-file-system": "~19.0.24",
+    "expo-intent-launcher": "~13.0.8",
     "expo-keep-awake": "~15.0.8",
     "expo-notifications": "~0.32.17",
     "react": "19.1.0",

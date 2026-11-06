@@ -22,6 +22,7 @@ import { useUpdateCheck } from "@/hooks/useUpdateCheck";
 import UpdateDialog from "@/components/UpdateDialog";
 import { getNativePushStatus, registerNativePush, unregisterNativePush } from "@/lib/nativePush";
 import { isTvDevice } from "@/lib/device";
+import { downloadAndInstallApk } from "@/lib/apkInstaller";
 import {
   isAllowedAppUrl,
   isAllowedBillingUrl,
@@ -578,7 +579,9 @@ export default function DashboardScreen() {
         latestVersion={latestVersion}
         apkUrl={apkUrl ?? undefined}
         onDismiss={dismiss}
-        onUpdate={() => apkUrl && Linking.openURL(apkUrl)}
+        onUpdate={(onProgress) =>
+          apkUrl ? downloadAndInstallApk(apkUrl, onProgress) : Promise.resolve()
+        }
       />
     </View>
   );

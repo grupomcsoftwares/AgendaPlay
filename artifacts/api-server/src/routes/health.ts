@@ -26,9 +26,38 @@ router.get("/app-download.apk", async (req, res): Promise<void> => {
     return;
   }
 
-  // Do not proxy the 88 MB APK through the API process: the long response was
-  // ending as a premature-close 5xx. Let the browser download from Expo's CDN.
-  res.redirect(302, APK_SOURCE_URL);
+  const artifactId = APK_SOURCE_URL.match(/\/artifacts\/eas\/([^/]+)\.apk$/)?.[1];
+  if (!artifactId) {
+    res.status(500).json({ error: "O link da atualização está inválido." });
+    return;
+  }
+
+  try {
+    // Resolve Expo's stable artifact URL server-side, then send the browser
+    // directly to the signed APK CDN URL to avoid Silk's multi-hop redirect.
+    const artifactResponse = await fetch(
+      `https://api.expo.dev/v2/artifacts/eas/${artifactId}`,
+      { method: "HEAD", redirect: "manual" },
+    );
+    const downloadUrl = artifactResponse.headers.get("location");
+    if (!downloadUrl) {
+      res.status(502).json({ error: "Não foi possível localizar o arquivo da atualização." });
+      return;
+    }
+
+    const target = new URL(downloadUrl);
+    if (
+      target.protocol !== "https:" ||
+      target.hostname !== "wf-artifacts.eascdn.net"
+    ) {
+      res.status(502).json({ error: "O destino da atualização não é confiável." });
+      return;
+    }
+
+    res.redirect(302, target.toString());
+  } catch {
+    res.status(502).json({ error: "Não foi possível preparar o download." });
+  }
 });
 
 export default router;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AppState } from "react-native";
+import Constants from "expo-constants";
 import { isAllowedApkUrl, PROD_BASE } from "@/lib/webviewSecurity";
 
 const API_BASE = `${PROD_BASE}/api`;
@@ -13,7 +14,8 @@ export type UpdateInfo = {
   dismiss: () => void;
 };
 
-export const APP_VERSION = "1.0.23";
+export const APP_VERSION =
+  Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? "0.0.0";
 
 /** Returns true only when `server` is a valid version strictly greater than `current`. */
 function isNewerVersion(server: string, current: string): boolean {
