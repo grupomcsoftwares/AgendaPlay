@@ -21,7 +21,7 @@
 - [EAS monorepo builds](eas-monorepo-easignore.md) — EAS archives from repo root; keep workspace deps and use pnpm 10.26+ `allowBuilds` for approved install scripts.
 - [APK release versioning](apk-release-versioning.md) — changing the app version after a build does not update installed APKs; bump versionCode and release a fresh artifact before updating the server link.
 - [Expo/EAS version alignment](expo-eas-version-alignment.md) — keep Expo native modules on the same SDK major and use one authoritative Expo version before EAS builds.
-- [Queue state source](queue-state-source.md) — reading the live queue must be side-effect-free; only an explicit barber action may start an entry.
+- [Queue state and display ordering](queue-state-source.md) — queue reads stay side-effect-free; active TV cards sort by start time, with idle barbers after them.
 - [Loyalty point expiry](loyalty-point-expiry.md) — expiry is inactivity-based on the aggregate balance timestamp; 0 disables expiry and legacy configs default to 0.
 - [Mobile WebView navigation](mobile-webview-navigation.md) — keep the phone dashboard WebView mounted and navigate categories with in-page history to avoid reload flashes.
 - [New booking from appointment link](new-booking-from-appointment-link.md) — navigate in the same tab and fall back to the appointment owner when old links omit shopId.

@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { orderBarbersForLiveQueue } from "./barberQueueOrdering";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -184,6 +185,7 @@ function QueueContent() {
   const activeEntries = queue?.filter((q) => q.status === "in_progress") ?? [];
   const currentEntry = activeEntries[0] ?? null;
   const waitingQueue = queue?.filter((q) => q.status === "waiting") ?? [];
+  const orderedBarbers = orderBarbersForLiveQueue(barbers ?? [], queue ?? []);
 
   const prevEntryId = useRef("");
 
@@ -466,7 +468,7 @@ function QueueContent() {
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", overflowY: "auto" }}
             data-testid="queue-barber-grid"
           >
-            {(barbers ?? []).map((barber) => {
+            {orderedBarbers.map((barber) => {
               const entry = activeEntries.find((candidate) => candidate.barberId === barber.id);
               return (
                 <div
