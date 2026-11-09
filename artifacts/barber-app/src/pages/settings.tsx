@@ -165,6 +165,11 @@ export default function Settings() {
     timeDiscountEnabled: false,
     timeDiscountMinutes: "",
   });
+  const selectedComboServices = (services ?? []).filter((service) => comboForm.serviceIds.includes(service.id));
+  const selectedComboPrice = selectedComboServices.reduce((total, service) => total + Number(service.price || 0), 0);
+  const selectedComboDuration = selectedComboServices.reduce((total, service) => total + Number(service.durationMinutes || 0), 0);
+  const formatComboCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
   const [slugValue, setSlugValue] = useState(user?.slug ?? "");
   const [slugEditMode, setSlugEditMode] = useState(false);
@@ -1194,7 +1199,7 @@ export default function Settings() {
                 const benefits: string[] = [];
                 if (Number(c.discountPercent) > 0) {
                   benefits.push(c.discountType === "value"
-                    ? `R$ ${Number(c.discountPercent).toFixed(2)} de desconto`
+                    ? `Desconto fixo: ${formatComboCurrency(Number(c.discountPercent))}`
                     : `${c.discountPercent}% de desconto`);
                 }
                 if ((c.timeDiscountMinutes ?? 0) > 0) {
@@ -1207,9 +1212,15 @@ export default function Settings() {
                   >
                     <div>
                       <p className="text-sm font-medium">{names}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {benefits.join(" · ") || "Sem benefício configurado"}
-                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {benefits.length > 0 ? benefits.map((benefit) => (
+                          <span key={benefit} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                            {benefit}
+                          </span>
+                        )) : (
+                          <span className="text-xs text-muted-foreground">Sem benefício configurado</span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
@@ -1276,10 +1287,33 @@ export default function Settings() {
                           className="h-4 w-4 accent-primary"
                         />
                         <span className="flex-1">{s.name}</span>
-                        <span className="text-xs text-muted-foreground">{s.durationMinutes} min</span>
+                        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {comboForm.discountEnabled && comboForm.discountType === "value" && (
+                            <span className="font-medium text-foreground">
+                              {formatComboCurrency(Number(s.price || 0))}
+                            </span>
+                          )}
+                          <span>{s.durationMinutes} min</span>
+                        </span>
                       </label>
                     ))}
                   </div>
+                )}
+                {comboForm.serviceIds.length >= 2 && comboForm.discountEnabled && comboForm.discountType === "value" && (
+                  <p className="text-xs text-muted-foreground">
+                    Valor dos serviços: <span className="font-medium text-foreground">{formatComboCurrency(selectedComboPrice)}</span>
+                    {Number(comboForm.discountPercent) > 0 && (
+                      <> · Total com desconto: <span className="font-medium text-foreground">{formatComboCurrency(Math.max(0, selectedComboPrice - Number(comboForm.discountPercent)))}</span></>
+                    )}
+                  </p>
+                )}
+                {comboForm.serviceIds.length >= 2 && comboForm.timeDiscountEnabled && (
+                  <p className="text-xs text-muted-foreground">
+                    Duração: <span className="font-medium text-foreground">{selectedComboDuration} min</span>
+                    {Number(comboForm.timeDiscountMinutes) > 0 && (
+                      <> · Com economia: <span className="font-medium text-foreground">{Math.max(5, selectedComboDuration - Number(comboForm.timeDiscountMinutes))} min</span></>
+                    )}
+                  </p>
                 )}
               </div>
 
