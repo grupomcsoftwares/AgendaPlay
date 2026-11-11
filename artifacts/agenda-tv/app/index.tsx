@@ -56,7 +56,6 @@ export default function LoginScreen() {
           resizeMode="contain"
           accessibilityLabel="Logo AgendaPlay"
         />
-        <Text style={[styles.launchBrand, isTV && styles.tvLaunchBrand]}>AgendaPlay</Text>
         <ActivityIndicator
           size="large"
           color="#c9a84c"
@@ -64,7 +63,7 @@ export default function LoginScreen() {
           accessibilityLabel="Carregando"
         />
         <Text style={[styles.launchMessage, isTV && styles.tvLaunchMessage]}>
-          Carregando seu sistema...
+          Carregando...
         </Text>
       </View>
     );
@@ -204,13 +203,6 @@ const styles = StyleSheet.create({
   tvLaunchLoading: { paddingHorizontal: 48 },
   launchLogo: { width: 220, height: 220 },
   tvLaunchLogo: { width: 320, height: 320 },
-  launchBrand: {
-    color: "#f5f5f5",
-    fontSize: 22,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  tvLaunchBrand: { fontSize: 30 },
   launchSpinner: { marginTop: 28 },
   tvLaunchSpinner: { marginTop: 36 },
   launchMessage: {
