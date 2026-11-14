@@ -1383,7 +1383,7 @@ export default function Booking({ shopId: shopIdProp, slug: slugProp }: { shopId
   }
 
   return (
-    <div className={`min-h-screen bg-background text-foreground px-4 flex flex-col items-center ${isDaySelectionScreen ? "py-6 sm:py-10" : "py-10"}`}>
+    <div className={`min-h-screen bg-background text-foreground px-4 flex flex-col items-center ${isDaySelectionScreen ? "pt-6" : "pt-10"} pb-24 sm:py-10 sm:pb-10`}>
       <div className={`max-w-md w-full ${isDaySelectionScreen ? "space-y-5 sm:space-y-8" : "space-y-8"}`}>
         <div className={`text-center ${isDaySelectionScreen ? "space-y-2" : "space-y-4"}`}>
           <div

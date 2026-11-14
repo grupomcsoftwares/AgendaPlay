@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
 
-export const APP_VERSION = "1.0.26";
+export const APP_VERSION = "1.0.27";
 
 // Keep the app-facing download URL stable, but redirect the browser to EAS's
 // CDN so the API process does not relay the large APK body.
 export const APK_SOURCE_URL: string | null =
-  "https://expo.dev/artifacts/eas/xI8hGw_8zDymbQ92moevNvfff8O82AR9o3rTsCHYKc0.apk";
+  "https://expo.dev/artifacts/eas/6iO6yewj0GO_WvhllMwjSJfVLMC5QKNG_Kp_lh6_zTE.apk";
 export const APK_URL: string | null = "https://agendaplay.net/api/app-download.apk";
 
 const router: IRouter = Router();

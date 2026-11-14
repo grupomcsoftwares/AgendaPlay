@@ -341,7 +341,7 @@ export default function DashboardScreen() {
   }, [initialUrl, isTV, sessionCookie]);
 
   return (
-    <View style={[styles.root, { paddingTop: topPad }]}>
+    <View style={[styles.root, { paddingTop: topPad, paddingBottom: botPad }]}>
       {/* Overlay when menu is open on mobile */}
       {menuOpen && !isTablet && !isTV && (
         <Pressable style={styles.overlay} onPress={() => setMenuOpen(false)} />
